@@ -1,7 +1,7 @@
 from gint import *
+from maze import MazeBuilder
 import time
 import random
-from maze import MazeBuilder
 
 # Screen configuration
 dw, dh = DWIDTH, DHEIGHT
@@ -23,11 +23,33 @@ print(seed)
 seed = 17138
 
 mz = MazeBuilder(10, 10, seed=seed)
-maze, start, goal = mz.build()
+grid, start, goal = mz.build()
 
-MAZE_H = len(maze)
-MAZE_W = len(maze[0])
+MAZE_H = len(grid)
+MAZE_W = len(grid[0])
+maze = bytearray(sum(grid, []))
+
 PLAYER_Y, PLAYER_X = start   # start at bottom row
+
+
+def lsb(data, index):
+    return data[index] & 1 
+
+def msb(data, index):
+    return data[index] & 0b1000_0000 
+
+def set_msb(data, index):
+    data[index] |= 0b1000_0000   
+
+# initialize discovery around start position
+def discover(x,y):
+    for dy in (-1,0,1):
+        for dx in (-1,0,1):
+            nx, ny = x+dx, y+dy
+            if 0 <= nx < MAZE_W and 0 <= ny < MAZE_H:
+                set_msb(maze, ny*MAZE_W + nx)
+
+discover(PLAYER_X, PLAYER_Y)
 
 # Helpers
 def interp(a,b,t): return int(a+(b-a)*t)
@@ -69,22 +91,21 @@ def draw_tunnel():
 
         # check if wall ahead
         forward_block = True
-        if 0 <= row - 1 < MAZE_H and maze[row - 1][PLAYER_X] == 0:
+        if 0 <= row - 1 < MAZE_H and lsb(maze, (row - 1)*MAZE_W + PLAYER_X) == 1:
             forward_block = False
-            
 
         if 0 <= row < MAZE_H:
-            if PLAYER_X-1>=0 and maze[row][PLAYER_X-1]==1:
+            if PLAYER_X-1>=0 and lsb(maze, (row)*MAZE_W + PLAYER_X-1)==1:
                 left_col = C_RGB(shade,shade,shade)
-            if PLAYER_X+1<MAZE_W and maze[row][PLAYER_X+1]==1:
+            if PLAYER_X+1<MAZE_W and lsb(maze, (row)*MAZE_W + PLAYER_X+1)==1:
                 right_col = C_RGB(shade,shade,shade)
         # draw faces
         dpoly([*bl0,*br0,*br1,*bl1], floor_col, 1)
         dpoly([*tl0,*tr0,*tr1,*tl1], ceil_col,   1)
         dpoly([*bl0,*tl0,*tl1,*bl1], left_col,  1)
         dpoly([*br0,*tr0,*tr1,*br1], right_col, 1)
-
-        if forward_block:
+        
+        if not forward_block:
             # draw front-facing wall slice at the next depth and stop
             front_col = C_RGB(shade, shade, shade)
             # use the "far" corners (t1) for the wall position
@@ -100,17 +121,24 @@ def draw_tunnel():
 
     # UI background
     drect(0, UI_TOP, dw, UI_BOTTOM, C_RGB(2,2,2))
-    # draw minimap
-    cell = min((dw-20-20)//MAZE_W, (UI_BOTTOM-UI_TOP-20-20)//MAZE_H)
-    mx0 = 10
-    my0 = UI_TOP + 10
+        # draw minimap
+    cell = min((dw-20)//MAZE_W, (UI_BOTTOM-UI_TOP-20)//MAZE_H)
+    mx0, my0 = 10, UI_TOP + 10
     for ry in range(MAZE_H):
         for rx in range(MAZE_W):
+            idx = ry*MAZE_W + rx
+            if msb(maze, idx) == 0:
+                continue  # not yet discovered
             x0 = mx0 + rx*cell
             y0 = my0 + ry*cell
-            col = C_WHITE if maze[ry][rx]==1 else C_BLACK
+            # wall = black, corridor = white
+            col = C_WHITE if lsb(maze, idx) == 0 else C_BLACK
             drect(x0, y0, x0+cell, y0+cell, col)
     # player dot
+    px = mx0 + PLAYER_X*cell + cell//4
+    py = my0 + PLAYER_Y*cell + cell//4
+    drect(px, py, px+cell//2, py+cell//2, C_RED)
+
     px = mx0 + PLAYER_X*cell + cell//4
     py = my0 + PLAYER_Y*cell + cell//4
     drect(px, py, px+cell//2, py+cell//2, C_RED)
@@ -129,19 +157,24 @@ if __name__=='__main__':
                 break
             elif ev.key == KEY_UP:
                 ny, nx = PLAYER_Y - 1, PLAYER_X
-                if ny >= 0 and maze[ny][nx] == 0:
+                if ny >= 0 and lsb(maze, ny*MAZE_W+nx) == 0:
                     PLAYER_Y = ny
+                    discover(PLAYER_X, PLAYER_Y)
             elif ev.key == KEY_DOWN:
                 ny, nx = PLAYER_Y + 1, PLAYER_X
-                if ny < MAZE_H and maze[ny][nx] == 0:
+                if ny < MAZE_H and lsb(maze, ny*MAZE_W+nx) == 0:
                     PLAYER_Y = ny
+                    discover(PLAYER_X, PLAYER_Y)
             elif ev.key == KEY_LEFT:
                 nx, ny = PLAYER_X - 1, PLAYER_Y
-                if nx >= 0 and maze[ny][nx] == 0:
+                if nx >= 0 and lsb(maze, ny*MAZE_W+nx) == 0:
                     PLAYER_X = nx
+                    discover(PLAYER_X, PLAYER_Y)
             elif ev.key == KEY_RIGHT:
                 nx, ny = PLAYER_X + 1, PLAYER_Y
-                if nx < MAZE_W and maze[ny][nx] == 0:
+                if nx < MAZE_W and lsb(maze, ny*MAZE_W+nx) == 0:
                     PLAYER_X = nx
+                    discover(PLAYER_X, PLAYER_Y)
+            # redraw after move
             draw_tunnel()
         time.sleep(0.05)
