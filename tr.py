@@ -16,6 +16,7 @@ VANISH_Y = (SCENE_TOP + SCENE_BOTTOM) // 2
 
 # Tunnel depth levels
 LEVELS = 5
+MAX_SIDE_DEPTH = 3
 
 
 seed = random.randint(0, 65535)
@@ -55,10 +56,17 @@ discover(PLAYER_X, PLAYER_Y)
 def interp(a,b,t): return int(a+(b-a)*t)
 def lerp_point(x0,y0,x1,y1,t): return (interp(x0,x1,t), interp(y0,y1,t))
 
+def flatten(*lists):
+    out = []
+    for lst in lists:
+        # assume each lst is itself a list of verts
+        out.extend(lst)
+    return out
+
 # Draw both 3D tunnel and 2D minimap
 def draw_tunnel():
     global PLAYER_X, PLAYER_Y
-    dclear(C_BLACK)
+    # dclear(C_BLACK) # TODO: avoid this !!
     # 3D rails
     dline(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, C_GREEN)
     dline(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, C_GREEN)
@@ -102,52 +110,66 @@ def draw_tunnel():
                 right_open = False
             
         # draw faces
-        dpoly([*bl0,*br0,*br1,*bl1], floor_col, 1)
-        dpoly([*tl0,*tr0,*tr1,*tl1], ceil_col,   1)
+        dpoly(flatten(bl0, br0, br1, bl1), floor_col, 1)
+        dpoly(flatten(tl0,tr0,tr1,tl1), ceil_col,   1)
    
 
         # -------------------------
         # if there's a corridor on the left, draw the next-inner wall
-        if left_open:
-            if  i+1 < LEVELS:
-                t2 = tvals[i+2]
-                # compute deeper corners
-                bl2 = lerp_point(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
-                tl2 = lerp_point(0, SCENE_TOP,    VANISH_X, VANISH_Y, t2)
-                shade2 = max(shade - step, 0)
-                inner_col = C_RGB(shade2, shade2, shade2)
-                # draw sub-wall on left face
-                dpoly([*bl1, *bl2, *tl2, *tl1], inner_col, 1)
-            else:
-                dpoly([*bl0,*tl0,*tl1,*bl1], C_RGB(4,0,12),  1)
+        if left_open and i+1 < LEVELS:
+             # compute deeper t2 and corners for sub-wall boundary
+            t2 = tvals[i+2]
+            bl2 = lerp_point(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
+            tl2 = lerp_point(0, SCENE_TOP,    VANISH_X, VANISH_Y, t2)
+            # draw roof triangle (red): tl0, tl1, projected (tl0.x, tl1.y)
+            x0,y0 = tl0
+            x1,y1 = tl1
+            dpoly([x0, y0, x1, y1, x0, y1], C_RGB(shade,shade,shade), 1)
+            # draw floor triangle (red): bl0, bl1, projected (bl0.x, bl1.y)
+            x0,y0 = bl0
+            x1,y1 = bl1
+            dpoly([x0, y0, x1, y1, x0, y1], C_RGB(shade,shade,shade), 1)
+            # draw inner wall quad (orange): bl1, bl2, tl2, tl1
+            dpoly([bl1[0], bl1[1], bl2[0], bl2[1], tl2[0], tl2[1], tl1[0], tl1[1]], C_RGB(31,15,0), 1)
+        elif left_open:
+            # if too deep, just draw flat left face
+            dpoly(flatten(bl0,tl0,tl1,bl1), C_RGB(shade,shade,shade), 1)
         else:
-            dpoly([*bl0,*tl0,*tl1,*bl1], C_RGB(shade,shade,shade),  1)
+            dpoly(flatten(bl0,tl0,tl1,bl1), C_RGB(shade,shade,shade),  1)
 
-        # if open :  
-        
         # if there's a corridor on the right, draw the next-inner wall
-        if right_open:
-            if i+1 < LEVELS:
-                t2 = tvals[i+2]
-                # compute deeper corners
-                br2 = lerp_point(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
-                tr2 = lerp_point(dw, SCENE_TOP,    VANISH_X, VANISH_Y, t2)
-                shade2 = max(shade - step, 0)
-                inner_col = C_RGB(shade2, shade2, shade2)
-                # draw sub-wall on right face
-                dpoly([*br1, *br2, *tr2, *tr1], inner_col, 1)
-            else:
-                dpoly([*br1, *br2, *tr2, *tr1], C_RGB(4,0,12), 1)
+        if right_open and i+1 < LEVELS:
+            # compute t2 for deeper boundary
+            t2 = tvals[i+2]
+            br2 = lerp_point(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
+            tr2 = lerp_point(dw, SCENE_TOP,    VANISH_X, VANISH_Y, t2)
+            # check if block behind right is a wall (for coloring)
+            behind_wall = False
+            if 0 <= row-1 < MAZE_H and PLAYER_X+1 < MAZE_W:
+                behind_wall = (lsb(maze, (row-1)*MAZE_W + (PLAYER_X+1)) == 1)
+            # draw roof triangle (red) on right face: tr0, tr1, projected(tr1.x, tr0.y)
+            x0, y0 = tr0
+            x1, y1 = tr1
+            dpoly([x0, y0, x1, y1, x0, y1], C_RGB(shade,shade,shade), 1)
+            # draw floor triangle (red): br0, br1, project  ed(br1.x, br0.y)
+            x0, y0 = br0
+            x1, y1 = br1
+            dpoly([x0, y0, x1, y1, x0, y1], C_RGB(shade,shade,shade), 1)
+            # draw inner wall quad (orange or black)
+            inner_col = C_RGB(31,15,0) if behind_wall else C_BLACK
+            dpoly([br1[0], br1[1], br2[0], br2[1], tr2[0], tr2[1], tr1[0], tr1[1]], inner_col, 1)
+        elif right_open:
+            dpoly(flatten(br0,tr0,tr1,br1), C_RGB(shade,shade,shade), 1)
         else:
-            dpoly([*br0,*tr0,*tr1,*br1], C_RGB(shade,shade,shade), 1)
+            dpoly(flatten(br0,tr0,tr1,br1), C_RGB(shade,shade,shade), 1)
 
         # -------------------------
         
-        if not forward_block:
+        if not forward_block or i == LEVELS -1:
             # draw front-facing wall slice at the next depth and stop
             front_col = C_RGB(shade, shade, shade)
             # use the "far" corners (t1) for the wall position
-            dpoly([*tl1, *tr1, *br1, *bl1], front_col, 1)
+            dpoly(flatten(tl1, tr1, br1, bl1), front_col, 1)
             break
     # back sliver
     tb = tvals[-1]
@@ -186,33 +208,33 @@ def draw_tunnel():
     dupdate()
 
 # Main loop
-if __name__=='__main__':
-    draw_tunnel()
-    while True:
-        ev = pollevent()
-        if ev.type == KEYEV_DOWN:
-            if ev.key == KEY_EXIT:
-                break
-            elif ev.key == KEY_UP:
-                ny, nx = PLAYER_Y - 1, PLAYER_X
-                if ny >= 0 and lsb(maze, ny*MAZE_W+nx) == 0:
-                    PLAYER_Y = ny
-                    discover(PLAYER_X, PLAYER_Y)
-            elif ev.key == KEY_DOWN:
-                ny, nx = PLAYER_Y + 1, PLAYER_X
-                if ny < MAZE_H and lsb(maze, ny*MAZE_W+nx) == 0:
-                    PLAYER_Y = ny
-                    discover(PLAYER_X, PLAYER_Y)
-            elif ev.key == KEY_LEFT:
-                nx, ny = PLAYER_X - 1, PLAYER_Y
-                if nx >= 0 and lsb(maze, ny*MAZE_W+nx) == 0:
-                    PLAYER_X = nx
-                    discover(PLAYER_X, PLAYER_Y)
-            elif ev.key == KEY_RIGHT:
-                nx, ny = PLAYER_X + 1, PLAYER_Y
-                if nx < MAZE_W and lsb(maze, ny*MAZE_W+nx) == 0:
-                    PLAYER_X = nx
-                    discover(PLAYER_X, PLAYER_Y)
-            # redraw after move
-            draw_tunnel()
-        time.sleep(0.05)
+
+draw_tunnel()
+while True:
+    ev = pollevent()
+    if ev.type == KEYEV_DOWN:
+        if ev.key == KEY_EXIT:
+            break
+        elif ev.key == KEY_UP:
+            ny, nx = PLAYER_Y - 1, PLAYER_X
+            if ny >= 0 and lsb(maze, ny*MAZE_W+nx) == 0:
+                PLAYER_Y = ny
+                discover(PLAYER_X, PLAYER_Y)
+        elif ev.key == KEY_DOWN:
+            ny, nx = PLAYER_Y + 1, PLAYER_X
+            if ny < MAZE_H and lsb(maze, ny*MAZE_W+nx) == 0:
+                PLAYER_Y = ny
+                discover(PLAYER_X, PLAYER_Y)
+        elif ev.key == KEY_LEFT:
+            nx, ny = PLAYER_X - 1, PLAYER_Y
+            if nx >= 0 and lsb(maze, ny*MAZE_W+nx) == 0:
+                PLAYER_X = nx
+                discover(PLAYER_X, PLAYER_Y)
+        elif ev.key == KEY_RIGHT:
+            nx, ny = PLAYER_X + 1, PLAYER_Y
+            if nx < MAZE_W and lsb(maze, ny*MAZE_W+nx) == 0:
+                PLAYER_X = nx
+                discover(PLAYER_X, PLAYER_Y)
+        # redraw after move
+        draw_tunnel()
+    time.sleep(0.05)
