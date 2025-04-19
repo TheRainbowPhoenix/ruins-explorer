@@ -83,7 +83,8 @@ def draw_tunnel():
         shade = max_shade - i*step
         floor_col = C_RGB(shade,shade,shade)
         ceil_col  = C_RGB(shade,shade,shade)
-        left_col = right_col = C_BLUE
+        left_open = True
+        right_open = True
 
         # determine column and row
         # row = PLAYER_Y - i (i=0 nearest slice)
@@ -96,14 +97,51 @@ def draw_tunnel():
 
         if 0 <= row < MAZE_H:
             if PLAYER_X-1>=0 and lsb(maze, (row)*MAZE_W + PLAYER_X-1)==1:
-                left_col = C_RGB(shade,shade,shade)
+                left_open = False
             if PLAYER_X+1<MAZE_W and lsb(maze, (row)*MAZE_W + PLAYER_X+1)==1:
-                right_col = C_RGB(shade,shade,shade)
+                right_open = False
+            
         # draw faces
         dpoly([*bl0,*br0,*br1,*bl1], floor_col, 1)
         dpoly([*tl0,*tr0,*tr1,*tl1], ceil_col,   1)
-        dpoly([*bl0,*tl0,*tl1,*bl1], left_col,  1)
-        dpoly([*br0,*tr0,*tr1,*br1], right_col, 1)
+   
+
+        # -------------------------
+        # if there's a corridor on the left, draw the next-inner wall
+        if left_open:
+            if  i+1 < LEVELS:
+                t2 = tvals[i+2]
+                # compute deeper corners
+                bl2 = lerp_point(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
+                tl2 = lerp_point(0, SCENE_TOP,    VANISH_X, VANISH_Y, t2)
+                shade2 = max(shade - step, 0)
+                inner_col = C_RGB(shade2, shade2, shade2)
+                # draw sub-wall on left face
+                dpoly([*bl1, *bl2, *tl2, *tl1], inner_col, 1)
+            else:
+                dpoly([*bl0,*tl0,*tl1,*bl1], C_RGB(4,0,12),  1)
+        else:
+            dpoly([*bl0,*tl0,*tl1,*bl1], C_RGB(shade,shade,shade),  1)
+
+        # if open :  
+        
+        # if there's a corridor on the right, draw the next-inner wall
+        if right_open:
+            if i+1 < LEVELS:
+                t2 = tvals[i+2]
+                # compute deeper corners
+                br2 = lerp_point(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
+                tr2 = lerp_point(dw, SCENE_TOP,    VANISH_X, VANISH_Y, t2)
+                shade2 = max(shade - step, 0)
+                inner_col = C_RGB(shade2, shade2, shade2)
+                # draw sub-wall on right face
+                dpoly([*br1, *br2, *tr2, *tr1], inner_col, 1)
+            else:
+                dpoly([*br1, *br2, *tr2, *tr1], C_RGB(4,0,12), 1)
+        else:
+            dpoly([*br0,*tr0,*tr1,*br1], C_RGB(shade,shade,shade), 1)
+
+        # -------------------------
         
         if not forward_block:
             # draw front-facing wall slice at the next depth and stop
