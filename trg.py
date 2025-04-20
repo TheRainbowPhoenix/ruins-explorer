@@ -368,7 +368,7 @@ class MenuScene(Scene):
 
         # exit menu
         if keydown(KEY_EXE) or keydown(KEY_EXIT):
-            print(f"Menu selection: {self.items[self.sel]}")
+            # print(f"Menu selection: {self.items[self.sel]}")
             # TODO: submenu ??
             return "POP"
         

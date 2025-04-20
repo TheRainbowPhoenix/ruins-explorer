@@ -135,7 +135,10 @@ class MazeBuilder:
             if grid[r][c] == 0 and (r,c) not in (start, goal) ]
 
         # shuffle and pick key + items
-        random.shuffle(open_cells)
+        for i in range(len(open_cells) - 1, 0, -1):
+            j = random.randint(0, i)
+            open_cells[i], open_cells[j] = open_cells[j], open_cells[i]
+
         key_pos  = open_cells.pop()  # last of shuffled
         item_pos = [ open_cells[i] for i in range(min(self.items_count, len(open_cells))) ]
 
