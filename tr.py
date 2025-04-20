@@ -24,14 +24,15 @@ print(seed)
 seed = 17138
 
 mz = MazeBuilder(10, 10, seed=seed)
-grid, start, goal = mz.build()
+grid, start, goal, key_pos, item_positions = mz.build()
 
 MAZE_H = len(grid)
 MAZE_W = len(grid[0])
 maze = bytearray(sum(grid, []))
 
-PLAYER_Y, PLAYER_X = start   # start at bottom row
-
+PLAYER_Y, PLAYER_X = start if start else (MAZE_H -1, MAZE_W //2)   # start at bottom row
+KEY_POS = key_pos  # (y, x)
+ITEM_POS = set(item_positions)  # set of (y, x) tuples
 
 def lsb(data, index):
     return data[index] & 1 
@@ -181,7 +182,7 @@ def draw_tunnel():
 
     # UI background
     drect(0, UI_TOP, dw, UI_BOTTOM, C_RGB(2,2,2))
-        # draw minimap
+    # draw minimap
     cell = min((dw-20)//MAZE_W, (UI_BOTTOM-UI_TOP-20)//MAZE_H)
     mx0, my0 = 10, UI_TOP + 10
     for ry in range(MAZE_H):
@@ -194,6 +195,13 @@ def draw_tunnel():
             # wall = black, corridor = white
             col = C_WHITE if lsb(maze, idx) == 0 else C_BLACK
             drect(x0, y0, x0+cell, y0+cell, col)
+            # draw key if at this cell
+            if lsb(maze, idx) == 0:
+                if (ry, rx) == KEY_POS:
+                    drect(x0+2, y0+2, x0+cell-2, y0+cell-2, C_RGB(21,21,0))  # yellow key square
+                # draw items if any at this cell
+                if (ry, rx) in ITEM_POS:
+                    drect(x0+cell//4, y0+cell//4, x0+3*cell//4, y0+3*cell//4, C_RGB(0,21,21))  # cyan
     # player dot
     px = mx0 + PLAYER_X*cell + cell//4
     py = my0 + PLAYER_Y*cell + cell//4
