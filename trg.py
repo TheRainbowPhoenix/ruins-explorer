@@ -1,0 +1,444 @@
+from gint import *
+from maze import MazeBuilder
+import time
+import random
+
+CLEAR_COLOR     = C_RGB(31,31,31)
+
+SCREEN_W     = DWIDTH
+SCREEN_H     = DHEIGHT
+
+# --- Helpers ---
+
+def lsb(data, index):
+    return data[index] & 1 
+
+def msb(data, index):
+    return data[index] & 0b1000_0000 
+
+def set_msb(data, index):
+    data[index] |= 0b1000_0000   
+
+def interp(a,b,t): return int(a+(b-a)*t)
+def lerp_point(x0,y0,x1,y1,t): return (interp(x0,x1,t), interp(y0,y1,t))
+
+def flatten(*lists):
+    out = []
+    for lst in lists:
+        out.extend(lst)
+    return out
+
+# --- Camera ---
+class Camera:
+    def __init__(self, x=0, y=0):
+        self.x = x
+        self.y = y
+
+# --- Scene Base ---
+class Scene:
+    def __init__(self):
+        self.camera = Camera()
+        self.running = False
+
+    def preload(self): pass
+    def create(self): pass
+    def update(self, t, dt): pass
+
+# --- Tunnel Scene ---
+class TunnelScene(Scene):
+    def __init__(self):
+        super().__init__()
+        # Maze & view state
+        seed = 17138
+        mz = MazeBuilder(10, 10, seed=seed)
+        grid, start, goal, key_pos, items = mz.build()
+        self.MAZE_H = len(grid)
+        self.MAZE_W = len(grid[0])
+        self.maze = bytearray(sum(grid, []))
+        self.PLAYER_Y, self.PLAYER_X = start if start else (self.MAZE_H-1, self.MAZE_W//2)
+        self.KEY_POS = key_pos
+        self.ITEM_POS = set(items)
+        self.item_counter = 0
+        self.cam_dir = 0  # 0=N,1=E,2=S,3=W
+        self.dir_vectors = {
+          0: ((-1,0),(0,-1),(0,1)),
+          1: ((0,1),(-1,0),(1,0)),
+          2: ((1,0),(0,1),(0,-1)),
+          3: ((0,-1),(1,0),(-1,0)),
+        }
+        self.discover_radius()
+
+    def discover_radius(self):
+        # reveal 3x3 around player
+        for dy in (-1,0,1):
+            for dx in (-1,0,1):
+                nx, ny = self.PLAYER_X+dx, self.PLAYER_Y+dy
+                if 0<=nx<self.MAZE_W and 0<=ny<self.MAZE_H:
+                    idx = ny*self.MAZE_W+nx
+                    self.maze[idx] |= 0b10000000
+
+    def preload(self):
+        pass
+
+    def create(self):
+        # initial draw
+        self.draw_tunnel()
+        dupdate()
+
+    def update(self, t, dt):
+        ev = pollevent()
+        if ev.type == KEYEV_DOWN:
+            # movement
+            if ev.key == KEY_EXIT:
+                return "POP"
+            if ev.key == KEY_EQUALS:
+                return MenuScene()
+            
+            if ev.key in (KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT):
+                dy, dx = 0, 0
+                if ev.key == KEY_UP:    dy,dx = -1,0
+                if ev.key == KEY_DOWN:  dy,dx = 1,0
+                if ev.key == KEY_LEFT:  dy,dx = 0,-1
+                if ev.key == KEY_RIGHT: dy,dx = 0,1
+                ny = self.PLAYER_Y + dy
+                nx = self.PLAYER_X + dx
+                idx = ny*self.MAZE_W+nx
+                if 0<=nx<self.MAZE_W and 0<=ny<self.MAZE_H and (self.maze[idx]&1)==0:
+                    self.PLAYER_X, self.PLAYER_Y = nx, ny
+                    self.discover_radius()
+            elif ev.key == KEY_SHIFT:
+                self.cam_dir = (self.cam_dir + 1) % 4
+            elif ev.key == KEY_EXE:
+                pos = (self.PLAYER_Y, self.PLAYER_X)
+                if pos in self.ITEM_POS:
+                    self.ITEM_POS.remove(pos)
+                    self.item_counter += 1
+            # redraw
+            self.draw_tunnel()
+        return None
+
+    def draw_tunnel(self):
+        # clear scene
+        dclear(C_BLACK)
+        dw, dh = DWIDTH, DHEIGHT
+        SCENE_TOP, SCENE_BOTTOM = 0, dh//2
+        UI_TOP, UI_BOTTOM = SCENE_BOTTOM, dh
+        VANISH_X, VANISH_Y = dw//2, (SCENE_TOP+SCENE_BOTTOM)//2
+        LEVELS = 5
+
+        # draw rails
+        # dline(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, C_BLUE)
+        # dline(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, C_BLUE)
+
+        # direction deltas
+        fdy,fdx = self.dir_vectors[self.cam_dir][0]
+        ldy,ldx = self.dir_vectors[self.cam_dir][1]
+        rdy,rdx = self.dir_vectors[self.cam_dir][2]
+
+        item_markers=[]
+        
+        # precompute depths
+        tvals = [1.0 - 0.5**i for i in range(LEVELS+1)]
+        max_shade=30
+        step=max_shade//LEVELS
+        
+        for i in range(LEVELS):
+            t0,t1 = tvals[i], tvals[i+1]
+            # corners near/far
+            bl0 = lerp_point(0,SCENE_BOTTOM,VANISH_X,VANISH_Y,t0)
+            tl0 = lerp_point(0,SCENE_TOP,   VANISH_X,VANISH_Y,t0)
+            br0 = lerp_point(dw,SCENE_BOTTOM,VANISH_X,VANISH_Y,t0)
+            tr0 = lerp_point(dw,SCENE_TOP,   VANISH_X,VANISH_Y,t0)
+            bl1 = lerp_point(0,SCENE_BOTTOM,VANISH_X,VANISH_Y,t1)
+            tl1 = lerp_point(0,SCENE_TOP,   VANISH_X,VANISH_Y,t1)
+            br1 = lerp_point(dw,SCENE_BOTTOM,VANISH_X,VANISH_Y,t1)
+            tr1 = lerp_point(dw,SCENE_TOP,   VANISH_X,VANISH_Y,t1)
+
+            shade = max_shade - i*step
+            floor_col = C_RGB(shade,shade,shade)
+            ceil_col  = C_RGB(shade,shade,shade)
+            self.left_open = True
+            self.right_open = True
+
+            # determine column and row
+            # row = PLAYER_Y - i (i=0 nearest slice)
+            row = self.PLAYER_Y - i
+
+            # check if wall ahead
+            self.forward_block = True
+            if 0 <= row - 1 < self.MAZE_H and lsb(self.maze, (row - 1)*self.MAZE_W + self.PLAYER_X) == 1:
+                self.forward_block = False
+
+            if 0 <= row < self.MAZE_H:
+                if self.PLAYER_X-1>=0 and lsb(self.maze, (row)*self.MAZE_W + self.PLAYER_X-1)==1:
+                    self.left_open = False
+                if self.PLAYER_X+1<self.MAZE_W and lsb(self.maze, (row)*self.MAZE_W + self.PLAYER_X+1)==1:
+                    self.right_open = False
+            
+            # draw faces
+            dpoly(flatten(bl0, br0, br1, bl1), floor_col, 1)
+            dpoly(flatten(tl0,tr0,tr1,tl1), ceil_col,   1)
+
+            # -------------------------
+            # if there's a corridor on the left, draw the next-inner wall
+            if self.left_open and i+1 < LEVELS:
+                # compute deeper t2 and corners for sub-wall boundary
+                t2 = tvals[i+2]
+                bl2 = lerp_point(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
+                tl2 = lerp_point(0, SCENE_TOP,    VANISH_X, VANISH_Y, t2)
+                # draw roof triangle (red): tl0, tl1, projected (tl0.x, tl1.y)
+                x0,y0 = tl0
+                x1,y1 = tl1
+                dpoly([x0, y0, x1, y1, x0, y1], C_RGB(shade,shade,shade), 1)
+                # draw floor triangle (red): bl0, bl1, projected (bl0.x, bl1.y)
+                x0,y0 = bl0
+                x1,y1 = bl1
+                dpoly([x0, y0, x1, y1, x0, y1], C_RGB(shade,shade,shade), 1)
+                # draw inner wall quad (orange): bl1, bl2, tl2, tl1
+                dpoly([bl1[0], bl1[1], bl0[0], bl1[1], tl0[0], tl1[1], tl1[0], tl1[1]], C_RGB(shade,shade,shade), 1)
+                # dpoly([bl1[0], bl1[1], bl2[0], bl2[1], tl2[0], tl2[1], tl1[0], tl1[1]], C_RGB(shade,shade,shade), 1)
+            elif self.left_open:
+                # if too deep, just draw flat left face
+                dpoly(flatten(bl0,tl0,tl1,bl1), C_RGB(shade,shade,shade), 1)
+            else:
+                dpoly(flatten(bl0,tl0,tl1,bl1), C_RGB(shade,shade,shade),  1)
+
+            # if there's a corridor on the right, draw the next-inner wall
+            if self.right_open and i+1 < LEVELS:
+                # compute t2 for deeper boundary
+                t2 = tvals[i+2]
+                br2 = lerp_point(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
+                tr2 = lerp_point(dw, SCENE_TOP,    VANISH_X, VANISH_Y, t2)
+                # check if block behind right is a wall (for coloring)
+                behind_wall = False
+                if 0 <= row-1 < self.MAZE_H and self.PLAYER_X+1 < self.MAZE_W:
+                    behind_wall = (lsb(self.maze, (row-1)*self.MAZE_W + (self.PLAYER_X+1)) == 1)
+                # draw roof triangle (red) on right face: tr0, tr1, projected(tr1.x, tr0.y)
+                x0, y0 = tr0
+                x1, y1 = tr1
+                dpoly([x0, y0, x1, y1, x0, y1], C_RGB(shade,shade,shade), 1)
+                # draw floor triangle (red): br0, br1, project  ed(br1.x, br0.y)
+                x0, y0 = br0
+                x1, y1 = br1
+                dpoly([x0, y0, x1, y1, x0, y1], C_RGB(shade,shade,shade), 1)
+                # draw inner wall quad (orange or black)
+                inner_col = C_RGB(31,15,0) if behind_wall else C_BLACK
+                dpoly([br1[0], br1[1], br0[0], br1[1], tr0[0], tr1[1], tr1[0], tr1[1]], C_RGB(shade,shade,shade), 1)
+                # dpoly([br1[0], br1[1], br2[0], br2[1], tr2[0], tr2[1], tr1[0], tr1[1]], C_RGB(shade,shade,shade), 1)
+            elif self.right_open:
+                dpoly(flatten(br0,tr0,tr1,br1), C_RGB(shade,shade,shade), 1)
+            else:
+                dpoly(flatten(br0,tr0,tr1,br1), C_RGB(shade,shade,shade), 1)
+
+            # -------------------------
+            
+            if not self.forward_block or i == LEVELS -1:
+                # draw front-facing wall slice at the next depth and stop
+                front_col = C_RGB(shade, shade, shade)
+                # use the "far" corners (t1) for the wall position
+                dpoly(flatten(tl1, tr1, br1, bl1), front_col, 1)
+                break
+            
+            # draw items behind in perspective (one level)
+            depth = i + 1  # next tile depth
+            ty = self.PLAYER_Y - depth
+            tx = self.PLAYER_X
+            if depth <= LEVELS and (ty, tx) in self.ITEM_POS:
+                t2 = tvals[depth]
+                bl2 = lerp_point(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
+                br2 = lerp_point(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
+
+                mx = (bl2[0] + br2[0]) // 2
+                size = int(24 // (1.5**(depth)))
+                my = bl1[1] - size
+                item_markers.append((mx, my, size//2, depth))
+
+
+        # back sliver
+        tb = tvals[-1]
+        b0 = lerp_point(0,SCENE_TOP,   VANISH_X,VANISH_Y,tb)
+        b1 = lerp_point(dw,SCENE_TOP,   VANISH_X,VANISH_Y,tb)
+        b2 = lerp_point(dw,SCENE_BOTTOM,VANISH_X,VANISH_Y,tb)
+        b3 = lerp_point(0,SCENE_BOTTOM, VANISH_X,VANISH_Y,tb)
+        # dpoly([*b0,*b1,*b2,*b3], C_RGB(10,10,10), 1)
+
+        if (self.PLAYER_Y, self.PLAYER_X) in self.ITEM_POS:
+            fx0, fy0 = (b0[0] + b1[0]) // 2, (b0[1] + b1[1]) // 2
+            fx1, fy1 = (b2[0] + b3[0]) // 2, (b2[1] + b3[1]) // 2
+
+            fx0 = (bl0[0] + br0[0]) // 2
+            fy0 = SCENE_BOTTOM
+            # back sliver floor midpoint
+            fx1 = (b2[0] + b3[0]) // 2
+            fy1 = (b2[1] + b3[1]) // 2
+            # place at half distance
+            mx = (fx0 + fx1) // 2
+            my = fy0 + (fy1 - fy0) // 2
+            # size of item marker
+            half_w = 24
+            half_h = 24
+            drect(mx - half_w, my - half_h, mx + half_w, my + half_h, C_RGB(0,21,21))
+            # ix0, iy0, ix1, iy1, C_RGB(0,21,21))  # cyan item marker
+        
+        for (mx, my, half, depth) in item_markers:
+            drect(mx - half, my - half, mx + half, my + half, C_RGB(0,21-depth*2,21-depth*2))
+
+        # UI panel
+        drect(0,UI_TOP,dw,UI_BOTTOM,C_RGB(2,2,2))
+        # minimap
+        cell=min((dw-20)//self.MAZE_W,(UI_BOTTOM-UI_TOP-20)//self.MAZE_H)
+        
+        mx0, my0 = 10, UI_TOP + 10
+        for ry in range(self.MAZE_H):
+            for rx in range(self.MAZE_W):
+                idx = ry*self.MAZE_W + rx
+                if msb(self.maze, idx) == 0:
+                    continue  # not yet discovered
+                x0 = mx0 + rx*cell
+                y0 = my0 + ry*cell
+                # wall = black, corridor = white
+                col = C_WHITE if lsb(self.maze, idx) == 0 else C_BLACK
+                drect(x0, y0, x0+cell, y0+cell, col)
+                # draw key if at this cell
+                if lsb(self.maze, idx) == 0:
+                    if (ry, rx) == self.KEY_POS:
+                        drect(x0+2, y0+2, x0+cell-2, y0+cell-2, C_RGB(21,21,0))  # yellow key square
+                    # draw items if any at this cell
+                    if (ry, rx) in self.ITEM_POS:
+                        drect(x0+cell//4, y0+cell//4, x0+3*cell//4, y0+3*cell//4, C_RGB(0,21,21))  # cyan
+        
+        # draw player arrow based on orientation
+        px = mx0 + self.PLAYER_X*cell + cell//2
+        py = my0 + self.PLAYER_Y*cell + cell//2
+        dirs=[(0,-1),(1,0),(0,1),(-1,0)]
+        dx,dy=dirs[self.cam_dir]
+        pdx,pdy=-dy,dx
+        dpoly([px+dx*cell//2,py+dy*cell//2, # tip
+               px-pdx*cell//4,py-pdy*cell//4, # base left
+               px+pdx*cell//4,py+pdy*cell//4 # base right
+        ],C_RED,1)
+        # draw counter
+        dtext(5,UI_TOP+5,C_WHITE,f"Items:{self.item_counter}")
+        dupdate()
+
+# --- Menu Scene ---
+class MenuScene(Scene):
+    items = ["Party", "Items", "Save", "Load", "Exit"]
+    X, Y    = 30, 30
+    LINE_H  = 20
+
+    def __init__(self):
+        super().__init__()
+        self.sel=0
+    
+    def create(self):
+        # white background
+        drect(20, 20, SCREEN_W-20, SCREEN_H-20, C_WHITE)
+        # draw every item once, selection in blue
+        for i, txt in enumerate(self.items):
+            col = C_BLUE if i == self.sel else C_BLACK
+            dtext(self.X, self.Y + i * self.LINE_H, col, txt)
+    
+    def update(self,t,dt):
+        clearevents()
+        # if keydown(KEY_EQUALS): return "POP"
+        # move selection up
+        if keydown(KEY_UP):
+            old = self.sel
+            new = (old - 1) % len(self.items)
+            # erase old line
+            drect(20, self.Y + old*self.LINE_H,
+                  SCREEN_W-20, self.Y + old*self.LINE_H + self.LINE_H - 1,
+                  C_WHITE)
+            # redraw old in black, new in blue
+            dtext(self.X, self.Y + old*self.LINE_H, C_BLACK, self.items[old])
+            self.sel = new
+            dtext(self.X, self.Y + new*self.LINE_H, C_BLUE, self.items[new])
+
+        # move selection down
+        elif keydown(KEY_DOWN):
+            old = self.sel
+            new = (old + 1) % len(self.items)
+            drect(20, self.Y + old*self.LINE_H,
+                  SCREEN_W-20, self.Y + old*self.LINE_H + self.LINE_H - 1,
+                  C_WHITE)
+            dtext(self.X, self.Y + old*self.LINE_H, C_BLACK, self.items[old])
+            self.sel = new
+            dtext(self.X, self.Y + new*self.LINE_H, C_BLUE, self.items[new])
+
+        # exit menu
+        if keydown(KEY_EXE) or keydown(KEY_EXIT):
+            print(f"Menu selection: {self.items[self.sel]}")
+            # TODO: submenu ??
+            return "POP"
+        
+        elif keydown(KEY_EXIT):
+            return "POP"
+        return None
+
+# --- Game Loop ---
+class Game:
+    def __init__(self, root_scene:Scene, target_fps=30):
+        self.scenes = [root_scene]
+        self.target_frame_time = 1.0 / target_fps
+
+        # FPS tracking
+        self.fps_last_time = time.monotonic()
+        self.fps_accum     = 0
+        self.fps           = 0
+
+    def start(self):
+        root = self.scenes[0]
+        root.running = True
+        root.preload(); root.create()
+        dupdate() # initial present
+
+        last = time.monotonic()
+        while self.scenes:
+            now = time.monotonic()
+            dt  = now - last
+            last = now
+
+            top = self.scenes[-1]
+            result = top.update(now, dt)
+
+             # handle push/pop
+            if isinstance(result, Scene):
+                result.running = True
+                result.preload()
+                result.create()
+                self.scenes.append(result)
+                continue
+            elif result == "POP":
+                top.running = False
+                self.scenes.pop()
+                if len(self.scenes) > 0:
+                    # redraw underlying scene fully
+                    base = self.scenes[-1]
+                    # dclear(CLEAR_COLOR)
+                    base.create()
+                    base.update(now, dt)
+                    continue
+
+
+            # FPS box
+            self.fps_accum += 1
+            if now - self.fps_last_time >= 0.5:
+                self.fps = self.fps_accum*2
+                self.fps_accum = 0
+                self.fps_last_time = now
+            
+            BOX_W,BOX_H = 24,12
+            bx = SCREEN_W-BOX_W-2; by=2
+            drect(bx,by,bx+BOX_W-1,by+BOX_H-1,C_WHITE)
+            dtext(bx+2,by,C_BLACK,f"{self.fps:>2}")
+            dupdate()
+            
+            # cap FPS
+            elapsed = time.monotonic() - now
+            delay   = self.target_frame_time - elapsed
+            if delay>0: time.sleep(delay)
+
+# --- Run ---
+game=Game(TunnelScene(),target_fps=20)
+game.start()
