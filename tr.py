@@ -34,6 +34,15 @@ KEY_POS = key_pos  # (y, x)
 ITEM_POS = set(item_positions)  # set of (y, x) tuples
 
 item_counter = 0 # TODO: make a class with that ? 
+# 0 = looking north (–Y), 1 = east (+X), 2 = south (+Y), 3 = west (–X)
+cam_dir = 0
+
+dir_vectors = {
+  0: ((-1,0),  (0,-1), (0,1)),
+  1: ((0,1),   (-1,0),(1,0)),
+  2: ((1,0),   (0,1), (0,-1)),
+  3: ((0,-1),  (1,0), (-1,0)),
+}
 
 def lsb(data, index):
     return data[index] & 1 
@@ -72,6 +81,10 @@ def draw_tunnel():
     # 3D rails
     dline(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, C_GREEN)
     dline(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, C_GREEN)
+
+    fdy, fdx = dir_vectors[cam_dir][0]
+    ldy, ldx = dir_vectors[cam_dir][1]
+    rdy, rdx = dir_vectors[cam_dir][2]
 
     item_markers = []
 
@@ -243,14 +256,26 @@ def draw_tunnel():
                 # draw items if any at this cell
                 if (ry, rx) in ITEM_POS:
                     drect(x0+cell//4, y0+cell//4, x0+3*cell//4, y0+3*cell//4, C_RGB(0,21,21))  # cyan
-    # player dot
-    px = mx0 + PLAYER_X*cell + cell//4
-    py = my0 + PLAYER_Y*cell + cell//4
-    drect(px, py, px+cell//2, py+cell//2, C_RED)
+    
+    # draw player arrow based on orientation
+    px = mx0 + PLAYER_X*cell + cell//2
+    py = my0 + PLAYER_Y*cell + cell//2
+    dx, dy = dir_vectors[cam_dir][1]
+    pdx, pdy = -dy, dx
+    dpoly([
+        px + dx*cell//2,       py + dy*cell//2,  # tip
+        px - pdx*cell//4,      py - pdy*cell//4,   # base left
+        px + pdx*cell//4,      py + pdy*cell//4,   # base right
+    ], C_RED, 1)
 
-    px = mx0 + PLAYER_X*cell + cell//4
-    py = my0 + PLAYER_Y*cell + cell//4
-    drect(px, py, px+cell//2, py+cell//2, C_RED)
+    # player dot
+    # px = mx0 + PLAYER_X*cell + cell//4
+    # py = my0 + PLAYER_Y*cell + cell//4
+    # drect(px, py, px+cell//2, py+cell//2, C_RED)
+
+    # px = mx0 + PLAYER_X*cell + cell//4
+    # py = my0 + PLAYER_Y*cell + cell//4
+    # drect(px, py, px+cell//2, py+cell//2, C_RED)
 
     # UI text
     dtext(5, UI_TOP+5, C_WHITE, "[UP/DOWN/LEFT/RIGHT] Move   [EXE] Interact")
@@ -291,7 +316,10 @@ while True:
                 ITEM_POS.remove(pos)
                 item_counter += 1
                 dtext(5, UI_TOP+25, C_WHITE, f"Items: {item_counter}")
-                dupdate()
+                # dupdate() -let draw_tunnel call it
+        elif ev.key == KEY_SHIFT:
+            cam_dir = (cam_dir + 1) % 4
+            # draw_tunnel() -let draw_tunnel parent
         # redraw after move
         draw_tunnel()
     time.sleep(0.05)
