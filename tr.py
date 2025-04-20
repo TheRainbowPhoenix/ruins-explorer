@@ -18,9 +18,8 @@ VANISH_Y = (SCENE_TOP + SCENE_BOTTOM) // 2
 LEVELS = 5
 MAX_SIDE_DEPTH = 3
 
-
-seed = random.randint(0, 65535)
-print(seed)
+# seed = random.randint(0, 65535)
+# print(seed)
 seed = 17138
 
 mz = MazeBuilder(10, 10, seed=seed)
@@ -33,6 +32,8 @@ maze = bytearray(sum(grid, []))
 PLAYER_Y, PLAYER_X = start if start else (MAZE_H -1, MAZE_W //2)   # start at bottom row
 KEY_POS = key_pos  # (y, x)
 ITEM_POS = set(item_positions)  # set of (y, x) tuples
+
+item_counter = 0 # TODO: make a class with that ? 
 
 def lsb(data, index):
     return data[index] & 1 
@@ -71,6 +72,8 @@ def draw_tunnel():
     # 3D rails
     dline(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, C_GREEN)
     dline(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, C_GREEN)
+
+    item_markers = []
 
     # compute t's
     tvals = [1.0 - 0.5**i for i in range(LEVELS+1)]
@@ -172,6 +175,23 @@ def draw_tunnel():
             # use the "far" corners (t1) for the wall position
             dpoly(flatten(tl1, tr1, br1, bl1), front_col, 1)
             break
+        
+        # draw items behind in perspective (one level)
+        depth = i + 1  # next tile depth
+        ty = PLAYER_Y - depth
+        tx = PLAYER_X
+        if depth <= LEVELS and (ty, tx) in ITEM_POS:
+            t2 = tvals[depth]
+            bl2 = lerp_point(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
+            br2 = lerp_point(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
+
+            mx = (bl2[0] + br2[0]) // 2
+            size = int(24 // (1.5**(depth)))
+            my = bl1[1] - size
+            item_markers.append((mx, my, size//2, depth))
+
+            
+
     # back sliver
     tb = tvals[-1]
     b0 = lerp_point(0,SCENE_TOP,   VANISH_X,VANISH_Y,tb)
@@ -179,6 +199,27 @@ def draw_tunnel():
     b2 = lerp_point(dw,SCENE_BOTTOM,VANISH_X,VANISH_Y,tb)
     b3 = lerp_point(0,SCENE_BOTTOM, VANISH_X,VANISH_Y,tb)
     # dpoly([*b0,*b1,*b2,*b3], C_RGB(10,10,10), 1)
+
+    if (PLAYER_Y, PLAYER_X) in ITEM_POS:
+        fx0, fy0 = (b0[0] + b1[0]) // 2, (b0[1] + b1[1]) // 2
+        fx1, fy1 = (b2[0] + b3[0]) // 2, (b2[1] + b3[1]) // 2
+
+        fx0 = (bl0[0] + br0[0]) // 2
+        fy0 = SCENE_BOTTOM
+        # back sliver floor midpoint
+        fx1 = (b2[0] + b3[0]) // 2
+        fy1 = (b2[1] + b3[1]) // 2
+        # place at half distance
+        mx = (fx0 + fx1) // 2
+        my = fy0 + (fy1 - fy0) // 2
+        # size of item marker
+        half_w = 24
+        half_h = 24
+        drect(mx - half_w, my - half_h, mx + half_w, my + half_h, C_RGB(0,21,21))
+        # ix0, iy0, ix1, iy1, C_RGB(0,21,21))  # cyan item marker
+    
+    for (mx, my, half, depth) in item_markers:
+        drect(mx - half, my - half, mx + half, my + half, C_RGB(0,21-depth*2,21-depth*2))
 
     # UI background
     drect(0, UI_TOP, dw, UI_BOTTOM, C_RGB(2,2,2))
@@ -243,6 +284,14 @@ while True:
             if nx < MAZE_W and lsb(maze, ny*MAZE_W+nx) == 0:
                 PLAYER_X = nx
                 discover(PLAYER_X, PLAYER_Y)
+        elif ev.key == KEY_EXE:
+            # pick up item if present
+            pos = (PLAYER_Y, PLAYER_X)
+            if pos in ITEM_POS:
+                ITEM_POS.remove(pos)
+                item_counter += 1
+                dtext(5, UI_TOP+25, C_WHITE, f"Items: {item_counter}")
+                dupdate()
         # redraw after move
         draw_tunnel()
     time.sleep(0.05)
