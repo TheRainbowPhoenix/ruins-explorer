@@ -1,7 +1,9 @@
 from gint import *
 from maze import MazeBuilder
 import time
+import struct
 import random
+from gui import gui_bg
 
 CLEAR_COLOR     = C_RGB(31,31,31)
 
@@ -67,6 +69,14 @@ class TunnelScene(Scene):
           3: ((0,-1),(1,0),(-1,0)),
         }
         self.discover_radius()
+        self.COLORS_MAP = [
+            [ C_RGB(19, 13, 1), C_RGB(19, 13, 2), C_RGB(15, 7, 1) ], # 0: Walls, floor, roof
+            [ C_RGB(13, 8, 0), C_RGB(14, 10, 3), C_RGB(13, 8, 1) ], # 1: Walls, floor, roof
+            [ C_RGB(12, 8, 1), C_RGB(13, 9, 3), C_RGB(12, 7, 1) ], # 2: Walls, floor, roof
+            [ C_RGB(12, 7, 1), C_RGB(12, 7, 1), C_RGB(11, 7, 1) ], # 3: Walls, floor, roof
+            [ C_RGB(10, 6, 0), C_RGB(10, 6, 0), C_RGB(9, 7, 0) ], # 4: Walls, floor, roof
+        ]
+        self.BG_COLOR = C_RGB(10, 6, 1)
 
     def discover_radius(self):
         # reveal 3x3 around player
@@ -83,6 +93,9 @@ class TunnelScene(Scene):
     def create(self):
         # initial draw
         self.draw_tunnel()
+        self.draw_gui_base()
+        self.draw_gui_map()
+        self.draw_gui_text()
         dupdate()
 
     def update(self, t, dt):
@@ -115,20 +128,117 @@ class TunnelScene(Scene):
                     self.item_counter += 1
             # redraw
             self.draw_tunnel()
+            # self.draw_gui_base()
+            self.draw_gui_map()
+            self.draw_gui_text()
         return None
 
-    def draw_tunnel(self):
-        # clear scene
-        dclear(C_BLACK)
+    def draw_gui_base(self):
+        # UI panel
         dw, dh = DWIDTH, DHEIGHT
         SCENE_TOP, SCENE_BOTTOM = 0, dh//2
         UI_TOP, UI_BOTTOM = SCENE_BOTTOM, dh
         VANISH_X, VANISH_Y = dw//2, (SCENE_TOP+SCENE_BOTTOM)//2
         LEVELS = 5
 
-        # draw rails
-        # dline(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, C_BLUE)
-        # dline(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, C_BLUE)
+        drect(0,UI_TOP,dw,UI_BOTTOM,C_RGB(10,18,17))
+        # drect(0,UI_TOP,dw,UI_BOTTOM,C_RGB(2,10,10))
+        # dimage(0, UI_TOP, gui_bg)
+        # Draw gui_bg image scaled 2x using raw RGB565 data
+        src = gui_bg
+        palette = []
+        for i in range(0, len(src.palette), 2):
+            high = src.palette[i]
+            low = src.palette[i + 1]
+            rgb565 = (high << 8) | low
+            r = (rgb565 >> 11) * 255 // 31
+            g = ((rgb565 >> 5) & 0x3F) * 255 // 63
+            b = (rgb565 & 0x1F) * 255 // 31
+            palette.append(C_RGB(r >> 3, g >> 3, b >> 3))
+
+        for y in range(src.height):
+            row = y * src.stride
+            for x in range(src.width):
+                byte = src.data[row + (x >> 1)]
+                nibble = (byte >> 4) if (x & 1) == 0 else (byte & 0xF)
+                idx = nibble
+                color = palette[idx]
+                dx, dy = x * 2, UI_TOP + y * 2
+                dpixel(dx, dy, color)
+                dpixel(dx + 1, dy, color)
+                dpixel(dx, dy + 1, color)
+                dpixel(dx + 1, dy + 1, color)
+    
+    def draw_gui_map(self):
+        # UI panel
+        dw, dh = DWIDTH, DHEIGHT
+        SCENE_TOP, SCENE_BOTTOM = 0, dh//2
+        UI_TOP, UI_BOTTOM = SCENE_BOTTOM, dh
+
+        # Draw background for minimap clip area
+        map_x0 = 10
+        map_y0 = UI_TOP + 14
+        map_x1 = 202
+        map_y1 = map_y0 + 128
+        # drect(map_x0, map_y0, map_x1, map_y1, C_RGB(1, 5, 6))
+
+        # Draw minimap clipped manually to within drect area
+        cell = min((map_x1 - map_x0 - 4) // self.MAZE_W, (map_y1 - map_y0 - 4) // self.MAZE_H)
+        mx0, my0 = map_x0 + 2, map_y0 + 2
+
+        for ry in range(self.MAZE_H):
+            for rx in range(self.MAZE_W):
+                idx = ry * self.MAZE_W + rx
+                if msb(self.maze, idx) == 0:
+                    continue
+                x0 = mx0 + rx * cell
+                y0 = my0 + ry * cell
+                col = C_RGB(2, 9, 10) if lsb(self.maze, idx) == 0 else  C_RGB(0, 3, 3) # C_RGB(1, 5, 6)
+                drect(x0, y0, x0 + cell, y0 + cell, col)
+                if lsb(self.maze, idx) == 0:
+                    if (ry, rx) == self.KEY_POS:
+                        drect(x0 + 2, y0 + 2, x0 + cell - 2, y0 + cell - 2, C_RGB(21, 21, 0))
+                    if (ry, rx) in self.ITEM_POS:
+                        drect(x0 + cell // 4, y0 + cell // 4, x0 + 3 * cell // 4, y0 + 3 * cell // 4, C_RGB(0, 21, 21))
+
+        # Draw player direction arrow
+        px = mx0 + self.PLAYER_X * cell + cell // 2
+        py = my0 + self.PLAYER_Y * cell + cell // 2
+        dirs = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+        dx, dy = dirs[self.cam_dir]
+        pdx, pdy = -dy, dx
+        dpoly([
+            px + dx * cell // 2, py + dy * cell // 2,
+            px - pdx * cell // 4, py - pdy * cell // 4,
+            px + pdx * cell // 4, py + pdy * cell // 4
+        ], C_RGB(6, 15, 15), 1)
+    
+    def draw_gui_text(self):
+        # UI panel
+        dw, dh = DWIDTH, DHEIGHT
+        SCENE_TOP, SCENE_BOTTOM = 0, dh//2
+        UI_TOP, UI_BOTTOM = SCENE_BOTTOM, dh
+
+        # Draw background for minimap clip area
+        map_x0 = 17
+        map_y0 = UI_TOP + 158
+        map_x1 = 202
+        map_y1 = map_y0 + 128
+
+        text_color = C_RGB(6,15,15)
+        #TODO: draw icon
+        drect(map_x0, map_y0, map_x0+64, map_y0+12, C_RGB(1, 5, 6))
+        dtext(map_x0,map_y0,text_color,f"{self.item_counter}")
+        
+
+    def draw_tunnel(self):
+        # clear scene
+        # dclear(C_BLACK)
+        dw, dh = DWIDTH, DHEIGHT
+        SCENE_TOP, SCENE_BOTTOM = 0, dh//2
+        UI_TOP, UI_BOTTOM = SCENE_BOTTOM, dh
+        VANISH_X, VANISH_Y = dw//2, (SCENE_TOP+SCENE_BOTTOM)//2
+        LEVELS = 5
 
         # direction deltas
         fdy,fdx = self.dir_vectors[self.cam_dir][0]
@@ -282,44 +392,6 @@ class TunnelScene(Scene):
         
         for (mx, my, half, depth) in item_markers:
             drect(mx - half, my - half, mx + half, my + half, C_RGB(0,21-depth*2,21-depth*2))
-
-        # UI panel
-        drect(0,UI_TOP,dw,UI_BOTTOM,C_RGB(2,2,2))
-        # minimap
-        cell=min((dw-20)//self.MAZE_W,(UI_BOTTOM-UI_TOP-20)//self.MAZE_H)
-        
-        mx0, my0 = 10, UI_TOP + 10
-        for ry in range(self.MAZE_H):
-            for rx in range(self.MAZE_W):
-                idx = ry*self.MAZE_W + rx
-                if msb(self.maze, idx) == 0:
-                    continue  # not yet discovered
-                x0 = mx0 + rx*cell
-                y0 = my0 + ry*cell
-                # wall = black, corridor = white
-                col = C_WHITE if lsb(self.maze, idx) == 0 else C_BLACK
-                drect(x0, y0, x0+cell, y0+cell, col)
-                # draw key if at this cell
-                if lsb(self.maze, idx) == 0:
-                    if (ry, rx) == self.KEY_POS:
-                        drect(x0+2, y0+2, x0+cell-2, y0+cell-2, C_RGB(21,21,0))  # yellow key square
-                    # draw items if any at this cell
-                    if (ry, rx) in self.ITEM_POS:
-                        drect(x0+cell//4, y0+cell//4, x0+3*cell//4, y0+3*cell//4, C_RGB(0,21,21))  # cyan
-        
-        # draw player arrow based on orientation
-        px = mx0 + self.PLAYER_X*cell + cell//2
-        py = my0 + self.PLAYER_Y*cell + cell//2
-        dirs=[(0,-1),(1,0),(0,1),(-1,0)]
-        dx,dy=dirs[self.cam_dir]
-        pdx,pdy=-dy,dx
-        dpoly([px+dx*cell//2,py+dy*cell//2, # tip
-               px-pdx*cell//4,py-pdy*cell//4, # base left
-               px+pdx*cell//4,py+pdy*cell//4 # base right
-        ],C_RED,1)
-        # draw counter
-        dtext(5,UI_TOP+5,C_WHITE,f"Items:{self.item_counter}")
-        dupdate()
 
 # --- Menu Scene ---
 class MenuScene(Scene):
