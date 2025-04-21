@@ -152,6 +152,8 @@ class TunnelScene(Scene):
             [ C_RGB(4, 7, 6), C_RGB(2, 6, 6), C_RGB(1, 4, 5) ], # 2: Walls, floor, roof
             [ C_RGB(2, 4, 3), C_RGB(1, 3, 3), C_RGB(1, 3, 4) ], # 3: Walls, floor, roof
             [ C_RGB(1, 2, 2), C_RGB(1, 2, 2), C_RGB(0, 2, 3) ], # 4: Walls, floor, roof
+            [ C_RGB(0, 1, 1), C_RGB(0, 1, 1), C_RGB(0, 1, 2) ], # 5: Walls, floor, roof
+            [ C_RGB(0, 1, 1), C_RGB(0, 1, 1), C_RGB(0, 1, 2) ], # 5: Walls, floor, roof
 
             # [ C_RGB(19, 13, 1), C_RGB(19, 13, 2), C_RGB(16, 10, 1) ], # 0: Walls, floor, roof
             # [ C_RGB(13, 8, 0), C_RGB(14, 10, 3), C_RGB(13, 8, 1) ], # 1: Walls, floor, roof
@@ -254,6 +256,7 @@ class TunnelScene(Scene):
                 self.PLAYER_Y -= 1
                 self.draw_tunnel()
         return None
+    
     def update_enemies(self, now):
         for enemy in self.enemies:
             if now - enemy.last_move >= self.enemy_move_interval:
@@ -417,8 +420,8 @@ class TunnelScene(Scene):
             shade = max_shade - i*step
             floor_col = self.COLORS_MAP[i][1] # C_RGB(shade,shade,shade)
             ceil_col  = self.COLORS_MAP[i][2] # C_RGB(shade,shade,shade)
-            self.left_open = True
-            self.right_open = True
+            self.left_open = False
+            self.right_open = False
 
             # determine column and row
             # row = PLAYER_Y - i (i=0 nearest slice)
@@ -430,10 +433,10 @@ class TunnelScene(Scene):
                 self.forward_block = False
 
             if 0 <= row < self.MAZE_H:
-                if self.PLAYER_X-1>=0 and lsb(self.maze, (row)*self.MAZE_W + self.PLAYER_X-1)==1:
-                    self.left_open = False
-                if self.PLAYER_X+1<self.MAZE_W and lsb(self.maze, (row)*self.MAZE_W + self.PLAYER_X+1)==1:
-                    self.right_open = False
+                if self.PLAYER_X-1>=0 and lsb(self.maze, (row)*self.MAZE_W + self.PLAYER_X-1)==0:
+                    self.left_open = True
+                if self.PLAYER_X+1<self.MAZE_W and lsb(self.maze, (row)*self.MAZE_W + self.PLAYER_X+1)==0:
+                    self.right_open = True
             
             # draw faces
             dpoly(flatten(bl0, br0, br1, bl1), floor_col, 0)
@@ -446,17 +449,42 @@ class TunnelScene(Scene):
                 t2 = tvals[i+2]
                 bl2 = lerp_point(0, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
                 tl2 = lerp_point(0, SCENE_TOP,    VANISH_X, VANISH_Y, t2)
+                
+                left_behind_wall = False
+                check_row = row - 1
+                check_col = self.PLAYER_X - 1
+                if 0 <= check_row < self.MAZE_H and 0 <= check_col < self.MAZE_W:
+                    left_behind_wall = (lsb(self.maze, check_row * self.MAZE_W + check_col) == 0)
+                
+                wall_color = self.COLORS_MAP[i][0]
+
                 # draw roof triangle (red): tl0, tl1, projected (tl0.x, tl1.y)
                 x0,y0 = tl0
                 x1,y1 = tl1
                 dpoly([x0, y0, x1, y1, x0, y1], self.COLORS_MAP[i][2], 0)
+
+                if left_behind_wall:
+                    y2 = tl2[1]  # deeper level top Y
+                    dpoly([x0, y1, x1, y1, x1, y2], self.COLORS_MAP[i+1][2], 0)
+
+
                 # draw floor triangle (red): bl0, bl1, projected (bl0.x, bl1.y)
                 x0,y0 = bl0
                 x1,y1 = bl1
                 dpoly([x0, y0, x1, y1, x0, y1], self.COLORS_MAP[i][1], 0)
-                # draw inner wall quad (orange): bl1, bl2, tl2, tl1
-                dpoly([bl1[0], bl1[1], bl0[0], bl1[1], tl0[0], tl1[1], tl1[0], tl1[1]], self.COLORS_MAP[i][0], 1)
-                # dpoly([bl1[0], bl1[1], bl2[0], bl2[1], tl2[0], tl2[1], tl1[0], tl1[1]], C_RGB(shade,shade,shade), 1)
+
+                if left_behind_wall:
+                    y2 = bl2[1]  # deeper level top Y
+                    dpoly([x0, y1, x1, y1, x1, bl2[1]], self.COLORS_MAP[i+1][1], 0)
+
+                    # background wall
+                    dpoly([bl0[0], bl1[1], bl1[0], bl2[1], tl1[0], tl2[1], tl0[0], tl1[1]], self.COLORS_MAP[i+1][0], 0)
+                else:
+                    # draw inner wall quad (orange): bl1, bl2, tl2, tl1
+                    dpoly([bl1[0], bl1[1], bl0[0], bl1[1], tl0[0], tl1[1], tl1[0], tl1[1]], wall_color, 1)
+                    # dpoly([bl1[0], bl1[1], bl2[0], bl2[1], tl2[0], tl2[1], tl1[0], tl1[1]], C_RGB(shade,shade,shade), 1)
+
+                
             elif self.left_open:
                 # if too deep, just draw flat left face
                 dpoly(flatten(bl0,tl0,tl1,bl1), self.COLORS_MAP[i][0], 0)
@@ -469,22 +497,40 @@ class TunnelScene(Scene):
                 t2 = tvals[i+2]
                 br2 = lerp_point(dw, SCENE_BOTTOM, VANISH_X, VANISH_Y, t2)
                 tr2 = lerp_point(dw, SCENE_TOP,    VANISH_X, VANISH_Y, t2)
+
                 # check if block behind right is a wall (for coloring)
                 behind_wall = False
-                if 0 <= row-1 < self.MAZE_H and self.PLAYER_X+1 < self.MAZE_W:
-                    behind_wall = (lsb(self.maze, (row-1)*self.MAZE_W + (self.PLAYER_X+1)) == 1)
+                check_row = row - 1
+                check_col = self.PLAYER_X + 1
+                if 0 <= check_row < self.MAZE_H and 0 <= check_col < self.MAZE_W:
+                    behind_wall = (lsb(self.maze, check_row*self.MAZE_W + check_col) == 0)
+                
+                wall_color = self.COLORS_MAP[i][0]
+                
                 # draw roof triangle (red) on right face: tr0, tr1, projected(tr1.x, tr0.y)
                 x0, y0 = tr0
                 x1, y1 = tr1
                 dpoly([x0, y0, x1, y1, x0, y1], self.COLORS_MAP[i][2], 0)
+
+                if behind_wall:
+                    y2 = tl2[1]  # deeper level top Y
+                    dpoly([x0, y1, x1, y1, x1, y2], self.COLORS_MAP[i+1][2], 0)
+
                 # draw floor triangle (red): br0, br1, project  ed(br1.x, br0.y)
                 x0, y0 = br0
                 x1, y1 = br1
                 dpoly([x0, y0, x1, y1, x0, y1], self.COLORS_MAP[i][1], 0)
+
                 # draw inner wall quad (orange or black)
-                inner_col = C_RGB(31,15,0) if behind_wall else C_BLACK
-                dpoly([br1[0], br1[1], br0[0], br1[1], tr0[0], tr1[1], tr1[0], tr1[1]], self.COLORS_MAP[i][0], 0)
-                # dpoly([br1[0], br1[1], br2[0], br2[1], tr2[0], tr2[1], tr1[0], tr1[1]], C_RGB(shade,shade,shade), 1)
+                if behind_wall:
+                    y2 = bl2[1]  # deeper level top Y
+                    dpoly([x0, y1, x1, y1, x1, bl2[1]], self.COLORS_MAP[i+1][1], 0)
+
+                    # background wall
+                    dpoly([br0[0], br1[1], br1[0], br2[1], tr1[0], tr2[1], tr0[0], tr1[1]], self.COLORS_MAP[i+1][0], 0)
+                else:
+                    dpoly([br1[0], br1[1], br0[0], br1[1], tr0[0], tr1[1], tr1[0], tr1[1]], self.COLORS_MAP[i][0], 0)
+                    # dpoly([br1[0], br1[1], br2[0], br2[1], tr2[0], tr2[1], tr1[0], tr1[1]], C_RGB(shade,shade,shade), 1)
             elif self.right_open:
                 dpoly(flatten(br0,tr0,tr1,br1), self.COLORS_MAP[i][0], 0)
             else:
