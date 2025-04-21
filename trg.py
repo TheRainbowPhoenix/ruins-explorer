@@ -36,6 +36,13 @@ class Camera:
         self.x = x
         self.y = y
 
+# --- Enemies ---
+class Enemy:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.last_move = time.monotonic()
+
 # --- Scene Base ---
 class Scene:
     def __init__(self):
@@ -156,8 +163,8 @@ class TunnelScene(Scene):
 
 
     def generate_dungeon(self, seed):
-        mz = MazeBuilder(15, 10, seed=seed, items_count=self.max_items)
-        grid, start, goal, key_pos, items = mz.build()
+        mz = MazeBuilder(15, 10, seed=seed, items_count=self.max_items, enemies_count=2)
+        grid, start, goal, key_pos, items, enemies_pos = mz.build()
         self.MAZE_H = len(grid)
         self.MAZE_W = len(grid[0])
         self.GOAL = goal
@@ -167,6 +174,8 @@ class TunnelScene(Scene):
         self.ITEM_POS = set(items)
         self.cam_dir = 0  # 0=N,1=E,2=S,3=W
         self.item_counter = 0
+        self.enemies = [Enemy(x, y) for (y, x) in enemies_pos]
+        self.enemy_move_interval = 2
         self.discover_radius()
 
     def discover_radius(self):
@@ -193,7 +202,7 @@ class TunnelScene(Scene):
         self.draw_gui_map(clean=True)
         self.draw_gui_text(clean=True)
 
-    def update(self, t, dt):
+    def update(self, now, dt):
         ev = pollevent()
         if ev.type == KEYEV_DOWN:
             # movement
@@ -221,6 +230,15 @@ class TunnelScene(Scene):
                 if pos in self.ITEM_POS:
                     self.ITEM_POS.remove(pos)
                     self.item_counter += 1
+                elif (self.PLAYER_Y, self.PLAYER_X ) == self.KEY_POS:
+                    self.KEY_POS = None
+                    self.total_score += 5
+                for e in self.enemies:
+                    if e.x == self.PLAYER_X and e.y == self.PLAYER_Y:
+                        self.enemies.remove(e)
+                        self.total_score += 2
+                        break
+            self.update_enemies(now)
             # redraw
             self.draw_tunnel()
             # self.draw_gui_base()
@@ -233,8 +251,25 @@ class TunnelScene(Scene):
                 self.regenerate_dungeon()
                 return
             else:
+                self.PLAYER_Y -= 1
                 self.draw_tunnel()
         return None
+    def update_enemies(self, now):
+        for enemy in self.enemies:
+            if now - enemy.last_move >= self.enemy_move_interval:
+                # Try random direction
+                dirs = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+                for i in range(len(dirs) - 1, 0, -1):
+                    j = random.randint(0, i)
+                    dirs[i], dirs[j] = dirs[j], dirs[i]
+                    
+                for dx, dy in dirs:
+                    nx, ny = enemy.x + dx, enemy.y + dy
+                    idx = ny * self.MAZE_W + nx
+                    if 0 <= nx < self.MAZE_W and 0 <= ny < self.MAZE_H and lsb(self.maze, idx) == 0:
+                        enemy.x, enemy.y = nx, ny
+                        enemy.last_move = now
+                        break
 
     def draw_gui_base(self):
         # UI panel
@@ -305,6 +340,13 @@ class TunnelScene(Scene):
                         drect(x0 + 2, y0 + 2, x0 + cell - 2, y0 + cell - 2, C_RGB(21, 21, 0))
                     if (ry, rx) in self.ITEM_POS:
                         drect(x0 + cell // 4, y0 + cell // 4, x0 + 3 * cell // 4, y0 + 3 * cell // 4, C_RGB(0, 21, 21))
+
+        for e in self.enemies:
+            idx = e.y * self.MAZE_W + e.x
+            if msb(self.maze, idx):
+                ex = mx0 + e.x * cell + 1
+                ey = my0 + e.y * cell + 1
+                drect(ex, ey, ex + cell - 2, ey + cell - 2, C_RGB(31, 0, 0))  # red box
 
         # Draw player direction arrow
         px = mx0 + self.PLAYER_X * cell + cell // 2
@@ -480,7 +522,11 @@ class TunnelScene(Scene):
         b3 = lerp_point(0,SCENE_BOTTOM, VANISH_X,VANISH_Y,tb)
         # dpoly([*b0,*b1,*b2,*b3], C_RGB(10,10,10), 1)
 
-        if (self.PLAYER_Y, self.PLAYER_X) in self.ITEM_POS:
+        obj_flag = self.get_position_flags()
+
+        if obj_flag > 0:
+            # TODO: draw another if enemies
+
             fx0, fy0 = (b0[0] + b1[0]) // 2, (b0[1] + b1[1]) // 2
             fx1, fy1 = (b2[0] + b3[0]) // 2, (b2[1] + b3[1]) // 2
 
@@ -495,7 +541,17 @@ class TunnelScene(Scene):
             # size of item marker
             half_w = 24
             half_h = 24
-            drect(mx - half_w, my - half_h, mx + half_w, my + half_h, C_RGB(0,21,21))
+
+            if obj_flag & 1:
+                color = C_RGB(0,21,21)
+            if obj_flag & 2:
+                color = C_RGB(21,11,0)
+            
+            if obj_flag & 4:
+                color = C_RGB(21,1,1)
+         
+            
+            drect(mx - half_w, my - half_h, mx + half_w, my + half_h, color)
             # ix0, iy0, ix1, iy1, C_RGB(0,21,21))  # cyan item marker
         
         for (mx, my, half, depth) in item_markers:
@@ -510,16 +566,14 @@ class TunnelScene(Scene):
 
         # upper half overlay
         drect(20, 30, DWIDTH - 20, SCENE_BOTTOM - 20, C_RGB(1, 5, 6))
-        dtext(40, 40, C_WHITE, "You've reached a sealed door.")
-        dtext(40, 60, C_WHITE, "Go forward?")
-        dtext(40, 80, C_WHITE,  "  [EXE] to go forward")
-        dtext(40, 100, C_WHITE, "  [EXIT] to stay here")
+        dtext(40, 40, C_WHITE, "You've reached a door !")
+        dtext(40, 60, C_WHITE, "Press [EXE] to go forward")
         dupdate()
 
         while True:
             ev = pollevent()
             if ev.type == KEYEV_DOWN:
-                if ev.key == [KEY_EXIT, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
+                if ev.key in [KEY_EXIT, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
                     return False
                 elif ev.key in [KEY_EXE, KEY_UP]:
                     return True
@@ -530,6 +584,18 @@ class TunnelScene(Scene):
         seed = random.randint(0, 65535)
         self.generate_dungeon(seed)
         self.redraw_scene_only()
+
+    def get_position_flags(self):
+        obj_flag = 0
+        if (self.PLAYER_Y, self.PLAYER_X) in self.ITEM_POS:
+            obj_flag |= 1
+        if (self.PLAYER_Y, self.PLAYER_X ) == self.KEY_POS:
+            obj_flag |= 2
+        for e in self.enemies:
+            if self.PLAYER_X == e.x and self.PLAYER_Y == e.y:
+                obj_flag |= 4
+                break
+        return obj_flag
 # --- Menu Scene ---
 class MenuScene(Scene):
     items = ["Party", "Items", "Save", "Load", "Exit"]

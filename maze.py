@@ -1,7 +1,7 @@
 import random
 
 class MazeBuilder:
-    def __init__(self, width, height, seed=None, items_count=5):
+    def __init__(self, width, height, seed=None, items_count=5, enemies_count=0):
         # logical cell dimensions
         self.width = width
         self.height = height
@@ -16,6 +16,7 @@ class MazeBuilder:
 
         # how many random items to place
         self.items_count = items_count
+        self.enemies_count = enemies_count
 
         # initialize tag grid for walls, doors, etc.
         self.maze = [[[] for _ in range(self.cols)] for _ in range(self.rows)]
@@ -141,8 +142,10 @@ class MazeBuilder:
 
         key_pos  = open_cells.pop()  # last of shuffled
         item_pos = [ open_cells[i] for i in range(min(self.items_count, len(open_cells))) ]
+        enemies_pos = [ open_cells[i] for i in range(min(self.enemies_count, len(open_cells))) ]
+        
 
-        return grid, start, goal, key_pos, item_pos
+        return grid, start, goal, key_pos, item_pos, enemies_pos
 
 # Demo
 if __name__ == '__main__':
