@@ -46,38 +46,128 @@ class Scene:
     def create(self): pass
     def update(self, t, dt): pass
 
-# --- Tunnel Scene ---
-class TunnelScene(Scene):
+# --- Start Scene ---
+class StartScene(Scene):
     def __init__(self):
         super().__init__()
-        # Maze & view state
-        seed = random.randint(0, 65535) # 17138
+        self.options = ["Start Game", "Random Seed", "Custom Seed...", "Exit Game"]
+        self.selected = 0
+        self.input_mode = False
+        self.seed_input = ""
+        self.generated_seed = random.randint(0, 99999)
+
+    def create(self):
+        dclear(C_RGB(1, 5, 6))
+        dtext(60, 60, C_RGB(6,15,15), "Ruins Explorer")
+        for i, option in enumerate(self.options):
+            color = C_RGB(6,15,15) if i == self.selected else C_WHITE
+            dtext(60, DHEIGHT//2 + i * 15, color, option)
+        dtext(60, DHEIGHT//2 + len(self.options) * 15 + 5, C_WHITE, f"Seed: {self.generated_seed if not self.input_mode else self.seed_input}")
+        dupdate()
+
+    keys_map = {
+        KEY_0: "0",
+        KEY_1: "1",
+        KEY_2: "2",
+        KEY_3: "3",
+        KEY_4: "4",
+        KEY_5: "5",
+        KEY_6: "6",
+        KEY_7: "7",
+        KEY_8: "8",
+        KEY_9: "9",
+    }
+
+    def update(self, t, dt):
+        ev = pollevent()
+        if self.input_mode:
+            if ev.type == KEYEV_DOWN:
+                if len(self.seed_input) < 5:
+                    k = self.keys_map.get(ev.key, None)
+                    if k:
+                        self.seed_input += k
+                elif ev.key == KEY_DEL and self.seed_input:
+                    self.seed_input = self.seed_input[:-1]
+                elif ev.key in [KEY_EXE, KEY_UP]:
+                    if self.seed_input:
+                        seed = int(self.seed_input)
+                        return TunnelScene(seed)
+                elif ev.key == KEY_EXIT:
+                    self.input_mode = False
+                    # self.seed_input = ""
+                self.create()
+        else:
+            if ev.type == KEYEV_DOWN:
+                if ev.key == KEY_UP:
+                    self.selected = (self.selected - 1) % len(self.options)
+                    self.create()
+                elif ev.key == KEY_DOWN:
+                    self.selected = (self.selected + 1) % len(self.options)
+                    self.create()
+                elif ev.key == KEY_EXE:
+                    if self.selected == 0:
+                        return TunnelScene(self.generated_seed)
+                    elif self.selected == 1:
+                        self.generated_seed = random.randint(0, 99999)
+                        self.create()
+                    elif self.selected == 2:
+                        self.input_mode = True
+                        self.seed_input = ""
+                        self.create()
+                    elif self.selected == 3: # Exit
+                        exit()
+                
+                elif ev.key == KEY_EXIT:
+                    exit()
+        return None
+
+# --- Tunnel Scene ---
+class TunnelScene(Scene):
+    def __init__(self, seed = None): # type: (int |None) -> None
+        super().__init__()
+        if not seed:
+            seed = random.randint(0, 65535) # 17138
         self.max_items = 10
-        mz = MazeBuilder(15, 10, seed=seed, items_count=self.max_items)
-        grid, start, goal, key_pos, items = mz.build()
-        self.MAZE_H = len(grid)
-        self.MAZE_W = len(grid[0])
-        self.maze = bytearray(sum(grid, []))
-        self.PLAYER_Y, self.PLAYER_X = start if start else (self.MAZE_H-1, self.MAZE_W//2)
-        self.KEY_POS = key_pos
-        self.ITEM_POS = set(items)
+        self.generate_dungeon(seed)
         self.item_counter = 0
-        self.cam_dir = 0  # 0=N,1=E,2=S,3=W
+        self.total_score = 0
+
         self.dir_vectors = {
           0: ((-1,0),(0,-1),(0,1)),
           1: ((0,1),(-1,0),(1,0)),
           2: ((1,0),(0,1),(0,-1)),
           3: ((0,-1),(1,0),(-1,0)),
         }
-        self.discover_radius()
+        
         self.COLORS_MAP = [
-            [ C_RGB(19, 13, 1), C_RGB(19, 13, 2), C_RGB(16, 10, 1) ], # 0: Walls, floor, roof
-            [ C_RGB(13, 8, 0), C_RGB(14, 10, 3), C_RGB(13, 8, 1) ], # 1: Walls, floor, roof
-            [ C_RGB(12, 8, 1), C_RGB(13, 9, 3), C_RGB(12, 7, 1) ], # 2: Walls, floor, roof
-            [ C_RGB(12, 7, 1), C_RGB(12, 7, 1), C_RGB(11, 7, 1) ], # 3: Walls, floor, roof
-            [ C_RGB(10, 6, 0), C_RGB(10, 6, 0), C_RGB(9, 7, 0) ], # 4: Walls, floor, roof
+            [ C_RGB(10, 18, 17), C_RGB(5, 15, 15), C_RGB(2, 9, 10) ], # 0: Walls, floor, roof
+            [ C_RGB(6, 11, 10), C_RGB(3, 9, 9), C_RGB(1, 7, 8) ], # 1: Walls, floor, roof
+            [ C_RGB(4, 7, 6), C_RGB(2, 6, 6), C_RGB(1, 4, 5) ], # 2: Walls, floor, roof
+            [ C_RGB(2, 4, 3), C_RGB(1, 3, 3), C_RGB(1, 3, 4) ], # 3: Walls, floor, roof
+            [ C_RGB(1, 2, 2), C_RGB(1, 2, 2), C_RGB(0, 2, 3) ], # 4: Walls, floor, roof
+
+            # [ C_RGB(19, 13, 1), C_RGB(19, 13, 2), C_RGB(16, 10, 1) ], # 0: Walls, floor, roof
+            # [ C_RGB(13, 8, 0), C_RGB(14, 10, 3), C_RGB(13, 8, 1) ], # 1: Walls, floor, roof
+            # [ C_RGB(12, 8, 1), C_RGB(13, 9, 3), C_RGB(12, 7, 1) ], # 2: Walls, floor, roof
+            # [ C_RGB(12, 7, 1), C_RGB(12, 7, 1), C_RGB(11, 7, 1) ], # 3: Walls, floor, roof
+            # [ C_RGB(10, 6, 0), C_RGB(10, 6, 0), C_RGB(9, 7, 0) ], # 4: Walls, floor, roof
         ]
         self.BG_COLOR = C_RGB(10, 6, 1)
+
+
+    def generate_dungeon(self, seed):
+        mz = MazeBuilder(15, 10, seed=seed, items_count=self.max_items)
+        grid, start, goal, key_pos, items = mz.build()
+        self.MAZE_H = len(grid)
+        self.MAZE_W = len(grid[0])
+        self.GOAL = goal
+        self.maze = bytearray(sum(grid, []))
+        self.PLAYER_Y, self.PLAYER_X = start if start else (self.MAZE_H-1, self.MAZE_W//2)
+        self.KEY_POS = key_pos
+        self.ITEM_POS = set(items)
+        self.cam_dir = 0  # 0=N,1=E,2=S,3=W
+        self.item_counter = 0
+        self.discover_radius()
 
     def discover_radius(self):
         # reveal 3x3 around player
@@ -97,7 +187,11 @@ class TunnelScene(Scene):
         self.draw_gui_base()
         self.draw_gui_map()
         self.draw_gui_text()
-        dupdate()
+
+    def redraw_scene_only(self):
+        self.draw_tunnel()
+        self.draw_gui_map(clean=True)
+        self.draw_gui_text(clean=True)
 
     def update(self, t, dt):
         ev = pollevent()
@@ -105,8 +199,8 @@ class TunnelScene(Scene):
             # movement
             if ev.key == KEY_EXIT:
                 return "POP"
-            if ev.key == KEY_EQUALS:
-                return MenuScene()
+            # if ev.key == KEY_EQUALS:
+            #     return MenuScene()
             
             if ev.key in (KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT):
                 dy, dx = 0, 0
@@ -132,6 +226,14 @@ class TunnelScene(Scene):
             # self.draw_gui_base()
             self.draw_gui_map()
             self.draw_gui_text()
+        
+        # Check for player at wall position (PLAYER_Y - LEVELS == -1)
+        if self.GOAL and self.PLAYER_Y == self.GOAL[0] and self.PLAYER_X == self.GOAL[1]:
+            if self.try_go_forward_dialog():
+                self.regenerate_dungeon()
+                return
+            else:
+                self.draw_tunnel()
         return None
 
     def draw_gui_base(self):
@@ -170,7 +272,7 @@ class TunnelScene(Scene):
                 dpixel(dx, dy + 1, color)
                 dpixel(dx + 1, dy + 1, color)
     
-    def draw_gui_map(self):
+    def draw_gui_map(self, clean=False):
         # UI panel
         dw, dh = DWIDTH, DHEIGHT
         SCENE_TOP, SCENE_BOTTOM = 0, dh//2
@@ -181,7 +283,9 @@ class TunnelScene(Scene):
         map_y0 = UI_TOP + 14
         map_x1 = 202
         map_y1 = map_y0 + 128
-        # drect(map_x0, map_y0, map_x1, map_y1, C_RGB(1, 5, 6))
+
+        if clean:
+            drect(map_x0, map_y0, map_x1, map_y1, C_RGB(1, 5, 6))
 
         # Draw minimap clipped manually to within drect area
         cell = min((map_x1 - map_x0 - 4) // self.MAZE_W, (map_y1 - map_y0 - 4) // self.MAZE_H)
@@ -214,7 +318,7 @@ class TunnelScene(Scene):
             px + pdx * cell // 4, py + pdy * cell // 4
         ], C_RGB(6, 15, 15), 1)
     
-    def draw_gui_text(self):
+    def draw_gui_text(self, clean=False):
         # UI panel
         dw, dh = DWIDTH, DHEIGHT
         SCENE_TOP, SCENE_BOTTOM = 0, dh//2
@@ -223,13 +327,16 @@ class TunnelScene(Scene):
         # Draw background for minimap clip area
         map_x0 = 17
         map_y0 = UI_TOP + 158
-        map_x1 = 202
-        map_y1 = map_y0 + 128
+        map_y1 = map_y0 + 20
 
         text_color = C_RGB(6,15,15)
+
         #TODO: draw icon
         drect(map_x0, map_y0, map_x0+64, map_y0+12, C_RGB(1, 5, 6))
-        dtext(map_x0,map_y0,text_color,f"{self.item_counter}")
+        dtext(map_x0,map_y0,text_color,f"I: {self.item_counter:02}/{self.max_items}")
+        #TODO: draw icon
+        drect(map_x0, map_y1, map_x0+64, map_y1+12, C_RGB(1, 5, 6))
+        dtext(map_x0,map_y1,text_color,f"T: {self.total_score}")
         
 
     def draw_tunnel(self):
@@ -394,6 +501,35 @@ class TunnelScene(Scene):
         for (mx, my, half, depth) in item_markers:
             drect(mx - half, my - half, mx + half, my + half, C_RGB(0,21-depth*2,21-depth*2))
 
+    def try_go_forward_dialog(self):
+        dw, dh = DWIDTH, DHEIGHT
+        SCENE_TOP, SCENE_BOTTOM = 0, dh//2
+        UI_TOP, UI_BOTTOM = SCENE_BOTTOM, dh
+        VANISH_X, VANISH_Y = dw//2, (SCENE_TOP+SCENE_BOTTOM)//2
+        LEVELS = 5
+
+        # upper half overlay
+        drect(20, 30, DWIDTH - 20, SCENE_BOTTOM - 20, C_RGB(1, 5, 6))
+        dtext(40, 40, C_WHITE, "You've reached a sealed door.")
+        dtext(40, 60, C_WHITE, "Go forward?")
+        dtext(40, 80, C_WHITE,  "  [EXE] to go forward")
+        dtext(40, 100, C_WHITE, "  [EXIT] to stay here")
+        dupdate()
+
+        while True:
+            ev = pollevent()
+            if ev.type == KEYEV_DOWN:
+                if ev.key == [KEY_EXIT, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
+                    return False
+                elif ev.key in [KEY_EXE, KEY_UP]:
+                    return True
+            time.sleep(0.05)
+    
+    def regenerate_dungeon(self):
+        self.total_score += self.item_counter
+        seed = random.randint(0, 65535)
+        self.generate_dungeon(seed)
+        self.redraw_scene_only()
 # --- Menu Scene ---
 class MenuScene(Scene):
     items = ["Party", "Items", "Save", "Load", "Exit"]
@@ -513,5 +649,5 @@ class Game:
             if delay>0: time.sleep(delay)
 
 # --- Run ---
-game=Game(TunnelScene(),target_fps=20)
+game=Game(StartScene(),target_fps=20)
 game.start()
