@@ -57,7 +57,7 @@ class Scene:
 class StartScene(Scene):
     def __init__(self):
         super().__init__()
-        self.options = ["Start Game", "Random Seed", "Custom Seed...", "Exit Game"]
+        self.options = ["Start Game", "Free Play", "Random Seed", "Custom Seed...", "Exit Game"]
         self.selected = 0
         self.input_mode = False
         self.seed_input = ""
@@ -65,7 +65,8 @@ class StartScene(Scene):
 
     def create(self):
         dclear(C_RGB(1, 5, 6))
-        dtext(60, 60, C_RGB(6,15,15), "Ruins Explorer")
+        dtext(60, 60, C_RGB(6,15,15), "Temple of the")
+        dtext(60, 80, C_RGB(6,15,15), "Spiral Serpent")
         for i, option in enumerate(self.options):
             color = C_RGB(6,15,15) if i == self.selected else C_WHITE
             dtext(60, DHEIGHT//2 + i * 15, color, option)
@@ -113,20 +114,122 @@ class StartScene(Scene):
                     self.create()
                 elif ev.key == KEY_EXE:
                     if self.selected == 0:
+                        # Start Game: play intro cinematic first
+                        return IntroScene(self.generated_seed)
+                    elif self.selected == 1: # Free Play: skip intro, go straight to gameplay
                         return TunnelScene(self.generated_seed)
-                    elif self.selected == 1:
+                    elif self.selected == 2:
                         self.generated_seed = random.randint(0, 99999)
                         self.create()
-                    elif self.selected == 2:
+                    elif self.selected == 3:
                         self.input_mode = True
                         self.seed_input = ""
                         self.create()
-                    elif self.selected == 3: # Exit
+                    elif self.selected == 4: # Exit
                         exit()
                 
                 elif ev.key == KEY_EXIT:
                     exit()
         return None
+
+# --- IntroScene ---
+class IntroScene(Scene):
+    def __init__(self, seed=None):
+        super().__init__()
+        self.page = 0
+        self.seed = seed
+        # ≤ ~24 chars per line for 320px width
+        self.pages = [
+            [
+                "WELCOME TO SPIRAL SERPENT",
+                "",
+                "Long ago, the Spiral Serpent hid",
+                "its power in Relic Runes.",
+                "It sealed them in the shifting",
+                "halls of the Temple of the",
+                "Spiral Serpent.",
+                "Many have tried… all have failed.",
+                "",
+                "Press [ENTER] to continue"
+            ],
+            [
+                "JUNGLE OF XUL'KARA",
+                "",
+                "In the heart of Xul'Kara's emerald",
+                "canopy, ancient ruins lie hidden",
+                "beneath vines. Forgotten altars",
+                "echo with distant chants,",
+                "and shadows shift as if alive.",
+                "Hints of serpent glyphs glimmer",
+                "on stones, drawing explorers",
+                "deeper into peril. Twisting paths",
+                "lead to the temple gates.",
+                "",
+                "Press [ENTER] to continue"
+            ],
+            [
+                "YOUR MISSION",
+                "",
+                "You are Dr. John Hawkstone,",
+                "archaeologist and relic hunter.",
+                "",
+                " - Explore maze halls",
+                " - Recover all 10 Relic Runes",
+                " - Beat roaming sentries",
+                "",
+                "CONTROLS",
+                "",
+                " - MOVE: Arrow keys",
+                " - EXAMINE: EXE",
+                "",
+                "Press [ENTER] to enter temple"
+            ]
+        ]
+        # time when current page started revealing
+        self.start = time.monotonic()
+        # reveal one line every 0.8s
+        self.interval = 0.6
+
+    def draw_text(self, t, dt):
+        dclear(C_RGB(1, 5, 6))            # dark teal background
+        text_color = C_RGB(6, 15, 15)     # bright teal text
+        x, y, lh = 20, 40, 18
+
+        elapsed = t - self.start
+        # how many lines to show so far
+        lines_to_show = int(elapsed / self.interval) + 1
+        lines_to_show = min(lines_to_show, len(self.pages[self.page]))
+
+        for i in range(lines_to_show):
+            dtext(x, y + i*lh, text_color, self.pages[self.page][i])
+        dupdate()
+
+    def update(self, t, dt):
+        # always draw current reveal state
+        self.draw_text(t, dt)
+
+        # compute if current page is fully revealed
+        elapsed = t - self.start
+        total_lines = len(self.pages[self.page])
+        fully_revealed = elapsed >= (total_lines - 1) * self.interval
+
+        ev = pollevent()
+        if ev.type == KEYEV_DOWN:
+            if ev.key == KEY_EXE and fully_revealed:
+                self.page += 1
+                if self.page >= len(self.pages):
+                    # all pages shown → start game
+                    return TunnelScene(self.seed or random.randint(0,99999))
+                # reset reveal timer for new page
+                self.start = t
+            elif ev.key == KEY_EXIT:
+                exit()
+
+        return None
+
+
+
+
 
 # --- Tunnel Scene ---
 class TunnelScene(Scene):
@@ -749,11 +852,11 @@ class Game:
                 self.fps_accum = 0
                 self.fps_last_time = now
             
-            BOX_W,BOX_H = 24,12
-            bx = SCREEN_W-BOX_W-2; by=2
-            drect(bx,by,bx+BOX_W-1,by+BOX_H-1,C_WHITE)
-            dtext(bx+2,by,C_BLACK,f"{self.fps:>2}")
-            dupdate()
+            # BOX_W,BOX_H = 24,12
+            # bx = SCREEN_W-BOX_W-2; by=2
+            # drect(bx,by,bx+BOX_W-1,by+BOX_H-1,C_WHITE)
+            # dtext(bx+2,by,C_BLACK,f"{self.fps:>2}")
+            # dupdate()
             
             # cap FPS
             elapsed = time.monotonic() - now
