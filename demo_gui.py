@@ -67,8 +67,18 @@ class DemoApp:
 
     def setup_menu(self):
         # File Menu
+        
+        new_map_submenu = Menu("New Map")
+        new_map_submenu.add_item(MenuItem("Blank Map", event_id='file_new_map_blank'))
+        new_map_submenu.add_item(MenuItem("From template...", event_id='file_new_map_template'))
+
+        new_file_submenu = Menu("New File")
+        new_file_submenu.add_item(MenuItem("Python Script", event_id='file_new_py'))
+        new_file_submenu.add_item(MenuItem("Text Document", event_id='file_new_txt'))
+        new_file_submenu.add_item(MenuItem("Map File", submenu=new_map_submenu))
+
         file_menu = Menu("File")
-        file_menu.add_item(MenuItem("New", event_id='file_new'))
+        file_menu.add_item(MenuItem("New", submenu=new_file_submenu))
         file_menu.add_item(MenuItem("Exit", event_id='file_exit'))
         self.frame.menu_bar.add_menu("File", file_menu)
 
@@ -81,6 +91,8 @@ class DemoApp:
         
         # Add all menus as children to the frame for event processing
         self.frame.add_child(file_menu)
+        self.frame.add_child(new_file_submenu)
+        self.frame.add_child(new_map_submenu)
         self.frame.add_child(view_menu)
 
     def setup_toolbar(self):
@@ -115,11 +127,15 @@ class DemoApp:
         elif event_id == 'nav_page3':
             self.frame.show_panel(self.page3_panel)
             self.frame.status_bar.set_text("Switched to Page 3.")
-
+        
         # --- File Actions ---
         elif event_id == 'file_new':
             self.frame.status_bar.set_text("Action: New File clicked!")
-            # Here you would open a dialog, for example.
+            
+        elif event_id == 'file_new_py':
+            self.frame.status_bar.set_text("Action: New Python Script!")
+        elif event_id == 'file_new_txt':
+            self.frame.status_bar.set_text("Action: New Text Document!")
 
         elif event_id == 'file_exit':
             # This is a bit of a hack to break the loop from outside
