@@ -1,0 +1,1 @@
+python tools\fxconv-main.py --bopti-image gui\dlg.png  -o gui\_res.py --cg profile:p8_rgb565 name:dialog --py
