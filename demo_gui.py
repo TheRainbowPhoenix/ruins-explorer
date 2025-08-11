@@ -1,11 +1,13 @@
 # demo_app.py
 import gint
 from gui.base import Application, Widget, GUIEvent
-from gui.layouts import LinearLayout
+from gui.layouts import LinearLayout, VBox, HBox
 from gui.frame import MainFrame
 from gui.menu import Menu, MenuItem
 from gui.button import Button
 from gui.label import Label
+from gui.checkbox import Checkbox
+from gui.textfield import TextField
 
 try:
     from typing import Optional, List, Tuple
@@ -42,18 +44,42 @@ class Page3Panel(LinearLayout):
         self.add_child(Button(0, 0, 120, 25, "Go Home", event_id='nav_home'))
         self.add_child(Button(0, 0, 120, 25, "Go Page 2", event_id='nav_page2'))
 
+class FormsPanel(VBox):
+    """A panel demonstrating the new form widgets."""
+    def __init__(self, x: int, y: int):
+        super().__init__(x, y, padding=10)
+
+        # Text Field Row
+        self.name_field = TextField(0, 0, 150, "default name")
+        row1 = HBox(padding=5)
+        row1.add_child(Label(0, 0, "Name:"))
+        row1.add_child(self.name_field)
+        self.add_child(row1)
+        
+        # Checkbox Row
+        self.enabled_checkbox = Checkbox(0, 0, is_checked=True)
+        row2 = HBox(padding=5)
+        row2.add_child(Label(0, 0, "Enabled:"))
+        row2.add_child(self.enabled_checkbox)
+        self.add_child(row2)
+
+        # Button Row
+        row3 = HBox(padding=5)
+        row3.add_child(Button(0, 0, 100, 25, "Submit", event_id='form_submit'))
+        self.add_child(row3)
+
 # Custom panel example
 class PaintPanel(Widget):
     """A widget that acts as a simple drawing canvas."""
 
     def __init__(self, x: int, y: int, width: int, height: int):
         super().__init__(x, y, width, height)
-        self.lines: List[Tuple[Tuple[int, int], Tuple[int, int]]] = []
+        # self.lines: List[Tuple[Tuple[int, int], Tuple[int, int]]] = []
         self.last_pos: Optional[Tuple[int, int]] = None
 
     def clear(self):
         """Clears all lines from the canvas."""
-        self.lines.clear()
+        # self.lines.clear()
         self.set_needs_redraw()
 
     def on_event(self, event: GUIEvent) -> bool:
@@ -66,11 +92,10 @@ class PaintPanel(Widget):
             return True  # Consume the event
 
         if event.type == "touch_drag" and self.last_pos is not None:
-            # We add the line segment to our list and request a redraw.
-            # The coordinates are stored relative to the screen, not the widget.
-            self.lines.append((self.last_pos, event.pos))
+            # Draw the line segment directly to the screen buffer.
+            gint.dline(self.last_pos[0], self.last_pos[1], event.pos[0], event.pos[1], gint.C_BLACK)
+            gint.dupdate()
             self.last_pos = event.pos
-            self.set_needs_redraw()
             return True
 
         if event.type == "touch_up":
@@ -80,16 +105,14 @@ class PaintPanel(Widget):
         return False
 
     def on_draw(self) -> None:
+        """This now primarily acts as the 'clear' function."""
         abs_rect = self.get_absolute_rect()
-
-        # 1. Draw the background and border for the canvas.
+        
+        # When a full redraw is requested, just draw the background.
+        # This erases all previous direct-to-buffer drawing.
         gint.drect(abs_rect.left, abs_rect.top, abs_rect.right, abs_rect.bottom, gint.C_WHITE)
         gint.drect_border(abs_rect.left, abs_rect.top, abs_rect.right, abs_rect.bottom, 
                           gint.C_NONE, 1, C_LIGHT)
-        
-        # 2. Redraw all the stored lines.
-        for start, end in self.lines:
-            gint.dline(start[0], start[1], end[0], end[1], gint.C_BLACK)
 
 # --- Main Application Class ---
 
@@ -104,11 +127,13 @@ class DemoApp:
         self.page2_panel = Page2Panel(0, 0, gint.DWIDTH, self.frame.content_area.rect.height)
         self.page3_panel = Page3Panel(0, 0, gint.DWIDTH, self.frame.content_area.rect.height)
         self.paint_panel = PaintPanel(0, 0, gint.DWIDTH, self.frame.content_area.rect.height)
+        self.forms_panel = FormsPanel(10, 10)
         
         self.frame.add_panel('home', self.home_panel)
         self.frame.add_panel('page2', self.page2_panel)
         self.frame.add_panel('page3', self.page3_panel)
         self.frame.add_panel('paint', self.paint_panel)
+        self.frame.add_panel('forms', self.forms_panel)
 
         # Build the menu
         self.setup_menu()
@@ -145,6 +170,7 @@ class DemoApp:
         view_menu.add_item(MenuItem("Go to Home", event_id='nav_home'))
         view_menu.add_item(MenuItem("Go to Page 2", event_id='nav_page2'))
         view_menu.add_item(MenuItem("Go to Page 3", event_id='nav_page3'))
+        view_menu.add_item(MenuItem("Forms Demo", event_id='nav_forms'))
         view_menu.add_item(MenuItem("Paint", event_id='nav_paint'))
         self.frame.menu_bar.add_menu("View", view_menu)
 
@@ -166,10 +192,12 @@ class DemoApp:
         page2_btn = Button(0, 0, 50, 24, "P2", 'nav_page2')
         page3_btn = Button(0, 0, 50, 24, "P3", 'nav_page3')
         paint_btn = Button(0, 0, 50, 24, "Paint", 'nav_paint')
+        forms_btn = Button(0, 0, 50, 24, "Frm", 'nav_forms')
         self.frame.toolbar.add_child(home_btn)
         self.frame.toolbar.add_child(page2_btn)
         self.frame.toolbar.add_child(page3_btn)
         self.frame.toolbar.add_child(paint_btn)
+        self.frame.toolbar.add_child(forms_btn)
 
     def handle_event(self, event):
         """Central event handler for the application."""
@@ -199,6 +227,10 @@ class DemoApp:
             self.frame.show_panel(self.paint_panel)
             self.frame.status_bar.set_text("Switched to Paint Panel. Drag to draw.")
 
+        elif event_id == 'nav_forms':
+            self.frame.show_panel(self.forms_panel)
+            self.frame.status_bar.set_text("Switched to Forms Demo.")
+
         # Paint actions
         elif event_id == 'paint_clear':
             self.paint_panel.clear()
@@ -212,10 +244,26 @@ class DemoApp:
             self.frame.status_bar.set_text("Action: New Python Script!")
         elif event_id == 'file_new_txt':
             self.frame.status_bar.set_text("Action: New Text Document!")
+        
+        # Form action
+        if event.type == "state_changed":
+            if hasattr(event, 'checkbox_id') and event.checkbox_id is not None:
+                # Handle specific checkbox events if needed
+                pass
+            else: # Generic handling
+                status = "checked" if event.is_checked else "unchecked"
+                self.frame.status_bar.set_text(f"Checkbox state changed to: {status}")
+        
+        elif event_id == 'form_submit':
+            name = self.forms_panel.name_field.text
+            enabled = self.forms_panel.enabled_checkbox.is_checked
+            status = f"Submitted! Name: {name}, Enabled: {enabled}"
+            print(status)
+            self.frame.status_bar.set_text(status)
+
 
         elif event_id == 'file_exit':
             # This is a bit of a hack to break the loop from outside
-            # In a real app, the Application class would have a .quit() method
             gint.clearevents()
             gint.keydown(gint.KEY_EXIT) # Simulate exit key
             raise SystemExit()

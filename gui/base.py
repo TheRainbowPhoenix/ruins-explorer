@@ -1,7 +1,7 @@
 import gint
 
 try:
-    from typing import List
+    from typing import List, Optional
 except:
     pass
 
@@ -20,7 +20,7 @@ def hex_to_rgb(color):
 
 class GUIEvent:
     """A universal event object for all UI interactions."""
-    def __init__(self, type, source, **kwargs):
+    def __init__(self, type, source: 'Widget', **kwargs):
         self.type = type      # e.g., "touch_down", "key_press", "click"
         self.source = source  # The widget that originated the event
         self.handled = False
@@ -37,11 +37,19 @@ class Widget:
     """The base class for all UI elements."""
     def __init__(self, x=0, y=0, width=0, height=0):
         self.rect = Rect(x, y, x + width - 1, y + height - 1)
-        self.parent = None
+        self.parent: Optional['Widget'] = None
         self.children: List[Widget] = []
         self.visible = True
         self.enabled = True
         self._needs_redraw = True
+    
+    def on_focus_gained(self) -> None:
+        """Called when the widget receives keyboard focus."""
+        pass
+        
+    def on_focus_lost(self) -> None:
+        """Called when the widget loses keyboard focus."""
+        pass
 
     def set_needs_redraw(self, value=True):
         """Mark this widget and its parents as needing to be redrawn."""
@@ -135,10 +143,31 @@ class Application:
     """Manages the main event loop and the root widget."""
     def __init__(self, root_widget):
         self.root = root_widget
+        self.focused_widget: Optional[Widget] = None
+        self.frame_count = 0
+
+    def set_focus(self, widget: Optional[Widget]) -> None:
+        """Sets the focus to a new widget, notifying both old and new."""
+        if self.focused_widget is widget:
+            return
+            
+        if self.focused_widget:
+            self.focused_widget.on_focus_lost()
+            
+        self.focused_widget = widget
+        
+        if self.focused_widget:
+            self.focused_widget.on_focus_gained()
 
     def run(self):
         """Starts the main application event loop."""
         while True:
+            self.frame_count += 1
+            if self.frame_count % 30 == 0 and self.focused_widget:
+                if hasattr(self.focused_widget, 'cursor_visible'):
+                    self.focused_widget.cursor_visible = not self.focused_widget.cursor_visible # type: ignore
+                    self.focused_widget.set_needs_redraw()
+            
             # Full redraw if needed
             if self.root._needs_redraw:
                 gint.dclear(gint.C_WHITE)
@@ -146,15 +175,25 @@ class Application:
                 gint.dupdate()
 
             ev = gint.pollevent()
+            if ev.type == gint.KEYEV_NONE:
+                continue
 
             # Create a standard GUIEvent
             event = None
             source_widget = self.root.find_widget_at(getattr(ev, 'x', -1), getattr(ev, 'y', -1)) or self.root
 
+            if ev.type == gint.KEYEV_TOUCH_DOWN:
+                self.set_focus(source_widget)
+
             if ev.type == gint.KEYEV_DOWN:
                 if ev.key == gint.KEY_EXIT:
                     break # Exit application on EXIT key
-                event = GUIEvent("key_press", source_widget, key=ev.key)
+                if self.focused_widget:
+                    event = GUIEvent("key_press", self.focused_widget, key=ev.key)
+                    self.focused_widget.handle_event(event)
+                    continue # Skip normal propagation
+                else: # No focus, propagate normally
+                    event = GUIEvent("key_press", source_widget, key=ev.key)
 
             elif ev.type == gint.KEYEV_TOUCH_DOWN:
                 event = GUIEvent("touch_down", source_widget, pos=(ev.x, ev.y))
