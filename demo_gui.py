@@ -17,6 +17,7 @@ class HomePanel(LinearLayout):
         self.add_child(Label(0, 0, "Welcome to the GUI Framework!"))
         self.add_child(Label(0, 0, "Use the menu to navigate."))
         self.add_child(Button(0, 0, 120, 25, "Go Page 2", event_id='nav_page2'))
+        self.add_child(Button(0, 0, 120, 25, "Go Page 3", event_id='nav_page3'))
 
 class Page2Panel(LinearLayout):
     """A second screen."""
@@ -24,6 +25,15 @@ class Page2Panel(LinearLayout):
         super().__init__(x, y, width, height, orientation=LinearLayout.VERTICAL, padding=5)
         self.add_child(Label(0, 0, "This is the second page."))
         self.add_child(Button(0, 0, 120, 25, "Go Home", event_id='nav_home'))
+        self.add_child(Button(0, 0, 120, 25, "Go Page 3", event_id='nav_page3'))
+
+class Page3Panel(LinearLayout):
+    """A second screen."""
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y, width, height, orientation=LinearLayout.VERTICAL, padding=5)
+        self.add_child(Label(0, 0, "This is the third page."))
+        self.add_child(Button(0, 0, 120, 25, "Go Home", event_id='nav_home'))
+        self.add_child(Button(0, 0, 120, 25, "Go Page 2", event_id='nav_page2'))
 
 # --- Main Application Class ---
 
@@ -36,9 +46,11 @@ class DemoApp:
         # Create panels and add them to the frame's content area
         self.home_panel = HomePanel(0, 0, gint.DWIDTH, self.frame.content_area.rect.height)
         self.page2_panel = Page2Panel(0, 0, gint.DWIDTH, self.frame.content_area.rect.height)
+        self.page3_panel = Page3Panel(0, 0, gint.DWIDTH, self.frame.content_area.rect.height)
         
         self.frame.add_panel('home', self.home_panel)
         self.frame.add_panel('page2', self.page2_panel)
+        self.frame.add_panel('page3', self.page3_panel)
 
         # Build the menu
         self.setup_menu()
@@ -64,6 +76,7 @@ class DemoApp:
         view_menu = Menu("View")
         view_menu.add_item(MenuItem("Go to Home", event_id='nav_home'))
         view_menu.add_item(MenuItem("Go to Page 2", event_id='nav_page2'))
+        view_menu.add_item(MenuItem("Go to Page 3", event_id='nav_page3'))
         self.frame.menu_bar.add_menu("View", view_menu)
         
         # Add all menus as children to the frame for event processing
@@ -73,9 +86,11 @@ class DemoApp:
     def setup_toolbar(self):
         # Toolbar buttons are just regular buttons added to the toolbar's layout
         home_btn = Button(0, 0, 50, 24, "Home", 'nav_home')
-        page2_btn = Button(0, 0, 50, 24, "Page2", 'nav_page2')
+        page2_btn = Button(0, 0, 50, 24, "P2", 'nav_page2')
+        page3_btn = Button(0, 0, 50, 24, "P3", 'nav_page3')
         self.frame.toolbar.add_child(home_btn)
         self.frame.toolbar.add_child(page2_btn)
+        self.frame.toolbar.add_child(page3_btn)
 
     def handle_event(self, event):
         """Central event handler for the application."""
@@ -96,6 +111,10 @@ class DemoApp:
         elif event_id == 'nav_page2':
             self.frame.show_panel(self.page2_panel)
             self.frame.status_bar.set_text("Switched to Page 2.")
+        
+        elif event_id == 'nav_page3':
+            self.frame.show_panel(self.page3_panel)
+            self.frame.status_bar.set_text("Switched to Page 3.")
 
         # --- File Actions ---
         elif event_id == 'file_new':

@@ -1,6 +1,0 @@
-0000000000000000000000000000000000000000 e01dad344851eba779ce049a6a3f1a9b9f40f738 P.C <Phoebe@Konshin> 1744553001 +0200	commit (initial): base
-e01dad344851eba779ce049a6a3f1a9b9f40f738 6084e66e15bbb2d8231bbdc34de6150120dc3561 P.C <Phoebe@Konshin> 1744554630 +0200	commit: add beginner guide
-6084e66e15bbb2d8231bbdc34de6150120dc3561 993484b9621e364fefc3b20d13217d6315ea420e P.C <Phoebe@Konshin> 1744973207 +0200	commit: add gint simulator, add fxconv bundled, update doc on gint simulator
-993484b9621e364fefc3b20d13217d6315ea420e 6084e66e15bbb2d8231bbdc34de6150120dc3561 P.C <Phoebe@Konshin> 1744973241 +0200	reset: moving to HEAD~
-6084e66e15bbb2d8231bbdc34de6150120dc3561 f77143ec0e14cf528392b80d971a70c74eb8e90a P.C <Phoebe@Konshin> 1744973286 +0200	pull --tags origin master: Fast-forward
-f77143ec0e14cf528392b80d971a70c74eb8e90a df7a8f15421fc0b5f2a8f890a119d8ede097edf3 P.C <Phoebe@Konshin> 1744973361 +0200	commit: add gint simulator, add fxconv bundled, update doc on gint simulator
