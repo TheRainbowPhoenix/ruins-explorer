@@ -93,6 +93,7 @@ def clearevents() -> None:
     while pollevent().type != KEYEV_NONE: pass
     """
     ...
+    
 def pollevent() -> KeyEvent:
     """
     Retrieve the oldest unread keyboard event from the queue.

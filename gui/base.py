@@ -136,6 +136,14 @@ class Widget:
                 return found
         
         return self # This widget is the one
+    
+    def run_modal(self, app: 'Application') -> None:
+        """
+        Optional: A widget can override this to run its own private event loop.
+        This is for high-performance, exclusive-mode operations like painting.
+        The method is responsible for breaking its own loop and returning.
+        """
+        pass
 
 # --- Application Runner ---
 
@@ -161,7 +169,8 @@ class Application:
 
     def run(self):
         """Starts the main application event loop."""
-        while True:
+        looping = True
+        while looping:
             self.frame_count += 1
             if self.frame_count % 30 == 0 and self.focused_widget:
                 if hasattr(self.focused_widget, 'cursor_visible'):
@@ -172,41 +181,47 @@ class Application:
             if self.root._needs_redraw:
                 gint.dclear(gint.C_WHITE)
                 self.root.draw()
-                gint.dupdate()
+                # gint.dupdate() # dupdate() will happen at the end of this frame
 
             ev = gint.pollevent()
-            if ev.type == gint.KEYEV_NONE:
-                continue
+            while ev.type != gint.KEYEV_NONE: # Burst events
+                if ev.type == gint.KEYEV_DOWN and ev.key == gint.KEY_EXIT:
+                    looping = False
+                    break
 
-            # Create a standard GUIEvent
-            event = None
-            source_widget = self.root.find_widget_at(getattr(ev, 'x', -1), getattr(ev, 'y', -1)) or self.root
+                # Create a standard GUIEvent
+                event: Optional[GUIEvent] = None
+                source_widget = self.root.find_widget_at(getattr(ev, 'x', -1), getattr(ev, 'y', -1)) or self.root
 
-            if ev.type == gint.KEYEV_TOUCH_DOWN:
-                self.set_focus(source_widget)
+                if ev.type == gint.KEYEV_TOUCH_DOWN:
+                    self.set_focus(source_widget)
 
-            if ev.type == gint.KEYEV_DOWN:
-                if ev.key == gint.KEY_EXIT:
-                    break # Exit application on EXIT key
-                if self.focused_widget:
-                    event = GUIEvent("key_press", self.focused_widget, key=ev.key)
-                    self.focused_widget.handle_event(event)
-                    continue # Skip normal propagation
-                else: # No focus, propagate normally
-                    event = GUIEvent("key_press", source_widget, key=ev.key)
+                if ev.type == gint.KEYEV_DOWN:
+                    if ev.key == gint.KEY_EXIT:
+                        looping = False
+                        break # Exit application on EXIT key
+                    if self.focused_widget:
+                        event = GUIEvent("key_press", self.focused_widget, key=ev.key)
+                        self.focused_widget.handle_event(event)
+                        continue # Skip normal propagation
+                    else: # No focus, propagate normally
+                        event = GUIEvent("key_press", source_widget, key=ev.key)
 
-            elif ev.type == gint.KEYEV_TOUCH_DOWN:
-                event = GUIEvent("touch_down", source_widget, pos=(ev.x, ev.y))
+                elif ev.type == gint.KEYEV_TOUCH_DOWN:
+                    event = GUIEvent("touch_down", source_widget, pos=(ev.x, ev.y))
+                elif ev.type == gint.KEYEV_TOUCH_UP:
+                    event = GUIEvent("touch_up", source_widget, pos=(ev.x, ev.y))
+                elif ev.type == gint.KEYEV_TOUCH_DRAG:
+                    event = GUIEvent("touch_drag", source_widget, pos=(ev.x, ev.y))
+
+                # Dispatch the event
+                if event:
+                    self.root.handle_event(event)
+                
+                ev = gint.pollevent()
             
-            elif ev.type == gint.KEYEV_TOUCH_UP:
-                event = GUIEvent("touch_up", source_widget, pos=(ev.x, ev.y))
-
-            elif ev.type == gint.KEYEV_TOUCH_DRAG:
-                event = GUIEvent("touch_drag", source_widget, pos=(ev.x, ev.y))
-
-            # Dispatch the event
-            if event:
-                self.root.handle_event(event)
+            if not looping: break
+            gint.dupdate()
 
 class Wrapped:
     def __init__(self):

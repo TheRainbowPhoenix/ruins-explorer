@@ -10,7 +10,7 @@ from gui.checkbox import Checkbox
 from gui.textfield import TextField
 
 try:
-    from typing import Optional, List, Tuple
+    from typing import Optional, List, Tuple, Any
 except ImportError:
     pass
 
@@ -113,6 +113,38 @@ class PaintPanel(Widget):
         gint.drect(abs_rect.left, abs_rect.top, abs_rect.right, abs_rect.bottom, gint.C_WHITE)
         gint.drect_border(abs_rect.left, abs_rect.top, abs_rect.right, abs_rect.bottom, 
                           gint.C_NONE, 1, C_LIGHT)
+    
+    def run_modal(self, app: Application) -> None:
+        """
+        Hijacks the main event loop to run a specialized, high-performance
+        loop for drawing. Returns when the user presses EXIT.
+        """
+        # We need to draw the entire frame to get the chrome right.
+        app.root.draw()
+        gint.dupdate()
+
+        x, y = -1, -1
+
+        looping = True
+        # MODAL EVENT
+        while looping:
+            ev = gint.pollevent()
+            while ev.type != gint.KEYEV_NONE:
+                if ev.type == gint.KEYEV_TOUCH_DOWN:
+                    x, y = ev.x, ev.y
+                elif ev.type == gint.KEYEV_TOUCH_DRAG:
+                    gint.dline(x, y, ev.x, ev.y, gint.C_BLACK);
+                    x, y = ev.x, ev.y
+                elif ev.type == gint.KEYEV_DOWN and ev.key == gint.KEY_KBD:
+                    # Eat the event so the main app doesn't immediately close.
+                    gint.clearevents() 
+                    looping = False
+                    break
+
+                ev = gint.pollevent()
+            gint.dupdate()
+
+            # Any other event is ignored, keeping this loop tiny.
 
 # --- Main Application Class ---
 
@@ -223,13 +255,20 @@ class DemoApp:
             self.frame.show_panel(self.page3_panel)
             self.frame.status_bar.set_text("Switched to Page 3.")
         
-        elif event_id == 'nav_paint':
-            self.frame.show_panel(self.paint_panel)
-            self.frame.status_bar.set_text("Switched to Paint Panel. Drag to draw.")
-
         elif event_id == 'nav_forms':
             self.frame.show_panel(self.forms_panel)
             self.frame.status_bar.set_text("Switched to Forms Demo.")
+        
+        elif event_id == 'nav_paint':
+            self.frame.show_panel(self.paint_panel)
+            self.frame.status_bar.set_text("Modal paint mode. Press 'Keyboard' to leave.")
+
+            # TODO: fix bug here, run_modal is very fast but laggy when re-opened
+            self.paint_panel.run_modal(self.app)
+
+            self.frame.set_needs_redraw()
+            self.frame.status_bar.set_text("Returned to normal mode.")
+
 
         # Paint actions
         elif event_id == 'paint_clear':
