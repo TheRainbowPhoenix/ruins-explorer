@@ -26,15 +26,23 @@ class Button(Widget):
             return True # Handle the event
 
         if event.type == "touch_up":
-            if self.is_pressed and abs_rect.contains(event.pos[0], event.pos[1]):
-                # Fire a click event
-                click_event = GUIEvent("click", self, button_id=self.event_id)
-                if self.parent:
-                    self.parent.handle_event(click_event)
-            
+            should_fire_click = self.is_pressed and abs_rect.contains(event.pos[0], event.pos[1])
+
+            # Always reset pressed state on touch_up
             if self.is_pressed:
                 self.is_pressed = False
                 self.set_needs_redraw()
+
+            if should_fire_click:
+                # Fire a click event
+                click_event = GUIEvent("click", self, button_id=self.event_id)
+                
+                # Propagate the 'click' event from the top-level widget
+                ancestor = self
+                while ancestor.parent:
+                    ancestor = ancestor.parent
+                ancestor.handle_event(click_event)
+            
             return True
 
         return False
