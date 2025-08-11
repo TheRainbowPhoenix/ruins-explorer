@@ -6,6 +6,12 @@ toolbar = gint.image(4, 256, 99, 37, 99, b'"\x9arrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
 DUMMY_DATA = b'\x00' * 4
 DUMMY_PALETTE = b'\x00\x00\xff\xff' # Black and White
 
-button_nine_patch = gint.image_p8_rgb565a(2, 2, DUMMY_DATA, DUMMY_PALETTE)
-icon_placeholder = gint.image_p8_rgb565a(16, 16, b'\x00' * (16*16), DUMMY_PALETTE)
-frame_nine_patch = gint.image_p8_rgb565a(3, 3, b'\x00' * 9, DUMMY_PALETTE)
+palette = b'\x00\x00\xf8\x00\xff\xff'
+data = b'\x80\x81\x80\x81\x82\x81\x80\x81\x80'
+img = gint.image(gint.IMAGE_P8_RGB565, color_count=3, width=3, height=3,
+    stride=3, data=data, palette=palette)
+print(img)
+
+frame_nine_patch = gint.image(gint.IMAGE_P8_RGB565, color_count=2, width=3, height=3, stride=3, data=data, palette=palette)
+button_nine_patch = gint.image(gint.IMAGE_P8_RGB565, color_count=3, width=2, height=2, stride=3, data=b'\x80\x81' * (2*2), palette=palette)
+icon_placeholder = gint.image(gint.IMAGE_P8_RGB565, color_count=2, width=16, height=16, stride=3, data=b'\x80\x81' * (16*16), palette=palette)

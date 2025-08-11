@@ -1,9 +1,63 @@
-from .base import GUIElement
+from .base import GUIElement, Widget, GUIEvent
 import gint
 from ._res import button as res_button
+from .rect import Rect
+
+C_LIGHT = 0xD69A
+C_DARK = 0xAD55
 
 class ButtonFlag:
     Enabled = 1 << 15
+
+class Button(Widget):
+    """A standard clickable button."""
+    def __init__(self, x, y, width, height, text, event_id=None):
+        super().__init__(x, y, width, height)
+        self.text = text
+        self.event_id = event_id
+        self.is_pressed = False
+
+    def on_event(self, event):
+        abs_rect = self.get_absolute_rect()
+        
+        if event.type == "touch_down" and abs_rect.contains(event.pos[0], event.pos[1]):
+            self.is_pressed = True
+            self.set_needs_redraw()
+            return True # Handle the event
+
+        if event.type == "touch_up":
+            if self.is_pressed and abs_rect.contains(event.pos[0], event.pos[1]):
+                # Fire a click event
+                click_event = GUIEvent("click", self, button_id=self.event_id)
+                if self.parent:
+                    self.parent.handle_event(click_event)
+            
+            if self.is_pressed:
+                self.is_pressed = False
+                self.set_needs_redraw()
+            return True
+
+        return False
+
+    def on_draw(self):
+        abs_rect = self.get_absolute_rect()
+        
+        # Determine colors based on state
+        bg_color = C_DARK if self.is_pressed else C_LIGHT
+        text_color = gint.C_WHITE if self.is_pressed else gint.C_BLACK
+        border_color = gint.C_BLACK
+
+        # Draw the button
+        gint.drect(abs_rect.left, abs_rect.top, abs_rect.right, abs_rect.bottom, bg_color)
+        gint.drect_border(abs_rect.left, abs_rect.top, abs_rect.right, abs_rect.bottom, 
+                          gint.C_NONE, 1, border_color)
+        
+        # Center the text
+        text_x = abs_rect.left + (abs_rect.width - len(self.text) * 8) // 2
+        text_y = abs_rect.top + (abs_rect.height - 12) // 2
+        
+        gint.dtext(text_x, text_y, text_color, self.text)
+
 
 class GUIButton(GUIElement):
     def __init__(self, left, top, right, bottom, text, event_id, flags=ButtonFlag.Enabled):

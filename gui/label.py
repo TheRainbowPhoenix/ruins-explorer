@@ -1,11 +1,37 @@
 # gui/label.py
 
-from .base import GUIElement
+import gint
+from .base import GUIElement, Widget
 from .canvas import Canvas
 from gint import C_BLACK, C_NONE
 import gint
-# (If you want a different default background than transparent,
-# import it here, e.g. C_WHITE.)
+
+class Label(Widget):
+    """A widget that displays a single line of text."""
+    def __init__(self, x, y, text, text_color=gint.C_BLACK, bg_color=gint.C_NONE):
+        # A simple approximation for width/height
+        width = len(text) * 8 
+        height = 12
+        super().__init__(x, y, width, height)
+        self.text = text
+        self.text_color = text_color
+        self.bg_color = bg_color
+
+    def set_text(self, new_text):
+        if self.text != new_text:
+            self.text = new_text
+            self.rect.right = self.rect.left + len(new_text) * 8 - 1 # Recalculate width
+            self.set_needs_redraw()
+
+    def on_draw(self):
+        abs_pos = self.get_absolute_rect()
+        gint.dtext_opt(
+            abs_pos.left, abs_pos.top,
+            self.text_color, self.bg_color,
+            gint.DTEXT_LEFT, gint.DTEXT_TOP,
+            self.text, -1
+        )
+
 
 class LabelFlag:
     FlagBackground = 1 << 0
