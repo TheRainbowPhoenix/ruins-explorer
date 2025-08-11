@@ -93,6 +93,7 @@ class Menu(Window):
         self.visible = False
         # Hide all submenus as well
         for item in self.items:
+            item.is_hovered = False
             if item.submenu and item.submenu.visible:
                 item.submenu.hide()
         

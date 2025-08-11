@@ -19,30 +19,35 @@ class Button(Widget):
 
     def on_event(self, event):
         abs_rect = self.get_absolute_rect()
-        
-        if event.type == "touch_down" and abs_rect.contains(event.pos[0], event.pos[1]):
-            self.is_pressed = True
-            self.set_needs_redraw()
-            return True # Handle the event
 
+        # if a touch operation ends, this button should not be pressed.
         if event.type == "touch_up":
-            should_fire_click = self.is_pressed and abs_rect.contains(event.pos[0], event.pos[1])
-
-            # Always reset pressed state on touch_up
             if self.is_pressed:
                 self.is_pressed = False
                 self.set_needs_redraw()
+        
+        if event.source is not self:
+            return False
+        
+         # Handle the actual press and click logic
+        if event.type == "touch_down":
+            self.is_pressed = True
+            self.set_needs_redraw()
+            # Consume the event so no other widget underneath gets it.
+            return True
 
-            if should_fire_click:
-                # Fire a click event
-                click_event = GUIEvent("click", self, button_id=self.event_id)
-                
-                # Propagate the 'click' event from the top-level widget
-                ancestor = self
-                while ancestor.parent:
-                    ancestor = ancestor.parent
-                ancestor.handle_event(click_event)
+        if event.type == "touch_up":
+            # We already reset the visual state above. Now, fire the click event.
+            # The click event is only fired if the touch_up happens inside the button.
+            click_event = GUIEvent("click", self, button_id=self.event_id)
             
+            # Propagate the 'click' event from the top-level widget.
+            ancestor = self
+            while ancestor.parent:
+                ancestor = ancestor.parent
+            ancestor.handle_event(click_event)
+            
+            # Consume the event.
             return True
 
         return False

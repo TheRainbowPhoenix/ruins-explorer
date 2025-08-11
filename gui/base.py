@@ -1,5 +1,10 @@
 import gint
 
+try:
+    from typing import List
+except:
+    pass
+
 from .rect import Rect
 
 def hex_to_rgb(color):
@@ -31,7 +36,7 @@ class Widget:
     def __init__(self, x=0, y=0, width=0, height=0):
         self.rect = Rect(x, y, x + width - 1, y + height - 1)
         self.parent = None
-        self.children = []
+        self.children: List[Widget] = []
         self.visible = True
         self.enabled = True
         self._needs_redraw = True
@@ -65,7 +70,7 @@ class Widget:
         abs_y = parent_rect.top + self.rect.top
         return Rect(abs_x, abs_y, abs_x + self.rect.width - 1, abs_y + self.rect.height - 1)
 
-    def handle_event(self, event):
+    def handle_event(self, event: GUIEvent):
         """
         Handle an event. Propagate to children unless handled.
         Returns True if the event was handled.
@@ -84,7 +89,7 @@ class Widget:
 
         return False
 
-    def on_event(self, event):
+    def on_event(self, event: GUIEvent):
         """
         Event handler to be overridden by subclasses.
         Return True to mark the event as handled.
