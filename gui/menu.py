@@ -10,7 +10,7 @@ class MenuItem(Widget):
     """An item within a menu. Can have a submenu."""
     def __init__(self, text, event_id=None, submenu=None):
         height = 14
-        width = len(text) * 8 + 16 # Add padding
+        width = len(text) * 8 + 24 # Add padding
         super().__init__(0, 0, width, height)
         self.text = text
         self.event_id = event_id
@@ -30,7 +30,10 @@ class MenuItem(Widget):
                 self.set_needs_redraw()
 
         if event.type == "touch_up" and self.is_hovered:
-            if self.event_id:
+            if self.submenu:
+                # If this item has a submenu, show it.
+                self.submenu.show(abs_rect.right + 1, abs_rect.top)
+            elif self.event_id:
                 # Fire a click event to be caught by the application
                 click_event = GUIEvent("menu_click", self, item_id=self.event_id)
                 # Propagate up to the application root
@@ -39,9 +42,9 @@ class MenuItem(Widget):
                     ancestor = ancestor.parent
                 ancestor.handle_event(click_event)
             
-            # Close all menus after a click
-            if self.parent and isinstance(self.parent.parent, Menu):
-                self.parent.parent.hide()
+                # Close all menus after a click
+                if self.parent and isinstance(self.parent.parent, Menu):
+                    self.parent.parent.hide()
             
             return True
         return False
@@ -70,18 +73,24 @@ class Menu(Window):
         self.content.add_child(item)
         self._recalculate_size()
 
-    def _recalculate_size(self):
-        max_width = 0
-        total_height = 14 # For title bar
+    def _recalculate_size(self) -> None:
+        # Find the maximum width needed by any item in this menu.
+        max_item_width = 0
+        if self.items:
+            max_item_width = max(item.rect.width for item in self.items)
+
+        # Enforce this width on all items so they align.
         for item in self.items:
-            if item.rect.width > max_width:
-                max_width = item.rect.width
-        total_height += sum(item.rect.height + self.content.padding for item in self.items)
+            item.rect.right = item.rect.left + max_item_width - 1
+
+        # resize the menu window itself to fit the standardized items.
+        total_height = 14 # For title bar
+        total_height += sum(item.rect.height + self.content.padding for item in self.items) + self.content.padding
         
-        self.rect.right = self.rect.left + max_width + 4
+        self.rect.right = self.rect.left + max_item_width + 4
         self.rect.bottom = self.rect.top + total_height
-        self.content.rect.right = self.rect.width -1
-        self.content.rect.bottom = self.rect.height -1
+        self.content.rect.right = self.rect.width - 1
+        self.content.rect.bottom = self.rect.height - 1
         self.content.do_layout()
         
     def show(self, x, y):
