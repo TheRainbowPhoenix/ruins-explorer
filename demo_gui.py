@@ -231,9 +231,7 @@ class DemoApp:
             gint.dupdate()
 
 
-# --- Entry Point ---
-if __name__ == "__main__":
-    demo = DemoApp()
-    demo.run()
+demo = DemoApp()
+demo.run()
     
         

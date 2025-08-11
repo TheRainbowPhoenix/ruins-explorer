@@ -24,7 +24,9 @@ class GUIEvent:
         self.type = type      # e.g., "touch_down", "key_press", "click"
         self.source = source  # The widget that originated the event
         self.handled = False
-        self.__dict__.update(kwargs)
+        # self.__dict__.update(kwargs) # TODO: this fails on PythonExtra !!
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     def __str__(self):
         return f"GUIEvent(type={self.type}, source={self.source.__class__.__name__})"

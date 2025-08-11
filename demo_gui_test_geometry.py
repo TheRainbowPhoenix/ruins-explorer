@@ -77,15 +77,13 @@ def test_rect_logic():
     assert_equal(r_copy.top_left, Point(5, -5), "shift() moves the rectangle correctly")
 
 
-# --- Main Runner ---
-if __name__ == "__main__":
-    print("Starting geometry tests...")
-    test_point_logic()
-    test_rect_logic()
-    print("\n-------------------------")
-    if _fail_count == 0:
-        print(f"\033[92mAll {_test_count} tests passed!\033[0m")
-    else:
-        print(f"\033[91m{_fail_count} out of {_test_count} tests failed.\033[0m")
-        # Exit with a non-zero code to indicate failure for scripts
-        sys.exit(1)
+print("Starting geometry tests...")
+test_point_logic()
+test_rect_logic()
+print("\n-------------------------")
+if _fail_count == 0:
+    print(f"\033[92mAll {_test_count} tests passed!\033[0m")
+else:
+    print(f"\033[91m{_fail_count} out of {_test_count} tests failed.\033[0m")
+    # Exit with a non-zero code to indicate failure for scripts
+    sys.exit(1)
