@@ -220,12 +220,7 @@ class JWidget:
         
         self._dirty = False
 
-    def _render(self, x, y, visible_rect):
-        """Render the widget. Overridden by subclasses."""
-        if not self.visible:
-            return
-
-        # 1. Render background
+    def _render_own_geometry(self, x, y):
         if self._background_color != gint.C_NONE:
             bg_x = x + self._margins['left'] + self._borders['left']
             bg_y = y + self._margins['top'] + self._borders['top']
@@ -239,10 +234,16 @@ class JWidget:
             b_y = y + self._margins['top']
             b_w = self.w - (self._margins['left'] + self._margins['right'])
             b_h = self.h - (self._margins['top'] + self._margins['bottom'])
-            # This is a simplified drect_border
-            gint.drect_border(b_x, b_y, b_x+b_w-1, b_y+b_h-1, gint.C_NONE, self._borders['top'], self._border_color)
+            gint.drect_border(b_x, b_y, b_x + b_w - 1, b_y + b_h - 1, gint.C_NONE, self._borders['top'], self._border_color)
 
-        # 3. Calculate content area
+    def _render(self, x, y, visible_rect):
+        """Render the widget and its children correctly."""
+        if not self.visible:
+            return
+
+        # Render this widget's own background and border.
+        self._render_own_geometry(x, y)
+        # Calculate content area
         content_x = x + self._margins['left'] + self._borders['left'] + self._padding['left']
         content_y = y + self._margins['top'] + self._borders['top'] + self._padding['top']
 
@@ -250,6 +251,8 @@ class JWidget:
         self._render_content(content_x, content_y, visible_rect)
 
         # 5. Render children
+        # A container with special logic (like JFrame) will override this method
+        # to prevent this automatic child rendering.
         for child in self._children:
             child._render(content_x + child.x, content_y + child.y, visible_rect)
         
@@ -377,7 +380,8 @@ class JLabel(JWidget):
 
     def _csize(self):
         """Calculate size based on text content."""
-        self._lines = self._wrap_text(self.text, self.w or gint.DWIDTH) # Use widget width if available
+        wrap_width = self.w or gint.DWIDTH
+        self._lines = self._wrap_text(self.text, wrap_width) # Use widget width if available
         
         if not self._lines:
             self.w, self.h = 0, 0
@@ -391,17 +395,39 @@ class JLabel(JWidget):
     def _wrap_text(self, text, max_width):
         """A simple word wrapper."""
         lines = []
+        # Ensure max_width is at least one character wide
+        max_width = max(max_width, self.font.char_width)
         for paragraph in text.split('\n'):
             words = paragraph.split(' ')
             current_line = ""
             for word in words:
-                if current_line and (len(current_line) + 1 + len(word)) * self.font.char_width >= max_width:
-                    lines.append(current_line)
-                    current_line = word
-                else:
+                word_width = len(word) * self.font.char_width
+                
+                # Case 1: The word itself is wider than the line
+                if word_width > max_width:
+                    # Add the current line so far, if any
                     if current_line:
-                        current_line += ' '
-                    current_line += word
+                        lines.append(current_line)
+                        current_line = ""
+                    # Then, break the long word by character
+                    temp_word = ""
+                    for char in word:
+                        if (len(temp_word) + 1) * self.font.char_width > max_width:
+                            lines.append(temp_word)
+                            temp_word = char
+                        else:
+                            temp_word += char
+                    current_line = temp_word # The remainder of the broken word
+                
+                # Case 2: Word fits, check if it can be added to the current line
+                else:
+                    separator = ' ' if current_line else ''
+                    if (len(current_line) + len(separator) + len(word)) * self.font.char_width > max_width:
+                        lines.append(current_line)
+                        current_line = word
+                    else:
+                        current_line += separator + word
+            
             lines.append(current_line)
         return lines
 
@@ -433,6 +459,16 @@ class JFrame(JWidget):
         if not self.visible:
             return
 
+        # Step 1: Render this frame's own background and border.
+        self._render_own_geometry(x, y)
+
+        # If there's no child, we're done.
+        if not self._children:
+            return
+            
+        child = self._children[0]
+        
+        # Step 2: Calculate the visible content area for the child.
         content_x = x + self._margins['left'] + self._borders['left'] + self._padding['left']
         content_y = y + self._margins['top'] + self._borders['top'] + self._padding['top']
         content_w = self.content_width
@@ -448,10 +484,7 @@ class JFrame(JWidget):
         )
 
         # Render background and border first
-        super()._render(x, y, parent_visible_rect)
-
-        if not self._children: return
-        child = self._children[0]
+        # super()._render(x, y, parent_visible_rect)
         
         # TODO: Clipping is not available in gint's Python API yet.
         # This is where we would set the clipping window.
@@ -474,11 +507,13 @@ class JFrame(JWidget):
         scrollbar_width = 4
         # Vertical scrollbar
         if child.h > h:
-            sb_h = max(10, h * h // child.h)
-            sb_y = y + (self._scroll_y * (h - sb_h) // (child.h - h))
+            scrollable_height = child.h - h
+            thumb_height = max(10, h * h // child.h)
+            thumb_y = y + (self._scroll_y * (h - thumb_height) // scrollable_height)
+            
             sb_x = x + w - scrollbar_width
             gint.drect(sb_x, y, sb_x + scrollbar_width - 1, y + h - 1, C_LIGHT)
-            gint.drect(sb_x, sb_y, sb_x + scrollbar_width - 1, sb_y + sb_h - 1, C_DARK)
+            gint.drect(sb_x, thumb_y, sb_x + scrollbar_width - 1, thumb_y + thumb_height - 1, C_DARK)
 
     def _event(self, event):
         if event.type != JWIDGET_KEY:
