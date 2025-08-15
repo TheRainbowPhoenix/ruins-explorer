@@ -437,9 +437,24 @@ class JLabel(JWidget):
         
         line_y = y
         for line in self._lines:
-            # Check if the line is vertically within the visible area before drawing
-            if line_y + self.font.line_height > visible_rect.y1 and line_y < visible_rect.y2:
-                gint.dtext(x, line_y, self.color, line)
+            # Vertical Culling
+            is_vertically_visible = (line_y + self.font.line_height > visible_rect.y1 and line_y < visible_rect.y2)
+            
+            if is_vertically_visible:
+                # Horizontal Clipping
+                # Calculate the available width for this line's text.
+                available_width = visible_rect.x2 - x
+                
+                # If there's no space, don't try to draw.
+                if available_width > 0:
+                    # TODO: use builtin gint later. Determine how many characters can fit.
+                    max_chars = available_width // self.font.char_width
+                    
+                    clipped_line = line[:max_chars]
+                    
+                    gint.dtext(x, line_y, self.color, clipped_line)
+            
+            # Move to the next line position.
             line_y += self.font.line_height
 
 
