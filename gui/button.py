@@ -18,7 +18,6 @@ class Button(Widget):
         self.is_pressed = False
 
     def on_event(self, event):
-        abs_rect = self.get_absolute_rect()
 
         # if a touch operation ends, this button should not be pressed.
         if event.type == "touch_up":
@@ -27,6 +26,19 @@ class Button(Widget):
                 self.set_needs_redraw()
         
         if event.source is not self:
+            return False
+        
+        # We only care about events with a position from here on.
+        if not hasattr(event, 'pos'):
+            return False
+        
+
+        abs_rect = self.get_absolute_rect()
+
+        if not abs_rect.contains(event.pos[0], event.pos[1]):
+            if self.is_pressed:
+                self.is_pressed = False
+                self.set_needs_redraw()
             return False
         
          # Handle the actual press and click logic
@@ -52,8 +64,12 @@ class Button(Widget):
 
         return False
 
-    def on_draw(self):
+    def on_draw(self, clip_rect: Rect):
         abs_rect = self.get_absolute_rect()
+        
+        draw_rect = abs_rect.intersect(clip_rect)
+        if draw_rect.is_empty():
+            return
         
         # Determine colors based on state
         bg_color = C_DARK if self.is_pressed else C_LIGHT
@@ -69,7 +85,9 @@ class Button(Widget):
         text_x = abs_rect.left + (abs_rect.width - len(self.text) * 8) // 2
         text_y = abs_rect.top + (abs_rect.height - 12) // 2
         
-        gint.dtext(text_x, text_y, text_color, self.text)
+        # Simple text clipping
+        if text_y < clip_rect.bottom and text_y + 12 > clip_rect.top:
+            gint.dtext(text_x, text_y, text_color, self.text)
 
 
 class GUIButton(GUIElement):

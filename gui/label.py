@@ -3,13 +3,13 @@
 import gint
 from .base import GUIElement, Widget
 from .canvas import Canvas
+from .rect import Rect
 from gint import C_BLACK, C_NONE
 import gint
 
 class Label(Widget):
     """A widget that displays a single line of text."""
     def __init__(self, x, y, text, text_color=gint.C_BLACK, bg_color=gint.C_NONE):
-        # A simple approximation for width/height
         width = len(text) * 8 
         height = 12
         super().__init__(x, y, width, height)
@@ -20,17 +20,22 @@ class Label(Widget):
     def set_text(self, new_text):
         if self.text != new_text:
             self.text = new_text
-            self.rect.right = self.rect.left + len(new_text) * 8 - 1 # Recalculate width
+            self.rect.right = self.rect.left + len(new_text) * 8 - 1
             self.set_needs_redraw()
 
-    def on_draw(self):
+    def on_draw(self, clip_rect: Rect):
+        # The absolute position is needed for drawing, but it must be clipped.
         abs_pos = self.get_absolute_rect()
-        gint.dtext_opt(
-            abs_pos.left, abs_pos.top,
-            self.text_color, self.bg_color,
-            gint.DTEXT_LEFT, gint.DTEXT_TOP,
-            self.text, -1
-        )
+
+        # Simple clipping: only draw if the starting point is visible.
+        # A more advanced version would truncate the text.
+        if abs_pos.left < clip_rect.right and abs_pos.top < clip_rect.bottom:
+             gint.dtext_opt(
+                abs_pos.left, abs_pos.top,
+                self.text_color, self.bg_color,
+                gint.DTEXT_LEFT, gint.DTEXT_TOP,
+                self.text, -1
+            )
 
 
 class LabelFlag:

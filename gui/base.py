@@ -7,6 +7,13 @@ except:
 
 from .rect import Rect
 
+ScrollView = "ScrollView"
+
+def set_scrollview_class(cls):
+    """A helper function to inject the ScrollView class later to avoid circular imports."""
+    global ScrollView
+    ScrollView = cls
+
 def hex_to_rgb(color):
     r8 = (color >> 16) & 0xFF
     g8 = (color >> 8) & 0xFF
@@ -53,9 +60,10 @@ class Widget:
 
     def set_needs_redraw(self, value=True):
         """Mark this widget and its parents as needing to be redrawn."""
-        self._needs_redraw = value
-        if self.parent and value:
-            self.parent.set_needs_redraw(True)
+        if not self._needs_redraw and value: # Only propagate if state changes
+            self._needs_redraw = True
+            if self.parent:
+                self.parent.set_needs_redraw(True)
 
     def add_child(self, child):
         """Add a child widget."""
@@ -78,6 +86,10 @@ class Widget:
         parent_rect = self.parent.get_absolute_rect()
         abs_x = parent_rect.left + self.rect.left
         abs_y = parent_rect.top + self.rect.top
+
+        if self.parent.__class__.__name__ == 'ScrollView':
+            abs_x -= self.parent.scroll_x # type: ignore
+            abs_y -= self.parent.scroll_y # type: ignore
         return Rect(abs_x, abs_y, abs_x + self.rect.width - 1, abs_y + self.rect.height - 1)
 
     def handle_event(self, event: GUIEvent):
@@ -106,22 +118,32 @@ class Widget:
         """
         return False
 
-    def draw(self):
+    def draw(self, parent_clip_rect: Rect):
         """Draw the widget and its children."""
         if not self.visible:
             return
+        
+        abs_rect = self.get_absolute_rect()
+        my_clip_rect = abs_rect.intersect(parent_clip_rect)
 
+        if my_clip_rect.is_empty():
+            return
+        
         # Let the widget draw itself
-        self.on_draw()
+        self.on_draw(my_clip_rect)
+
 
         # Recursively draw children
         for child in self.children:
-            child.draw()
+            child.draw(my_clip_rect)
         
         self._needs_redraw = False
 
-    def on_draw(self):
-        """Drawing logic to be overridden by subclasses."""
+    def on_draw(self, clip_rect: Rect):
+        """
+        Drawing logic to be overridden by subclasses.
+        All drawing calls must respect the provided clip_rect.
+        """
         pass # Base widget has no visual representation
 
     def find_widget_at(self, x, y):
@@ -170,6 +192,8 @@ class Application:
     def run(self):
         """Starts the main application event loop."""
         looping = True
+        gint.dclear(gint.C_WHITE) # Initial clear
+        self.root.set_needs_redraw(True)
         while looping:
             self.frame_count += 1
             if self.frame_count % 30 == 0 and self.focused_widget:
@@ -179,22 +203,15 @@ class Application:
             
             # Full redraw if needed
             if self.root._needs_redraw:
-                gint.dclear(gint.C_WHITE)
-                self.root.draw()
+                screen_rect = Rect(0, 0, gint.DWIDTH - 1, gint.DHEIGHT - 1)
+                self.root.draw(screen_rect)
                 # gint.dupdate() # dupdate() will happen at the end of this frame
 
             ev = gint.pollevent()
             while ev.type != gint.KEYEV_NONE: # Burst events
-                if ev.type == gint.KEYEV_DOWN and ev.key == gint.KEY_EXIT:
-                    looping = False
-                    break
-
+                print(ev)
                 # Create a standard GUIEvent
                 event: Optional[GUIEvent] = None
-                source_widget = self.root.find_widget_at(getattr(ev, 'x', -1), getattr(ev, 'y', -1)) or self.root
-
-                if ev.type == gint.KEYEV_TOUCH_DOWN:
-                    self.set_focus(source_widget)
 
                 if ev.type == gint.KEYEV_DOWN:
                     if ev.key == gint.KEY_EXIT:
@@ -203,16 +220,20 @@ class Application:
                     if self.focused_widget:
                         event = GUIEvent("key_press", self.focused_widget, key=ev.key)
                         self.focused_widget.handle_event(event)
-                        continue # Skip normal propagation
+                        event = None
+                        # continue # Skip normal propagation
                     else: # No focus, propagate normally
-                        event = GUIEvent("key_press", source_widget, key=ev.key)
-
-                elif ev.type == gint.KEYEV_TOUCH_DOWN:
-                    event = GUIEvent("touch_down", source_widget, pos=(ev.x, ev.y))
-                elif ev.type == gint.KEYEV_TOUCH_UP:
-                    event = GUIEvent("touch_up", source_widget, pos=(ev.x, ev.y))
-                elif ev.type == gint.KEYEV_TOUCH_DRAG:
-                    event = GUIEvent("touch_drag", source_widget, pos=(ev.x, ev.y))
+                        event = GUIEvent("key_press", self.root, key=ev.key)
+                else:
+                    source_widget = self.root.find_widget_at(getattr(ev, 'x', -1), getattr(ev, 'y', -1)) or self.root
+                    
+                    if ev.type == gint.KEYEV_TOUCH_DOWN:
+                        self.set_focus(source_widget)
+                        event = GUIEvent("touch_down", source_widget, pos=(ev.x, ev.y))
+                    elif ev.type == gint.KEYEV_TOUCH_UP:
+                        event = GUIEvent("touch_up", source_widget, pos=(ev.x, ev.y))
+                    elif ev.type == gint.KEYEV_TOUCH_DRAG:
+                        event = GUIEvent("touch_drag", source_widget, pos=(ev.x, ev.y))
 
                 # Dispatch the event
                 if event:

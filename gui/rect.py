@@ -36,6 +36,11 @@ class Rect:
     def height(self) -> int:
         """The height of the rectangle."""
         return self.bottom - self.top + 1
+        
+    @property
+    def size(self) -> Tuple[int, int]:
+        """The (width, height) of the rectangle."""
+        return (self.right - self.left + 1, self.bottom - self.top + 1)
 
     @property
     def center(self) -> Point:
@@ -56,9 +61,7 @@ class Rect:
         elif y is not None:
             px, py = x, y
         else:
-            # This path is for when a Point object is passed as the first argument.
-            # We assume it's a Point and proceed. A TypeError would occur on attribute access if not.
-            px, py = x.x, x.y
+            px, py = x.x, x.y # type: ignore
             
         return self.left <= px <= self.right and self.top <= py <= self.bottom
 
@@ -86,5 +89,17 @@ class Rect:
         """Returns a new Rect with the same dimensions."""
         return Rect(self.left, self.top, self.right, self.bottom)
 
+    def intersect(self, other: 'Rect') -> 'Rect':
+        """Returns a new Rect representing the intersection of this and another rect."""
+        left = max(self.left, other.left)
+        top = max(self.top, other.top)
+        right = min(self.right, other.right)
+        bottom = min(self.bottom, other.bottom)
+        return Rect(left, top, right, bottom)
+
+    def is_empty(self) -> bool:
+        """Returns True if the rectangle has no area."""
+        return self.width <= 0 or self.height <= 0
+
     def __repr__(self) -> str:
-        return f"Rect(left={self.left}, top={self.top}, width={self.width}, height={self.height})"
+        return f"Rect(l={self.left}, t={self.top}, w={self.width}, h={self.height})"
