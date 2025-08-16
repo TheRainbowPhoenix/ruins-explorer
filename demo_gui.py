@@ -7,6 +7,7 @@ from gui.menu import Menu, MenuItem
 from gui.button import Button
 from gui.label import Label
 from gui.checkbox import Checkbox
+from gui.rect import Rect
 from gui.textfield import TextField
 
 try:
@@ -15,6 +16,21 @@ except ImportError:
     pass
 
 C_LIGHT = 0xD69A
+
+NAV_HOME    = 0x4001
+NAV_PAGE2   = 0x4002
+NAV_PAGE3   = 0x4003
+NAV_FORMS   = 0x4004
+NAV_PAINT   = 0x4005
+
+FILE_NEW_PY = 0x4101
+FILE_NEW_TXT = 0x4102
+FILE_NEW_MAP_BLANK = 0x4103
+FILE_NEW_MAP_TEMPLATE = 0x4104
+FILE_EXIT   = 0x41FF
+
+PAINT_CLEAR = 0x4201
+FORM_SUBMIT = 0x4301
 
 # --- Define Content Panels ---
 # These are the different "screens" of our application.
@@ -104,7 +120,7 @@ class PaintPanel(Widget):
 
         return False
 
-    def on_draw(self) -> None:
+    def on_draw(self, clip_rect: Rect) -> None:
         """This now primarily acts as the 'clear' function."""
         abs_rect = self.get_absolute_rect()
         
@@ -120,7 +136,7 @@ class PaintPanel(Widget):
         loop for drawing. Returns when the user presses EXIT.
         """
         # We need to draw the entire frame to get the chrome right.
-        app.root.draw()
+        app.root.draw(app.root.get_absolute_rect())
         gint.dupdate()
 
         x, y = -1, -1
@@ -262,9 +278,13 @@ class DemoApp:
         elif event_id == 'nav_paint':
             self.frame.show_panel(self.paint_panel)
             self.frame.status_bar.set_text("Modal paint mode. Press 'Keyboard' to leave.")
-
+    
+            gint.dwindow_set(self.frame.content_area.rect.left, self.frame.content_area.rect.top, self.frame.content_area.rect.width, self.frame.content_area.rect.height)
+        
             # TODO: fix bug here, run_modal is very fast but laggy when re-opened
             self.paint_panel.run_modal(self.app)
+
+            gint.dwindow_set(0, 0, gint.DWIDTH, gint.DHEIGHT)
 
             self.frame.set_needs_redraw()
             self.frame.status_bar.set_text("Returned to normal mode.")
