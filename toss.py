@@ -3,7 +3,7 @@ from maze import MazeBuilder
 import time
 import struct
 import random
-from gui import gui_bg
+from gui_old import gui_bg
 
 CLEAR_COLOR     = C_RGB(31,31,31)
 
@@ -301,11 +301,13 @@ class TunnelScene(Scene):
         self.draw_gui_base()
         self.draw_gui_map()
         self.draw_gui_text()
+        dupdate()
 
     def redraw_scene_only(self):
         self.draw_tunnel()
         self.draw_gui_map(clean=True)
         self.draw_gui_text(clean=True)
+        dupdate()
 
     def update(self, now, dt):
         ev = pollevent()
@@ -349,6 +351,7 @@ class TunnelScene(Scene):
             # self.draw_gui_base()
             self.draw_gui_map()
             self.draw_gui_text()
+            dupdate()
         
         # Check for player at wall position (PLAYER_Y - LEVELS == -1)
         if self.GOAL and self.PLAYER_Y == self.GOAL[0] and self.PLAYER_X == self.GOAL[1]:
