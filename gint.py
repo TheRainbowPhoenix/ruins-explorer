@@ -3,7 +3,7 @@ import pygame
 from pygame.locals import *
 import sys
 import struct
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Set
 
 
 # Display dimensions
@@ -11,11 +11,14 @@ DWIDTH = 320
 DHEIGHT = 528
 
 C_WHITE = 0xFFFF
+C_LIGHT = 0xad55
+C_DARK  = 0x528a
 C_BLACK = 0x0000
 C_RED = 0b11111_000000_00000
 C_GREEN = 0b00000_111111_00000
 C_BLUE = 0b00000_000000_11111
 C_NONE = -1
+C_INVERT = -2
 
 # Text alignment constants
 DTEXT_LEFT = 'left'
@@ -38,6 +41,8 @@ vram = pygame.Surface((DWIDTH, DHEIGHT))
 clock = pygame.time.Clock()
 FPS = 100  # Adjust to control game speed
 
+# --- NEW: Window Clipping State ---
+_dwindow = (0, 0, DWIDTH, DHEIGHT)
 
 def _to_rgb(color: int) -> tuple:
     """Convert RGB888 int to pygame color tuple"""
@@ -69,6 +74,19 @@ def C_RGB(r: int, g: int, b: int) -> int:
     # return (r8 << 16) | (g8 << 8) | b8
     return ((r & 0x1F) << 11) | ((g & 0x3F) << 6) | (b & 0x1F)
 
+def dwindow_get() -> Tuple[int, int, int, int]:
+    """Get the current rendering window clipping rectangle."""
+    return _dwindow
+
+def dwindow_set(left: int, top: int, right: int, bottom: int):
+    """Set the rendering window to clip drawing operations."""
+    global _dwindow
+    _dwindow = (left, top, right, bottom)
+    
+    # Use pygame's built-in clipping for efficiency
+    clip_rect = pygame.Rect(left, top, right - left, bottom - top)
+    vram.set_clip(clip_rect)
+
 # Drawing functions
 def dclear(color: int):
     if color == C_NONE:
@@ -79,6 +97,9 @@ def dupdate():
     """Update display with VRAM changes"""
     screen.blit(vram, (0, 0))
     pygame.display.flip()
+    for event in pygame.event.get(QUIT): # Essential to keep window responsive
+        pygame.quit()
+        sys.exit()
     clock.tick(FPS)
 
 def dpixel(x: int, y: int, color: int):
@@ -264,6 +285,57 @@ def _get_glyph(font: GintFont, char: str):
     _font_cache[code] = (glyph, width)
     return glyph, width
 
+def dsize(text: str, font: Optional[GintFont]) -> Tuple[int, int]:
+    """Get the width and height of rendered text."""
+    if not text:
+        return 0, GLYPH_HEIGHT
+    
+    font = font or _current_font
+    
+    widths = [_get_glyph(font, c)[1] for c in text]
+    # Sum of glyph widths + spacing between them
+    total_width = sum(widths) + (len(text) - 1) * font.char_spacing
+    
+    return total_width, GLYPH_HEIGHT
+
+def dnsize(text: str, size: int, font: Optional[GintFont]) -> Tuple[int, int]:
+    """Get the width and height of a prefix of a rendered text."""
+    if size < 0:
+        return dsize(text, font)
+    
+    # Simulate byte limit by encoding, slicing, and decoding
+    limited_text = text.encode('utf-8')[:size].decode('utf-8', errors='ignore')
+    return dsize(limited_text, font)
+
+def drsize(text: str, font: Optional[GintFont], width: int) -> Tuple[int, int]:
+    """
+    Determine how many characters fit in a given width.
+
+    Note:
+        The returned byte_offset is not reliable for slicing strings that
+        contain multi-byte Unicode characters. Slicing with `str[:offset]`
+        may fail. This is a known issue.
+    """
+    font = font or _current_font
+    byte_offset = 0
+    actual_width = 0
+    
+    for i, char in enumerate(text):
+        glyph_w = _get_glyph(font, char)[1]
+        
+        # Width this character would occupy (including preceding space)
+        char_total_w = glyph_w + (font.char_spacing if i > 0 else 0)
+        
+        if actual_width + char_total_w > width:
+            break # Character does not fit, stop here.
+        
+        # It fits, commit the changes
+        actual_width += char_total_w
+        byte_offset += len(char.encode('utf-8'))
+        
+    return byte_offset, actual_width
+
+
 # Updated text rendering with precise spacing
 def dtext(x: int, y: int, color: int, text: str,
           align=DTEXT_LEFT, valign=DTEXT_TOP):
@@ -273,9 +345,10 @@ def dtext(x: int, y: int, color: int, text: str,
     font = _current_font or _default_font
     
     # Calculate total width and heights
-    widths = [_get_glyph(font, c)[1] for c in text]
-    total_width = sum(widths)
-    total_height = GLYPH_HEIGHT
+    # widths = [_get_glyph(font, c)[1] for c in text]
+    # total_width = sum(widths)
+    # total_height = GLYPH_HEIGHT
+    total_width, total_height = dsize(text, font)
     
     # Horizontal alignment
     if align == DTEXT_CENTER:
@@ -291,16 +364,16 @@ def dtext(x: int, y: int, color: int, text: str,
     
     # Draw each character
     cursor_x = x
-    for char, width in zip(text, widths):
-        glyph, _ = _get_glyph(font, char)
+    for char in text:
+        glyph, width = _get_glyph(font, char)
         
         # Create colored glyph
         mask = pygame.mask.from_surface(glyph)
         colored = pygame.Surface(glyph.get_size(), pygame.SRCALPHA)
         mask.to_surface(colored, setcolor=_to_rgb(color), unsetcolor=(0,0,0,0))
         
-        vram.blit(colored, (cursor_x- GAP, y - GAP))
-        cursor_x += width + GAP
+        vram.blit(colored, (cursor_x - GAP, y - GAP))
+        cursor_x += width + font.char_spacing
 
 
 def dtext_opt(x: int, y: int, fg: int, bg: int, 
@@ -308,19 +381,9 @@ def dtext_opt(x: int, y: int, fg: int, bg: int,
     if not text:
         return
     
-    font= _current_font or _default_font
+    font = _current_font or _default_font
+    total_width, total_height = dsize(text, font)
 
-    widths = [_get_glyph(font, c)[1] for c in text]
-    total_width = 0
-    glyphs = []
-    total_width = sum(widths)
-    total_height = GLYPH_HEIGHT
-
-    # Calculate metrics
-    for char in text:
-        glyph, width = _get_glyph(font, char)
-        glyphs.append((glyph, width))
-        total_width += width + font.char_spacing
 
     # Horizontal alignment
     if halign == DTEXT_CENTER:
@@ -345,8 +408,8 @@ def dtext_opt(x: int, y: int, fg: int, bg: int,
     
     # Draw text characters
     cursor_x = x
-    for char, width in zip(text, widths):
-        glyph, _ = _get_glyph(font, char)
+    for char in text:
+        glyph, width = _get_glyph(font, char)
         
         # Create colored glyph
         mask = pygame.mask.from_surface(glyph)
@@ -354,15 +417,17 @@ def dtext_opt(x: int, y: int, fg: int, bg: int,
         mask.to_surface(colored, setcolor=_to_rgb(fg), unsetcolor=(0,0,0,0))
         
         vram.blit(colored, (cursor_x - GAP, y - GAP))
-        cursor_x += width + GAP
+        cursor_x += width + font.char_spacing
 
 # Key Events
+pygame.event.set_allowed(None) # Allow all events initially
+pygame.event.set_blocked([MOUSEMOTION, MOUSEBUTTONUP, MOUSEBUTTONDOWN]) # Block mouse by default
 
-pygame.event.set_allowed([
-    QUIT, KEYDOWN, KEYUP,
-    ACTIVEEVENT, VIDEORESIZE, VIDEOEXPOSE,
-    MOUSEBUTTONDOWN, MOUSEBUTTONUP, MOUSEMOTION
-])
+# pygame.event.set_allowed([
+#     QUIT, KEYDOWN, KEYUP,
+#     ACTIVEEVENT, VIDEORESIZE, VIDEOEXPOSE,
+#     MOUSEBUTTONDOWN, MOUSEBUTTONUP, MOUSEMOTION
+# ])
 
 # Key constants
 KEY_F1		= 0x91
@@ -528,12 +593,9 @@ _key_mapping = {
     K_LALT: KEY_KBD
 }
 
-# State tracking
-_key_states = {}
-_modifiers = {'shift': False, 'alpha': False}
-_last_key_time = 0
-_repeat_delay = 400  # ms
-_repeat_interval = 40  # ms
+# --- Gint Keyboard State Simulation ---
+_state_queue: Set[int] = set() # User-visible key state, updated by pollevent
+_state_flips: Set[int] = set() # Keys that changed state since last cleareventflips
 
 class _Event:
     def __init__(self, type=None, key=None):
@@ -544,10 +606,12 @@ class KeyEvent(_Event):
     def __init__(self, event_type=KEYEV_NONE, key=None, pos=(0, 0)):
         super().__init__(event_type, key)
 
+        mods = pygame.key.get_mods()
+
         self.time = int(time.monotonic() * 1000)
         self.mod = False
-        self.shift = _modifiers['shift']
-        self.alpha = _modifiers['alpha']
+        self.shift = bool(mods & KMOD_SHIFT)
+        self.alpha = bool(mods & KMOD_CAPS)
         self.type = event_type
         self.key = key
         self.x, self.y = pos
@@ -568,14 +632,6 @@ class NoneEvent(KeyEvent):
     def __init__(self):
         super().__init__(KEYEV_NONE, None)
 
-
-def _update_modifiers():
-    """Update modifier states from keyboard"""
-    mods = pygame.key.get_mods()
-    _modifiers['shift'] = bool(mods & KMOD_SHIFT)
-    # Alpha state tracking (using Caps Lock as example)
-    _modifiers['alpha'] = bool(pygame.key.get_mods() & KMOD_CAPS)
-
 # Reverse mapping from gint keys to Pygame keys
 _inverse_key_mapping = {}
 for pg_key, custom_key in _key_mapping.items():
@@ -591,92 +647,63 @@ _inverse_key_mapping.update({
     MOUSE_Y: [K_UNKNOWN]
 })
 
+def pollevent() -> KeyEvent:
+    """
+    Processes one event from the queue, updating the internal gint state.
+    This is the ONLY function that should modify _state_queue and _state_flips.
+    """
+    try:
+        event = pygame.event.poll() # Use non-blocking poll
+    except pygame.error:
+        return KeyEvent(KEYEV_NONE)
 
-def pollevent():
-    global _key_states
-    _update_modifiers()
+    if event.type == NOEVENT:
+        return KeyEvent(KEYEV_NONE)
+
+    if event.type == QUIT:
+        # Translate QUIT into a KEY_EXIT press to allow graceful shutdown
+        # This is a special case for the simulator
+        if KEY_EXIT not in _state_queue:
+            _state_queue.add(KEY_EXIT)
+            _state_flips.add(KEY_EXIT)
+        return KeyEvent(KEYEV_DOWN, KEY_EXIT)
+
+    elif event.type == KEYDOWN:
+        gint_key = _key_mapping.get(event.key)
+        if gint_key is not None:
+            # Only report a DOWN event if it's a new press
+            if gint_key not in _state_queue:
+                _state_queue.add(gint_key)
+                _state_flips.add(gint_key)
+                return KeyEvent(KEYEV_DOWN, gint_key)
+
+    elif event.type == KEYUP:
+        gint_key = _key_mapping.get(event.key)
+        if gint_key is not None:
+            # Only report an UP event if it was previously down
+            if gint_key in _state_queue:
+                _state_queue.discard(gint_key)
+                _state_flips.add(gint_key)
+                return KeyEvent(KEYEV_UP, gint_key)
     
-    for event in pygame.event.get():
-        if event.type == QUIT:
-            return KeyEvent(KEYEV_DOWN, KEY_EXIT)
-        
-        elif event.type == VIDEOEXPOSE:  # <-- Triggered when window needs redraw
-            dupdate()
+    # If we reach here, it's an event we don't care about or a repeat keydown
+    return KeyEvent(KEYEV_NONE)
 
-        elif event.type == ACTIVEEVENT:
-            # Redraw when window gains focus (optional)
-            if event.gain == 1:  # 1 = window activated
-                dupdate()
-        
-        # Handle mouse events as touch input
-        elif event.type == MOUSEBUTTONDOWN:
-            return KeyEvent(KEYEV_TOUCH_DOWN, None, event.pos)
-            
-        elif event.type == MOUSEBUTTONUP:
-            return KeyEvent(KEYEV_TOUCH_UP, None, event.pos)
-            
-        elif event.type == MOUSEMOTION:
-            if event.buttons[0]:  # Left mouse button dragged
-                return KeyEvent(KEYEV_TOUCH_DRAG, None, event.pos)
-            
-        elif event.type == KEYDOWN:
-            # Capture Print Screen key to save VRAM
-            if event.key == pygame.K_PRINTSCREEN:  # <-- Add this block
-                pygame.image.save(vram, "screenshot.png")
-                continue  # Skip further processing for this event
-                
-            if event.key in _key_mapping:
-                mapped = _key_mapping[event.key]
-                _key_states[mapped] = {
-                    'time': pygame.time.get_ticks(),
-                    'last_repeat': pygame.time.get_ticks()
-                }
-                return KeyEvent(KEYEV_DOWN, mapped)
-                
-        elif event.type == KEYUP:
-            if event.key in _key_mapping:
-                mapped = _key_mapping[event.key]
-                if mapped in _key_states:
-                    del _key_states[mapped]
-                return KeyEvent(KEYEV_UP, mapped)
-    
-    return KeyEvent(KEYEV_NONE, None)
+def clearevents():
+    """Reads and discards all pending events, updating state."""
+    while pollevent().type != KEYEV_NONE:
+        pass
 
-def getkey() -> KeyEvent:
-    return getkey_opt(GETKEY_DEFAULT, None)
-
-def getkey_opt(options: int, timeout_ms: Optional[int] = 2000) -> KeyEvent:
-    start_time = pygame.time.get_ticks()
-    
-    while True:
-        # Process existing events first
-        ev = pollevent()
-        if ev.type != KEYEV_NONE:
-            if ev.key == KEY_EXIT and not ev.shift and not ev.alpha:
-                pygame.quit()
-                sys.exit()
-            return ev
-        
-        # Check timeout
-        if timeout_ms is not None and (pygame.time.get_ticks() - start_time) > timeout_ms:
-            return KeyEvent(KEYEV_NONE, None)
-        
-        # Handle key repeats
-        current_time = pygame.time.get_ticks()
-        for key in list(_key_states.keys()):
-            state = _key_states[key]
-            if (current_time - state['time']) > _repeat_delay:
-                if (current_time - state['last_repeat']) > _repeat_interval:
-                    _key_states[key]['last_repeat'] = current_time
-                    return KeyEvent(KEYEV_HOLD, key)
-        
-        # Prevent CPU hogging
-        pygame.time.wait(10)
+def cleareventflips():
+    """Resets the reference for keypressed() and keyreleased()."""
+    _state_flips.clear()
 
 def keydown(key: int) -> bool:
-    """Check if a specific key is currently pressed"""
-    pressed = pygame.key.get_pressed()
-    return any(pressed[pg_key] for pg_key in _inverse_key_mapping.get(key, []))
+    """
+    Checks if a key is down according to the event-processed state.
+    This state is only updated by calling pollevent() or clearevents().
+    """
+    return key in _state_queue
 
 def keydown_all(*keys: int) -> bool:
     """Check if all specified keys are pressed"""
@@ -690,16 +717,55 @@ def keydown_any(*keys: int) -> bool:
     return any(any(pressed[pg_key] for pg_key in _inverse_key_mapping.get(key, [])) 
                for key in keys)
 
-def clearevents():
-    """Clear all pending events from the queue"""
-    pygame.event.clear()
+def keypressed(key: int) -> bool:
+    """
+    Checks if a key is currently down AND its state has changed
+    since the last call to cleareventflips().
+    """
+    return (key in _state_queue) and (key in _state_flips)
 
-def cleareventflips():
-    global _key_states
-    global _modifiers
+def keyreleased(key: int) -> bool:
+    """
+    Checks if a key is currently up AND its state has changed
+    since the last call to cleareventflips().
+    """
+    return (key not in _state_queue) and (key in _state_flips)
+
+def getkey() -> KeyEvent:
+    return getkey_opt(GETKEY_DEFAULT, None)
+
+def getkey_opt(options: int, timeout_ms: Optional[int] = 2000) -> KeyEvent:
+    start_time = pygame.time.get_ticks()
     
-    _key_states = {}
-    _modifiers = {'shift': False, 'alpha': False}
+    while True:
+        # First, process any existing events in the queue
+        ev = pollevent()
+        if ev.type == KEYEV_DOWN:
+            if ev.key == KEY_EXIT: # Handle exit gracefully
+                pygame.quit()
+                sys.exit()
+            return ev
+        
+        # If queue is empty, wait for a new event
+        pygame.time.wait(10) # a small delay to prevent busy-looping
+        
+        # Check timeout
+        if timeout_ms is not None and (pygame.time.get_ticks() - start_time) > timeout_ms:
+            return KeyEvent(KEYEV_NONE, None)
+
+
+# def clearevents():
+#     """Clear all pending events from the queue"""
+#     pygame.event.clear()
+
+# def cleareventflips():
+#     global _key_states
+#     global _modifiers
+#     global _keys_pressed_since_flip
+    
+#     _keys_pressed_since_flip.clear()
+#     _key_states = {}
+#     _modifiers = {'shift': False, 'alpha': False}
 
 # --------------------------------------------------------------
 # Image stuff
@@ -966,6 +1032,123 @@ def dsubimage(x: int, y: int, img: Image,
     sub_rect = pygame.Rect(left, top, width, height)
     sub_surf = img.surface.subsurface(sub_rect)
     vram.blit(sub_surf, (x, y))
+
+#  --- Polyfill
+    
+import time
+import gc
+import sys
+import traceback
+from typing import Any, Optional
+
+# Polyfill for time.sleep_ms() and time.sleep_us()
+if not hasattr(time, 'sleep_ms'):
+    def time_sleep_ms(ms: int):
+        """Polyfill for time.sleep_ms. Pauses execution for a number of milliseconds."""
+        time.sleep(ms / 1000.0)
+    time.sleep_ms = time_sleep_ms
+
+if not hasattr(time, 'sleep_us'):
+    def time_sleep_us(us: int):
+        """Polyfill for time.sleep_us. Pauses execution for a number of microseconds."""
+        time.sleep(us / 1_000_000.0)
+    time.sleep_us = time_sleep_us
+
+if not hasattr(time, 'ticks_ms'):
+    TICKS_PERIOD = 2**30
+    TICKS_MAX = TICKS_PERIOD - 1
+    TICKS_HALF_PERIOD = TICKS_PERIOD // 2
+
+    def ticks_ms() -> int:
+        """Polyfill for time.ticks_ms. Returns a wrapping millisecond counter."""
+        return int(time.monotonic() * 1000) & TICKS_MAX
+
+    def ticks_us() -> int:
+        """Polyfill for time.ticks_us. Returns a wrapping microsecond counter."""
+        return int(time.monotonic() * 1_000_000) & TICKS_MAX
+
+    def ticks_cpu() -> int:
+        """Polyfill for time.ticks_cpu. Alias to ticks_us for simulation."""
+        return ticks_us()
+
+    def ticks_add(ticks: int, delta: int) -> int:
+        """Polyfill for time.ticks_add. Correctly adds a value to a wrapping ticks counter."""
+        return (ticks + delta) & TICKS_MAX
+
+    def ticks_diff(ticks1: int, ticks2: int) -> int:
+        """Polyfill for time.ticks_diff. Correctly finds the difference between two wrapping ticks values."""
+        return ((ticks1 - ticks2 + TICKS_HALF_PERIOD) & TICKS_MAX) - TICKS_HALF_PERIOD
+
+    time.ticks_ms = ticks_ms
+    time.ticks_us = ticks_us
+    time.ticks_cpu = ticks_cpu
+    time.ticks_add = ticks_add
+    time.ticks_diff = ticks_diff
+
+# Polyfills for MicroPython-specific gc functions
+if not hasattr(gc, 'mem_alloc'):
+    def gc_mem_alloc() -> int:
+        """Polyfill for gc.mem_alloc. Not implementable in CPython, returns 0."""
+        print("Warning: gc.mem_alloc() is a MicroPython-specific function. Returning 0.")
+        return 0
+    gc.mem_alloc = gc_mem_alloc
+
+if not hasattr(gc, 'mem_free'):
+    def gc_mem_free() -> int:
+        """Polyfill for gc.mem_free. Not implementable in CPython, returns a large number."""
+        print("Warning: gc.mem_free() is a MicroPython-specific function. Returning a dummy value.")
+        # Return a large number to avoid false "out of memory" errors in simulations
+        return 1024 * 1024
+    gc.mem_free = gc_mem_free
+
+if not hasattr(gc, 'threshold'):
+    def gc_threshold(amount: Optional[int] = None) -> int:
+        """Polyfill for gc.threshold. Simulates getting/setting the threshold."""
+        current_thresholds = gc.get_threshold()
+        if amount is not None:
+            print(f"Warning: gc.threshold() is a MicroPython-specific function. Setting a dummy value.")
+            # We can't really set it in the same way, but we can fake it.
+            # This doesn't actually do anything in CPython.
+            pass
+        return current_thresholds[0]
+    gc.threshold = gc_threshold
+
+# Create a dummy micropython module since it doesn't exist in standard Python
+class MicroPythonModule:
+    def const(self, expr: Any) -> Any:
+        """Polyfill for micropython.const. Returns the expression as-is."""
+        return expr
+
+    def opt_level(self, level: Optional[int] = None) -> int:
+        """Polyfill for micropython.opt_level. Does nothing and returns 0."""
+        if level is not None:
+            print(f"Warning: micropython.opt_level({level}) called. No effect in CPython.")
+        return 0
+
+    def heap_lock(self) -> int:
+        """Polyfill for micropython.heap_lock. Does nothing and returns 0."""
+        return 0
+
+    def heap_unlock(self) -> int:
+        """Polyfill for micropython.heap_unlock. Does nothing and returns 0."""
+        return 0
+    
+    def kbd_intr(self, chr_val: int):
+        """Polyfill for micropython.kbd_intr. Does nothing."""
+        pass
+
+# Add the dummy module to sys.modules
+if 'micropython' not in sys.modules:
+    sys.modules['micropython'] = MicroPythonModule()
+
+
+if not hasattr(sys, 'print_exception'):
+    def sys_print_exception(exc: Exception, file=sys.stdout):
+        """
+        Polyfill for sys.print_exception. Uses the standard `traceback` module.
+        """
+        traceback.print_exception(type(exc), exc, exc.__traceback__, file=file)
+    sys.print_exception = sys_print_exception
 
 #  --- INIT STUFF
     

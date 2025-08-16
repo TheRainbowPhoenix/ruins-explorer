@@ -1,6 +1,6 @@
 # Generated automatically from modgint.c
 
-from typing import Any, List, Literal, Optional, Union
+from typing import Any, List, Literal, Optional, Tuple, Union
 
 BufferLike = Any
 
@@ -93,7 +93,6 @@ def clearevents() -> None:
     while pollevent().type != KEYEV_NONE: pass
     """
     ...
-    
 def pollevent() -> KeyEvent:
     """
     Retrieve the oldest unread keyboard event from the queue.
@@ -316,6 +315,29 @@ def dgetpixel(x: int, y: int) -> Any:
     """
     ...
 
+def dwindow_get() -> Tuple[int, int, int, int]:
+    """Get the current rendering window clipping rectangle.
+    
+    Returns:
+        Tuple[int, int, int, int]: (left, top, right, bottom)
+    """
+    ...
+
+def dwindow_set(left: int, top: int, right: int, bottom: int) -> None:
+    """Set the rendering window to clip drawing operations.
+    
+    Rendering will be limited to the rectangle from (left, top) included
+    to (right, bottom) excluded.
+    
+    Example:
+        # Clip to a 100x50 box at (10, 20)
+        gint.dwindow_set(10, 20, 110, 70)
+        # ... draw clipped content ...
+        # Restore full window
+        gint.dwindow_set(0, 0, gint.DWIDTH, gint.DHEIGHT)
+    """
+    ...
+
 # Geometric shape rendering functions
 
 def drect(x1: int, y1: int, x2: int, y2: int, color: int) -> None:
@@ -398,7 +420,62 @@ def dpoly(vertices: list[int], fill: int, border: int) -> Any:
     """
     ...
 
+def dsize(text: str, font: Optional["GintFont"]) -> Tuple[int, int]:
+    """Get the width and height of rendered text.
+    
+    Computes the size the string would occupy if rendered.
+    
+    Args:
+        text: The string to measure.
+        font: The font to use. If None, the current default font is used.
+        
+    Returns:
+        Tuple[int, int]: (width, height) in pixels.
+        
+    Example:
+        tw, th = gint.dsize("Hello World", my_font)
+    """
+    ...
 
+def dnsize(text: str, size: int, font: Optional["GintFont"]) -> Tuple[int, int]:
+    """Get the width and height of a prefix of a rendered text.
+    
+    Similar to dsize(), but stops after 'size' bytes of the input string.
+    If 'size' is negative, it's identical to dsize().
+    
+    Args:
+        text: The string to measure.
+        size: The maximum number of bytes to read from the string.
+        font: The font to use. If None, the current default font is used.
+        
+    Returns:
+        Tuple[int, int]: (width, height) in pixels.
+    """
+    ...
+
+def drsize(text: str, font: Optional["GintFont"], width: int) -> Tuple[int, int]:
+    """Determine how many characters fit in a given width.
+    
+    Calculates the portion of the string that fits within the specified
+    pixel width.
+    
+    Args:
+        text: The string to measure.
+        font: The font to use. If None, the current default font is used.
+        width: The maximum width in pixels.
+        
+    Returns:
+        Tuple[int, int]: (byte_offset, actual_width)
+            - byte_offset: The number of bytes from the start of the string
+              to the last visible character.
+            - actual_width: The pixel width actually used by that part of the string.
+            
+    Note:
+        The returned byte_offset is not reliable for slicing strings that
+        contain multi-byte Unicode characters. Slicing with `str[:offset]`
+        may fail. This is a known issue.
+    """
+    ...
 
 def dtext_opt(x: int, y: int, fg: int, bg: int, halign: int, valign: int, text: str, size: int) -> None:
     """Draw text with advanced positioning and background.
