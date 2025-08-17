@@ -47,7 +47,7 @@ class playerT:
 
     def initialize(self, pos: Vec2):
         # Initial position is in pixels, so we scale it up to fixed-point.
-        self.pos = Vec2(pos.x << FIXED_POINT_SHIFT, pos.y << FIXED_POINT_SHIFT)
+        self.pos = Vec2(pos.x, pos.y)
         self.speed = Vec2(0, 0)
 
     def grounded(self) -> bool: return self._grounded
@@ -68,10 +68,10 @@ class roomT:
 
     def alignToTiles(self, wr: Rect) -> Tuple[int, int, int, int]:
         # Convert fixed-point Rect to tile grid coordinates
-        x1 = max((wr.x >> FIXED_POINT_SHIFT) >> 4, 0)
-        x2 = min(((wr.x + wr.w - 1) >> FIXED_POINT_SHIFT) >> 4, self.w - 1)
-        y1 = max((wr.y >> FIXED_POINT_SHIFT) >> 4, 0)
-        y2 = min(((wr.y + wr.h - 1) >> FIXED_POINT_SHIFT) >> 4, self.h - 1)
+        x1 = max(int(wr.x) >> 4, 0)
+        x2 = min(int(wr.x + wr.w - 1) >> 4, self.w - 1)
+        y1 = max(int(wr.y) >> 4, 0)
+        y2 = min(int(wr.y + wr.h - 1) >> 4, self.h - 1)
         return x1, y1, x2, y2
 
     def hitboxesNear(self, wr: Rect) -> Generator[Tuple[Rect, int, int], None, None]:
@@ -84,10 +84,10 @@ class roomT:
                 t = self.tiles[i]
                 if t != 0xff and tb[4*t+2]:
                     hitbox_rect = Rect(
-                        (16*x + tb[4*t]) << FIXED_POINT_SHIFT,
-                        (16*y + tb[4*t+1]) << FIXED_POINT_SHIFT,
-                        tb[4*t+2] << FIXED_POINT_SHIFT,
-                        tb[4*t+3] << FIXED_POINT_SHIFT
+                        (16*x + tb[4*t]),
+                        (16*y + tb[4*t+1]),
+                        tb[4*t+2],
+                        tb[4*t+3]
                     )
                     yield hitbox_rect, self.tile_collisions[i], self.tileset.solid[t]
 
@@ -197,21 +197,21 @@ class TemplarScene(Scene):
         
         # Jumping
         if self.player.jump_buffer and self.player.grounded():
-            self.player.speed.y = -140 << FIXED_POINT_SHIFT
+            self.player.speed.y = -140
             self.player.jump_frames = 5
             self.player.jump_buffer = 0
 
         # Horizontal Movement & Friction
-        self.player.speed.x = (self.player.speed.x * 250) >> 8 # Approx * 0.97
-        if self.input.dx > 0: self.player.speed.x = max(self.player.speed.x, 64 << FIXED_POINT_SHIFT)
-        elif self.input.dx < 0: self.player.speed.x = min(self.player.speed.x, -64 << FIXED_POINT_SHIFT)
-        else: self.player.speed.x //= 2
+        self.player.speed.x *= 0.97
+        if self.input.dx > 0: self.player.speed.x = max(self.player.speed.x, 64)
+        elif self.input.dx < 0: self.player.speed.x = min(self.player.speed.x, -64)
+        else: self.player.speed.x //= 2 ## int(self.player.speed.x * 0.5)
         
         # Vertical Movement & Gravity
-        if self.player.airborne(): self.player.speed.y += 42 # Integer gravity
+        if self.player.airborne(): self.player.speed.y += 294 * dt
         if self.player.jump_frames > 0:
             jump_down = keydown(KEY_SHIFT) or keydown(KEY_UP)
-            if not jump_down: self.player.speed.y = max(self.player.speed.y, -20 << FIXED_POINT_SHIFT)
+            if not jump_down: self.player.speed.y = max(self.player.speed.y, -20)
             self.player.jump_frames -= 1
 
         # Update stance and facing direction
@@ -220,17 +220,16 @@ class TemplarScene(Scene):
         elif self.input.dx < 0: self.player.facing = FACING_LEFT
 
         # --- Collision and Displacement ---
-        self.player.pos, self.physics_flags = self.physics_displace(self.player.pos, self.player.speed)
+        self.player.pos, self.physics_flags = self.physics_displace(self.player.pos, self.player.speed * dt) # type: ignore -- it is supported my __mul__
         self.player._grounded = (self.physics_flags & PH_GROUNDED) != 0
 
         # React to collision flags
         if self.physics_flags & (PH_LWALL | PH_RWALL): self.player.speed.x = 0
         if self.physics_flags & PH_HEADBANG: self.player.speed.y = max(self.player.speed.y, 0)
-        if self.physics_flags & PH_GROUNDED: self.player.speed.y = 1 << FIXED_POINT_SHIFT # Push gently into the ground
+        if self.physics_flags & PH_GROUNDED: self.player.speed.y = 20 # Push gently into the ground
 
         # Check for death or out of bounds
-        player_pixel_pos = self.player.pos.x >> FIXED_POINT_SHIFT
-        is_out_of_bounds = not (0 < player_pixel_pos < 16 * self.room.w)
+        is_out_of_bounds = not (0 < self.player.pos.x < 16*self.room.w and 0 < self.player.pos.y < 16*self.room.h)
         if (self.physics_flags & PH_DEATH) or is_out_of_bounds:
             self.player_set_stance(STANCE_HURT)
             self.reset_timer = 0.6
@@ -257,7 +256,7 @@ class TemplarScene(Scene):
             self.draw_outline(self.debug_resolution, C_RGB(0,31,0))
             self.draw_outline(phb, C_GREEN)
         if self.debug_hitboxes == 2:
-            full_room_rect = Rect(0, 0, self.room.w << 4 << FIXED_POINT_SHIFT, self.room.h << 4 << FIXED_POINT_SHIFT)
+            full_room_rect = Rect(0, 0, self.room.w << 4, self.room.h << 4)
             for b, bf, _ in self.room.hitboxesNear(full_room_rect):
                 self.draw_flagged_outline(b, bf, C_RED, C_WHITE)
 
@@ -273,7 +272,7 @@ class TemplarScene(Scene):
         elif stance == STANCE_VICTORY: self.player.anim.set(self.animations["Victory"])
 
     def physics_player_hitbox(self, pos: Vec2) -> Rect:
-        return Rect(pos.x - (5 << FIXED_POINT_SHIFT), pos.y - (14 << FIXED_POINT_SHIFT), 11 << FIXED_POINT_SHIFT, 14 << FIXED_POINT_SHIFT)
+        return Rect(pos.x - (5), pos.y - (14), 11, 14)
 
     def physics_acceptable(self, pos: Vec2) -> bool:
         assert self.room
@@ -295,8 +294,8 @@ class TemplarScene(Scene):
                 if solid == SOLID_DEATH: return pos + diff, PH_DEATH
                 if solid in (SOLID_NOT, SOLID_FLAG): continue
                 
-                player_top_pixel = pos.y >> FIXED_POINT_SHIFT
-                plank_top_pixel = r.top >> FIXED_POINT_SHIFT
+                player_top_pixel = pos.y
+                plank_top_pixel = r.top
                 if solid == SOLID_PLANK and (diff.y < 0 or player_top_pixel > plank_top_pixel + 1): continue
                 
                 left_overlap = max(r.right - pr.left, 0)
@@ -304,19 +303,24 @@ class TemplarScene(Scene):
                 top_overlap = max(r.bottom - pr.top, 0)
                 bottom_overlap = min(r.top - pr.bottom, 0)
                 
-                smallest_overlap = 99999999; xo, yo, fo = 0, 0, 0
+                smallest_overlap = 999999
+                xo, yo, fo = 0.0, 0.0, 0
                 
-                if (rf & PH_LWALL) and 0 < left_overlap < smallest_overlap: xo,yo,fo,smallest_overlap = left_overlap,0,PH_LWALL,left_overlap
-                if (rf & PH_RWALL) and 0 < -right_overlap < smallest_overlap: xo,yo,fo,smallest_overlap = right_overlap,0,PH_RWALL,-right_overlap
-                if (rf & PH_HEADBANG) and 0 < top_overlap < smallest_overlap: xo,yo,fo,smallest_overlap = 0,top_overlap,PH_HEADBANG,top_overlap
-                if (rf & PH_GROUNDED) and 0 < -bottom_overlap < smallest_overlap: xo,yo,fo,smallest_overlap = 0,bottom_overlap,PH_GROUNDED,-bottom_overlap
+                if (rf & PH_LWALL) and 0 < left_overlap < smallest_overlap:
+                    xo, yo, fo, smallest_overlap = left_overlap, 0, PH_LWALL, left_overlap
+                if (rf & PH_RWALL) and 0 < -right_overlap < smallest_overlap:
+                    xo, yo, fo, smallest_overlap = right_overlap, 0, PH_RWALL, -right_overlap
+                if (rf & PH_HEADBANG) and 0 < top_overlap < smallest_overlap:
+                    xo, yo, fo, smallest_overlap = 0, top_overlap, PH_HEADBANG, top_overlap
+                if (rf & PH_GROUNDED) and 0 < -bottom_overlap < smallest_overlap:
+                    xo, yo, fo, smallest_overlap = 0, bottom_overlap, PH_GROUNDED, -bottom_overlap
                 
-                if abs(xo) > abs(resolution.x): resolution.x = xo
-                if abs(yo) > abs(resolution.y): resolution.y = yo
+                if abs(xo) > abs(resolution.x): resolution.x = xo # type: ignore
+                if abs(yo) > abs(resolution.y): resolution.y = yo # type: ignore
                 flags |= fo
             
         self.debug_resolution = self.physics_player_hitbox(pos + diff + resolution)
-        if max(abs(resolution.x), abs(resolution.y)) >= (15 << FIXED_POINT_SHIFT): return pos, PH_TOO_FAST
+        if max(abs(resolution.x), abs(resolution.y)) >= 15: return pos, PH_TOO_FAST
         
         adjusted = pos + diff
         if not (flags & PH_LWALL and flags & PH_RWALL): adjusted.x += resolution.x
@@ -356,8 +360,9 @@ class TemplarScene(Scene):
                     i += 1
     
     def draw_tile(self, x: int, y: int, tileID: int):
+        assert self.room
         assert self.tileset
-        img = self.tileset.img
+        img = self.room.tileset.img # self.tileset.img ?
         sx, sy = MAP_X + 16 * x, MAP_Y + 16 * y
         w = img.width >> 4; tx, ty = tileID % w, tileID // w
         dsubimage(sx, sy, img, 176, 48, 16, 16) # background
@@ -368,30 +373,31 @@ class TemplarScene(Scene):
         assert self.player
         p = self.player
         flipped = (p.facing == FACING_LEFT)
-        base_x = (p.pos.x >> FIXED_POINT_SHIFT) + MAP_X
-        base_y = (p.pos.y >> FIXED_POINT_SHIFT) + MAP_Y
+        base = self.world2screen(p.pos)
+
+        # base_x = (p.pos.x) + MAP_X
+        # base_y = (p.pos.y) + MAP_Y
 
         if p.anim.index >= 0 and p.anim.frames:
             f = p.anim.frames[p.anim.index]
             img, cx = (f.imgH, f.w - 1 - f.cx) if flipped else (f.img, f.cx)
-            draw_x, draw_y = base_x - cx, base_y - f.cy
+            draw_x, draw_y = base.x - cx, base.y - f.cy
             dsubimage(draw_x, draw_y, img, f.x, f.y, f.w, f.h)
-            dirty_rect = Rect(p.pos.x - (cx << FIXED_POINT_SHIFT), p.pos.y - (f.cy << FIXED_POINT_SHIFT), f.w << FIXED_POINT_SHIFT, f.h << FIXED_POINT_SHIFT)
-            self.mark_tiles_dirty(dirty_rect)
+            self.mark_tiles_dirty(self.screen2world_rect(Rect(draw_x, draw_y, f.w, f.h)))
 
     def draw_entity(self, pos: Vec2, anim: AnimationState):
-        base_x = (pos.x >> FIXED_POINT_SHIFT) + MAP_X
-        base_y = (pos.y >> FIXED_POINT_SHIFT) + MAP_Y
+        base = self.world2screen(pos)
+        # base_x = (pos.x >> FIXED_POINT_SHIFT) + MAP_X
+        # base_y = (pos.y >> FIXED_POINT_SHIFT) + MAP_Y
         if anim.index >= 0  and anim.frames:
             f = anim.frames[anim.index]
-            draw_x, draw_y = base_x - f.cx, base_y - f.cy
+            draw_x, draw_y = base.x - f.cx, base.y - f.cy
             dsubimage(draw_x, draw_y, f.img, f.x, f.y, f.w, f.h)
-            dirty_rect = Rect(pos.x - (f.cx << FIXED_POINT_SHIFT), pos.y - (f.cy << FIXED_POINT_SHIFT), f.w << FIXED_POINT_SHIFT, f.h << FIXED_POINT_SHIFT)
-            self.mark_tiles_dirty(dirty_rect)
+            self.mark_tiles_dirty(self.screen2world_rect(Rect(draw_x, draw_y, f.w, f.h)))
 
     def draw_hud(self, frame_time_ms: int):
         x, y = HUD_X + 2, HUD_Y + 4
-        drect(HUD_X, HUD_Y, HUD_X+HUD_W-1, HUD_Y+HUD_H-1, C_RGB(6,5,2))
+        drect(HUD_X, HUD_Y, HUD_X + HUD_W - 1, HUD_Y + HUD_H - 1, C_RGB(6,5,2))
         if self.debug_hitboxes > 0:
             dtext_opt(x, y+135, C_WHITE, C_NONE, DTEXT_LEFT, DTEXT_TOP, f"ft: {frame_time_ms} ms", -1)
         else:
@@ -400,21 +406,31 @@ class TemplarScene(Scene):
             dtext_opt(x, y+15, C_WHITE, C_NONE, DTEXT_LEFT, DTEXT_TOP, f"Deaths: {self.deaths}", -1)
             dtext_opt(x, y+30, C_WHITE, C_NONE, DTEXT_LEFT, DTEXT_TOP, f"Time: {self.game_time:.1f}", -1)
 
+    def world2screen(self, pos: Vec2) -> Vec2:
+        return Vec2(MAP_X + int(pos.x), MAP_Y + int(pos.y))
+    def world2screen_rect(self, r: Rect) -> Rect:
+        return Rect(MAP_X + int(r.x), MAP_Y + int(r.y), int(r.w), int(r.h))
+    def screen2world_rect(self, r: Rect) -> Rect:
+        return Rect(r.x - MAP_X, r.y - MAP_Y, r.w, r.h)
+    
     def draw_outline(self, r: Rect, color: int):
         self.mark_tiles_dirty(r)
-        x = (r.x >> FIXED_POINT_SHIFT) + MAP_X
-        y = (r.y >> FIXED_POINT_SHIFT) + MAP_Y
-        w = (r.w >> FIXED_POINT_SHIFT)
-        h = (r.h >> FIXED_POINT_SHIFT)
-        drect_border(x, y, x+w-1, y+h-1, C_NONE, 1, color)
-        
+        r = self.world2screen_rect(r)
+        drect_border(r.x, r.y, r.x+r.w-1, r.y+r.h-1, C_NONE, 1, color)
+    
     def draw_flagged_outline(self, r: Rect, rb: int, c1: int, c2: int):
         self.mark_tiles_dirty(r)
-        x1 = (r.x >> FIXED_POINT_SHIFT) + MAP_X
-        y1 = (r.y >> FIXED_POINT_SHIFT) + MAP_Y
-        x2 = ((r.x + r.w) >> FIXED_POINT_SHIFT) + MAP_X
-        y2 = ((r.y + r.h) >> FIXED_POINT_SHIFT) + MAP_Y
-        dline(x1,y1,x2,y1, c2 if rb & PH_GROUNDED else c1)
-        dline(x1,y2,x2,y2, c2 if rb & PH_HEADBANG else c1)
-        dline(x1,y1,x1,y2, c2 if rb & PH_RWALL else c1)
-        dline(x2,y1,x2,y2, c2 if rb & PH_LWALL else c1)
+        r = self.world2screen_rect(r)
+        x1 = (r.x) + MAP_X
+        y1 = (r.y) + MAP_Y
+        x2 = ((r.x + r.w)) + MAP_X
+        y2 = ((r.y + r.h)) + MAP_Y
+        # dline(x1,y1,x2,y1, c2 if rb & PH_GROUNDED else c1)
+        # dline(x1,y2,x2,y2, c2 if rb & PH_HEADBANG else c1)
+        # dline(x1,y1,x1,y2, c2 if rb & PH_RWALL else c1)
+        # dline(x2,y1,x2,y2, c2 if rb & PH_LWALL else c1)
+        dline(r.x,r.y,r.x+r.w-1,r.y, c2 if rb & PH_GROUNDED else c1)
+        dline(r.x,r.y+r.h-1,r.x+r.w-1,r.y+r.h-1, c2 if rb & PH_HEADBANG else c1)
+        dline(r.x,r.y,r.x,r.y+r.h-1, c2 if rb & PH_RWALL else c1)
+        dline(r.x+r.w-1,r.y,r.x+r.w-1,r.y+r.h-1, c2 if rb & PH_LWALL else c1)
+
