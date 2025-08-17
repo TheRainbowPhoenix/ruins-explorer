@@ -8,8 +8,8 @@ solid_tiles = {4} # The Sign ID
 # 1=grass, 5=dirt_path
 map_layout = [
     [1, 1, 1, 1, 5, 5, 5, 5, 5, 5, 1, 1, 1],
-    [1, 1, 1, 5, 5, 1, 1, 1, 5, 5, 1, 4, 1],
-    [1, 1, 5, 5, 1, 1, 1, 1, 1, 5, 5, 4, 1],
+    [1, 1, 1, 5, 5, 1, 1, 1, 5, 5, 1, 1, 1],
+    [1, 1, 5, 5, 1, 1, 1, 1, 1, 5, 5, 1, 1],
     [1, 5, 5, 1, 1, 1, 1, 1, 1, 1, 5, 5, 1],
     [5, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 5],
     [5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5],
@@ -26,7 +26,5 @@ map_signs = {
 
 # Data for interactive objects, mapping (y, x) to tile ID and text.
 map_objects = {
-    (6, 6): (52, ["You found a", "strange, glowing", "crystal."]),
-    # Special type of object: actor. Would be pulled from game_data/actors
-    (3, 3): (56, {"type": "actor", "id": "ACTOR_001"}) 
+    (6, 6): (52, ["You found a", "strange, glowing", "crystal."])
 }

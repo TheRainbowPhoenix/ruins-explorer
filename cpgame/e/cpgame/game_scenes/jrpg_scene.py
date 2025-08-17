@@ -3,15 +3,13 @@
 
 from gint import *
 try:
-    from typing import Optional, List, Set, Tuple, Dict, Any
+    from typing import Optional, List, Set, Tuple, Dict
 except:
     pass
 
 # Engine imports
 from cpgame.engine.scene import Scene
 from cpgame.engine.systems import Camera # Although we manage it manually here
-from cpgame.modules.datamanager import DataManager
-from cpgame.game_objects.actor import GameActor
 
 # --- Scene Constants ---
 TILE_SIZE = 20
@@ -24,9 +22,6 @@ class JRPGScene(Scene):
     """
     def __init__(self, game):
         super().__init__(game)
-        
-        # NEW: Add an instance of the DataManager
-        self.data = DataManager()
 
         # --- Game State ---
         self.player_x: int = 0
@@ -36,7 +31,7 @@ class JRPGScene(Scene):
         # --- Map Data (loaded in create) ---
         self.tileset = None
         self.map_layout: List[List[int]] = []
-        self.map_objects: Dict[Tuple[int, int], Tuple[int, Any]] = {} # Use Any for payload
+        self.map_objects: Dict[Tuple[int, int], Tuple[int, List[str]]] = {}
         self.map_signs: Dict[Tuple[int, int], List[str]] = {}
         self.map_w: int = 0
         self.map_h: int = 0
@@ -175,54 +170,20 @@ class JRPGScene(Scene):
         if not self.input.interact:
             return
 
-        # Check interaction target in front of the player
-        front_x = self.player_x + (1 if self.input.dx > 0 else -1 if self.input.dx < 0 else 0)
-        front_y = self.player_y + (1 if self.input.dy > 0 else -1 if self.input.dy < 0 else 0)
-        
-        # Check adjacent tiles if not moving
-        if self.input.dx == 0 and self.input.dy == 0:
-            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                adj_pos = (self.player_y + dy, self.player_x + dx)
-                if self._check_interaction_at(adj_pos):
-                    return
-        else:
-             adj_pos = (self.player_y + self.input.dy, self.player_x + self.input.dx)
-             if self._check_interaction_at(adj_pos):
-                return
-        
-        # Fallback to check player's current tile (e.g. for floor items)
+        # Check for objects on the player's current tile
         player_pos = (self.player_y, self.player_x)
-        if self._check_interaction_at(player_pos):
-            return
-    
-    def _check_interaction_at(self, pos: Tuple[int, int]) -> bool:
-        """Helper to check for and handle interaction at a specific map coordinate."""
-        # Check for objects
-        if pos in self.map_objects:
-            _, payload = self.map_objects[pos]
-            # MODIFIED: Handle different payload types
-            if isinstance(payload, dict) and payload.get("type") == "actor":
-                # It's an actor, load it using the DataManager
-                actor_id = payload.get("id", "")
-                if actor_id:
-                    # Use the context manager to ensure memory is freed
-                    with self.data.actors.load(actor_id) as actor_data:
-                        if actor_data:
-                            actor = GameActor(1, actor_data)
-                            self._start_dialog(actor.get_info_text())
-                    return True # Interaction handled
-            else:
-                # It's a simple dialog object
-                self._start_dialog(payload)
-                return True # Interaction handled
-
-        # Check for signs
-        if pos in self.map_signs:
-            pages = self.map_signs[pos]
+        if player_pos in self.map_objects:
+            _, pages = self.map_objects[player_pos]
             self._start_dialog(pages)
-            return True # Interaction handled
-            
-        return False # No interaction found
+            return
+
+        # Check for signs on adjacent tiles
+        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            adj_pos = (self.player_y + dy, self.player_x + dx)
+            if adj_pos in self.map_signs:
+                pages = self.map_signs[adj_pos]
+                self._start_dialog(pages)
+                return
 
     def _is_walkable(self, x: int, y: int) -> bool:
         """Checks if a given map coordinate is within bounds and not a solid tile."""
@@ -230,10 +191,6 @@ class JRPGScene(Scene):
             return False
         
         tile_id = self.map_layout[y][x]
-        # Also consider tiles with objects on them as not walkable
-        # TODO: use half int pack for xy search instead of tuples !!
-        if (y, x) in self.map_objects:
-            return False
         return tile_id not in self.tileset.solid # type: ignore
 
     def _update_camera_block(self) -> bool:
@@ -252,7 +209,7 @@ class JRPGScene(Scene):
             return True
         return False
 
-    def _start_dialog(self, pages: Any): # List[str]
+    def _start_dialog(self, pages: List[str]):
         """Initializes the dialog system."""
         self.dialog_active = True
         self.dialog_pages = pages
@@ -315,7 +272,5 @@ class JRPGScene(Scene):
 
         if self.dialog_index < len(self.dialog_pages):
             page_text = self.dialog_pages[self.dialog_index]
-            # Handle both list of strings and single string with newlines
-            lines_to_draw = page_text if isinstance(page_text, list) else page_text.split("\n")
-            for i, line in enumerate(lines_to_draw):
+            for i, line in enumerate(page_text.split("\n")):
                 dtext(8, y0 + 8 + i * 16, C_BLACK, line)

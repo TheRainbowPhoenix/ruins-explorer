@@ -1,5 +1,6 @@
 # cpGame
 
+## Structure
 
 ```
 ├── main.py                 # The simple, single entry point to run the game.
@@ -24,4 +25,9 @@
     ├── menu_scene.py       # A new title screen to choose a game.
     └── templar_scene.py    # The Templar side-scrolling game scene.
 ```
+
+## TODO
+
+How to save binary files ? does repr works ? 
+Make an on-device fxconv to serialize and deserialize on the fly
 
