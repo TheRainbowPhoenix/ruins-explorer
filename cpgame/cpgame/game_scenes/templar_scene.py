@@ -43,6 +43,7 @@ class playerT:
         self._grounded: bool = True
         self.jump_frames: int = 0
         self.jump_buffer: int = 0
+        self.noncontrol_frames: int = 0
         self.anim: AnimationState = AnimationState()
 
     def initialize(self, pos: Vec2):
@@ -83,13 +84,12 @@ class roomT:
                 i = self.w * y + x
                 t = self.tiles[i]
                 if t != 0xff and tb[4*t+2]:
-                    hitbox_rect = Rect(
+                    yield Rect(
                         (16*x + tb[4*t]),
                         (16*y + tb[4*t+1]),
                         tb[4*t+2],
                         tb[4*t+3]
-                    )
-                    yield hitbox_rect, self.tile_collisions[i], self.tileset.solid[t]
+                    ), self.tile_collisions[i], self.tileset.solid[t]
 
     def compute_tile_collisions(self):
         if not self.tiles: return
@@ -172,13 +172,20 @@ class TemplarScene(Scene):
             self.game.change_scene(MenuScene)
             return
         
-        if keypressed(KEY_OPTN):
+        dx = self.input.dx
+        jump_down = keydown(KEY_SHIFT) or keydown(KEY_UP)
+        if self.input.shift or self.input.up: self.player.jump_buffer = 3
+        
+        if keypressed(KEY_KBD):
             self.debug_hitboxes = (self.debug_hitboxes + 1) % 3
+            # Mark all tiles dirty to redraw hitbox outlines
             for i in range(len(self.dirty_tiles)): self.dirty_tiles[i] = 1
 
         # --- Update Game State Timers ---
         self.game_time += dt
         self.player.anim.update(dt)
+
+        # Update entities and remove finished ones
         self.entities = [e for e in self.entities if not e[1].update(dt)]
 
         if self.end_timer > 0:
@@ -208,9 +215,9 @@ class TemplarScene(Scene):
         else: self.player.speed.x //= 2 ## int(self.player.speed.x * 0.5)
         
         # Vertical Movement & Gravity
-        if self.player.airborne(): self.player.speed.y += 294 * dt
+        if self.player.airborne(): self.player.speed.y += 9.81 * dt * 30
         if self.player.jump_frames > 0:
-            jump_down = keydown(KEY_SHIFT) or keydown(KEY_UP)
+            # jump_down = keydown(KEY_SHIFT) or keydown(KEY_UP)
             if not jump_down: self.player.speed.y = max(self.player.speed.y, -20)
             self.player.jump_frames -= 1
 
@@ -272,7 +279,7 @@ class TemplarScene(Scene):
         elif stance == STANCE_VICTORY: self.player.anim.set(self.animations["Victory"])
 
     def physics_player_hitbox(self, pos: Vec2) -> Rect:
-        return Rect(pos.x - (5), pos.y - (14), 11, 14)
+        return Rect(pos.x - 5, pos.y - 14, 11, 14)
 
     def physics_acceptable(self, pos: Vec2) -> bool:
         assert self.room

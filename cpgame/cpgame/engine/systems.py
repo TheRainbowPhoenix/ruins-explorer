@@ -1,7 +1,7 @@
 # Contains helper systems like Input and Camera.
 
 from gint import keydown, keypressed, cleareventflips, clearevents
-from gint import KEY_RIGHT, KEY_LEFT, KEY_DOWN, KEY_UP, KEY_EXE, KEY_MENU, KEY_EXIT
+from gint import KEY_RIGHT, KEY_LEFT, KEY_DOWN, KEY_UP, KEY_EXE, KEY_MENU, KEY_EXIT, KEY_SHIFT
 
 class InputManager:
     """
@@ -19,6 +19,7 @@ class InputManager:
         self.interact: bool = False
         self.menu: bool = False
         self.exit: bool = False
+        self.shift: bool = False
 
         # TODO: 8Dir with numpad ? 5 = OK
         # TODO: define a custom mapping ?
@@ -39,6 +40,7 @@ class InputManager:
         self.interact = keypressed(KEY_EXE)
         self.menu = keypressed(KEY_MENU)
         self.exit = keypressed(KEY_EXIT)
+        self.shift = keypressed(KEY_SHIFT)
 
 class Camera:
     """A basic camera that can be used by scenes."""
