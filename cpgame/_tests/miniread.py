@@ -6,7 +6,7 @@ HDR_FMT = "<4sHHII"
 HDR_SIZE = struct.calcsize(HDR_FMT)
 
 def read_header(path):
-    with io.open(path, 'rb') as f:
+    with open(path, 'rb') as f:
         print("BEFORE READ")
         b = f.read(HDR_SIZE)
         print("AFTER READ")

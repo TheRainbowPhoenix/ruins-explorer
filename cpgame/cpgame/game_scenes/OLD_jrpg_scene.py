@@ -1,16 +1,21 @@
 # scenes/jrpg_scene.py
+# A top-down, tile-based RPG scene.
+
 from gint import *
 try:
-    from typing import Optional, List, Set, Tuple,Dict, Any
+    from typing import Optional, List, Set, Tuple, Dict, Any
 except:
     pass
 
+# Engine imports
 from cpgame.engine.scene import Scene
-from cpgame.engine.systems import Camera
+from cpgame.engine.systems import Camera # Although we manage it manually here
+from cpgame.modules.datamanager import DataManager
 from cpgame.game_objects.actor import GameActor
 
+# --- Scene Constants ---
 TILE_SIZE = 20
-MOVE_DELAY = 0.15
+MOVE_DELAY = 0.15 # Seconds between player steps
 
 class JRPGScene(Scene):
     """
@@ -20,12 +25,15 @@ class JRPGScene(Scene):
     def __init__(self, game):
         super().__init__(game)
         
+        # NEW: Add an instance of the DataManager
+        self.data = DataManager()
+
         # --- Game State ---
         self.player_x: int = 0
         self.player_y: int = 0
         self.move_cooldown: float = 0.0
 
-        # --- Map Data ---
+        # --- Map Data (loaded in create) ---
         self.tileset = None
         self.map_layout: List[List[int]] = []
         self.map_objects: Dict[Tuple[int, int], Tuple[int, Any]] = {} # Use Any for payload
@@ -33,23 +41,22 @@ class JRPGScene(Scene):
         self.map_w: int = 0
         self.map_h: int = 0
 
-        # --- Camera & Rendering ---
+        # --- Special Camera Control ---
+        # This scene uses a non-standard "block" camera
         self.cam_block_x: int = -1
         self.cam_block_y: int = -1
         self.screen_tiles_x = DWIDTH // TILE_SIZE
         self.screen_tiles_y = DHEIGHT // TILE_SIZE
-        
+
         # --- Rendering Optimization ---
         self.dirty_tiles: Set[Tuple[int, int]] = set()
-        self.full_redraw_needed = True
+        self.full_redraw_needed: bool = True
 
-        # --- Dialog State ---
+        # --- Dialog System State ---
         self.dialog_active: bool = False
         self.dialog_pages: List[str] = []
         self.dialog_index: int = 0
 
-    
-        
     def create(self):
         """
         Called once by the game loop when this scene starts.
@@ -91,7 +98,6 @@ class JRPGScene(Scene):
         if self.input.exit:
             # We import here to avoid circular dependency issues
             from cpgame.game_scenes.menu_scene import MenuScene
-            self.game.clear_session() # Clean up party, datamanager, etc.
             return self.game.change_scene(MenuScene)
 
         # Update timers
@@ -191,25 +197,20 @@ class JRPGScene(Scene):
     
     def _check_interaction_at(self, pos: Tuple[int, int]) -> bool:
         """Helper to check for and handle interaction at a specific map coordinate."""
+        # Check for objects
         if pos in self.map_objects:
             _, payload = self.map_objects[pos]
-            # Handle different payload types
+            # MODIFIED: Handle different payload types
             if isinstance(payload, dict) and payload.get("type") == "actor":
                 # It's an actor, load it using the DataManager
                 actor_id = payload.get("id", "")
                 if actor_id:
-                    # Access the DataManager and Party via self.game.session_data
-                    data_manager = self.game.session_data.get('data')
-                    party = self.game.session_data.get('party')
-                    
-                    if data_manager and party:
-                        with data_manager.actors.load(actor_id) as actor_data:
-                            if actor_data:
-                                actor = GameActor(1, actor_data)
-                                # Demonstrate access to another session object (party)
-                                party_info = ["Party Members: " + str(party.size())]
-                                self._start_dialog(actor.get_info_text() + party_info)
-                        return True
+                    # Use the context manager to ensure memory is freed
+                    with self.data.actors.load(actor_id) as actor_data:
+                        if actor_data:
+                            actor = GameActor(1, actor_data)
+                            self._start_dialog(actor.get_info_text())
+                    return True # Interaction handled
             else:
                 # It's a simple dialog object
                 self._start_dialog(payload)
@@ -231,7 +232,7 @@ class JRPGScene(Scene):
         # Prevent walking on tiles occupied by objects/actors
         tile_id = self.map_layout[y][x]
         # Also consider tiles with objects on them as not walkable
-        # TODO: Some should be passable !!
+        # TODO: use half int pack for xy search instead of tuples !!
         if (y, x) in self.map_objects:
             return False
         return tile_id not in self.tileset.solid # type: ignore
@@ -308,7 +309,7 @@ class JRPGScene(Scene):
 
     def _draw_dialog_box(self):
         """Draws the UI for the dialog box at the bottom of the screen."""
-        box_h = DHEIGHT // 3
+        box_h = DHEIGHT // 4
         y0 = DHEIGHT - box_h
         drect(0, y0, DWIDTH - 1, DHEIGHT - 1, C_WHITE)
         drect_border(0, y0, DWIDTH - 1, DHEIGHT - 1, C_NONE, 1, C_BLACK)

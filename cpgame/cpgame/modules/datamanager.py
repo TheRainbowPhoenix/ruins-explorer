@@ -8,17 +8,35 @@ try:
 except:
     pass
 
+def _get_public_attributes(module: Any) -> List[str]:
+    """Inspects a module and returns a list of its public data attributes."""
+    # A simple heuristic for MicroPython: public data is all-caps.
+    # This avoids pulling in imports or private variables.
+    public_attrs = []
+    # Use dir() which is available on MicroPython modules
+    for attr_name in dir(module):
+        if not attr_name.startswith('_'):
+            is_upper = True
+            # Check if the attribute name is entirely uppercase
+            for char in attr_name:
+                if 'a' <= char <= 'z':
+                    is_upper = False
+                    break
+            if is_upper:
+                public_attrs.append(attr_name)
+    return public_attrs
+
 def _cleanup_module(mod_name: str, mod: Any):
     """Safely cleans up and unloads a module to free memory."""
-    # Remove the heavy attributes from the module if they exist
-    # This helps break reference cycles
-    # TODO: make this dynamic ! (pulled from metadata)
-    for attr_name in ['image', 'data', 'ACTOR_001', 'ACTOR_002', 'HEADER']:
-        if hasattr(mod, attr_name):
-            try:
-                delattr(mod, attr_name)
-            except:
-                pass
+    if mod:
+        # Dynamically find public attributes to delete
+        public_attrs = _get_public_attributes(mod)
+        for attr_name in public_attrs:
+            if hasattr(mod, attr_name):
+                try:
+                    delattr(mod, attr_name)
+                except:
+                    pass
     
     # Uncache the module so it can be garbage collected
     if mod_name in sys.modules:
@@ -27,7 +45,7 @@ def _cleanup_module(mod_name: str, mod: Any):
         except:
             pass
     
-    # Drop the module object itself and collect garbage
+    # Drop the reference and run garbage collection
     try:
         del mod
     except:
@@ -35,7 +53,7 @@ def _cleanup_module(mod_name: str, mod: Any):
     gc.collect()
 
 class DataProxy:
-    """A context manager for loading and automatically cleaning up a data object."""
+    """A context manager to safely load and automatically clean up a data object."""
     def __init__(self, loader_func, object_name: str):
         self._load = loader_func
         self._object_name = object_name
@@ -46,8 +64,8 @@ class DataProxy:
         return self._instance
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # The cleanup is handled by the ModuleProxy that created this.
-        # We just need to ensure the instance is dereferenced.
+        # The actual module cleanup is handled by the ModuleProxy.
+        # This just ensures the loaded data object itself is dereferenced.
         del self._instance
         gc.collect()
 
@@ -55,7 +73,7 @@ class ModuleProxy:
     """
     Acts as a proxy for a data module (e.g., actors.py).
     It loads the module's HEADER on creation and provides methods to load
-    individual objects from it on demand.
+    individual objects from it on demand, with cleanup.
     """
     def __init__(self, data_category: str):
         self.category = data_category
@@ -65,19 +83,22 @@ class ModuleProxy:
         self._load_header()
 
     def _load_header(self):
-        """Loads only the HEADER from the module."""
+        """Loads only the HEADER from the module to see what's available."""
+        mod = None
         try:
             mod = __import__(self.module_path, None, None, ('HEADER',))
             self._header = mod.HEADER
-        except (ImportError, AttributeError) as e:
+        except (ImportError, AttributeError):
             print("DataManager Error: Could not load HEADER from", self.module_path)
             self._header = {'exports': []}
         finally:
-            if 'mod' in locals():
+            if mod:
                 _cleanup_module(self.module_path, mod)
 
     def _load_object_from_module(self, object_name: str):
         """Loads the full module to retrieve a specific object."""
+        if not self._header:
+            raise AttributeError("Module '{}' is missing HEADER".format(self.module_path))
         if object_name not in self._header.get('exports', []):
             raise AttributeError("Object '{}' not found in '{}'".format(object_name, self.category))
         
@@ -86,7 +107,7 @@ class ModuleProxy:
             self._module = __import__(self.module_path, None, None, (object_name,))
             return getattr(self._module, object_name)
         except (ImportError, AttributeError) as e:
-            print("DataManager Error: Failed to load '{}' from {}".format(object_name, self.module_path))
+            raise ImportError("DataManager Error: Failed to load '{}' from {}".format(object_name, self.module_path))
             return None
 
     def get(self, object_name: str) -> Optional[Any]:

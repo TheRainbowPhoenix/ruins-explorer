@@ -3,7 +3,8 @@
 from gint import *
 from cpgame.engine.scene import Scene
 from cpgame.game_scenes.templar_scene import TemplarScene
-from cpgame.game_scenes.jrpg_scene import JRPGScene
+# MODIFIED: Import the boot scene instead of the main JRPG scene
+from cpgame.game_scenes.jrpg_boot_scene import JRPG_BootScene
 
 C_YELLOW = 0b00000_111111_11111
 
@@ -33,7 +34,7 @@ class MenuScene(Scene):
             if self.selected_index == 0:
                 self.game.change_scene(TemplarScene)
             elif self.selected_index == 1:
-                self.game.change_scene(JRPGScene)
+                self.game.change_scene(JRPG_BootScene)
             elif self.selected_index == 2:
                 self.game.running = False # Signal the game to exit
         

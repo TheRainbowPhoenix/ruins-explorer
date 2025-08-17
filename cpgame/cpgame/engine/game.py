@@ -2,26 +2,30 @@
 # The main game class with the fixed-timestep loop and scene management.
 
 import time
+import gc # Import garbage collector for cleanup
 from gint import *
 from cpgame.engine.scene import Scene
 from cpgame.engine.assets import AssetManager
 from cpgame.game_scenes.menu_scene import MenuScene # TODO: should be dynamic ?
 
 try:
-    from typing import Optional, List
+    from typing import Optional, List, Dict, Any
 except:
     pass
 
 DEBUG_FRAME_TIME = False
 
 class Game:
-    """The main Game class, equivalent to Phaser.Game."""
+    """The main Game class"""
     def __init__(self):
         self.scenes: List[Scene] = []
         self.assets = AssetManager()
         self.running: bool = False
         self.fixed_timestep: float = 0.055
         self.frame_cap_ms: int = 53
+
+        # Generic container for game-mode-specific systems.
+        self.session_data: Dict[str, Any] = {}
 
     def start(self, initial_scene_class):
         """Initializes assets and starts the game with the first scene."""
@@ -57,3 +61,9 @@ class Game:
         new_scene = new_scene_class(self)
         self.scenes.append(new_scene)
         new_scene.create()
+    
+    def clear_session(self):
+        """Clears all session data and runs garbage collection."""
+        print("Clearing game session data...")
+        self.session_data.clear()
+        gc.collect()

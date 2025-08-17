@@ -20,11 +20,7 @@ ACTOR_001 = {
     "face_index": 0,
     "equips": [1, 1, 2, 3, 0],
     "params": [100, 20, 12, 8, 5, 5, 10, 5], # MHP, MMP, ATK, DEF, MAT, MDF, AGI, LUK
-    "description": [
-        "A brave warrior from",
-        "a small village.",
-        "Destined for greatness."
-    ]
+    "description": ["A brave warrior from\n a small village.", "Destined for greatness."]
 }
 
 # Data for a second actor
@@ -39,9 +35,5 @@ ACTOR_002 = {
     "face_index": 0,
     "equips": [5, 0, 2, 4, 0],
     "params": [75, 50, 5, 6, 15, 12, 8, 7],
-    "description": [
-        "A wise mage with",
-        "knowledge of ancient",
-        "spells."
-    ]
+    "description": ["A wise mage with\nknowledge of ancient\nspells."]
 }
