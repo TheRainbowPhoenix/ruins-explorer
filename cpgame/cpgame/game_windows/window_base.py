@@ -5,8 +5,8 @@ from gint import drect, drect_border, C_WHITE, C_BLACK, C_NONE
 
 try:
     from typing import Optional
-except:
-    pass
+    from cpgame.engine.systems import InputManager
+except: pass
 
 class WindowBase:
     """A base class for drawable UI elements."""
@@ -32,4 +32,8 @@ class WindowBase:
         """Draws the window skin. Subclasses should call super().draw() first."""
         if self.visible:
             self._draw_skin()
+    
+    def handle_input(self, input_manager: Optional[InputManager]): pass
+
+    def handle_touch(self, x, y): pass
     

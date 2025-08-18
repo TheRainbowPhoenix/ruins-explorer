@@ -16,7 +16,7 @@ class WindowMessage(WindowBase):
 
     def update(self):
         super().update()
-        if JRPG.objects and JRPG.objects.message.is_busy():
+        if JRPG.objects and JRPG.objects.message.is_text():
             self.visible = True
             # Simple "opening" animation
             if self.openness < 255: self.openness = min(255, self.openness + 32)
@@ -29,7 +29,7 @@ class WindowMessage(WindowBase):
             if self.openness > 0: self.openness = max(0, self.openness - 32)
             if self.openness == 0: self.visible = False
 
-    def on_confirm(self):
+    def on_confirm(self, input=None):
         """
         Called by the scene when the player presses the interact button.
         This is the correct way to handle input, decoupling the window from the input system.

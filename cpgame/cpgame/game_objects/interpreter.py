@@ -48,12 +48,16 @@ class GameInterpreter:
         self._wait_count = 0
         self._running = False
         self._branch.clear()
+        self._wait_mode = ""
 
     def update(self):
         """Updates the interpreter. Called once per frame."""
         if not self._running:
             return
 
+        if self.is_waiting():
+            return
+        
         if self._wait_count > 0:
             self._wait_count -= 1
             return
@@ -65,9 +69,31 @@ class GameInterpreter:
                 # If execute_command returns False, it means we need to wait
                 return
             self._index += 1
+            if self.is_waiting():
+                break # If a wait mode was set, break the loop to wait until the next frame
         
-        # If we reach here, the event is finished
-        self.clear()
+        # If the loop finished, the event is done
+        if not self.is_waiting() and (not self._list or self._index >= len(self._list)):
+            self.clear()
+    
+    def is_waiting(self) -> bool:
+        """Checks the current wait mode and returns True if waiting should continue."""
+        if self._wait_mode == "" or not JRPG.objects:
+            return False
+
+        waiting = False
+        if self._wait_mode == "message":
+            # Wait as long as any message window (text, number input, etc.) is busy.
+            waiting = JRPG.objects.message.is_busy()
+        
+        # Add other wait modes:
+        # elif self._wait_mode == "transfer":
+        #     waiting = JRPG.objects.player.is_transferring()
+
+        if not waiting:
+            self._wait_mode = "" # Clear wait mode if the condition is met
+
+        return waiting
 
     def execute_command(self, command: Dict) -> bool:
         """Executes a single command and returns True if execution can continue."""
@@ -80,12 +106,14 @@ class GameInterpreter:
             return True # Skip command
 
         if code == 101:   self.command_101(params); return False # Show Text
+        elif code == 103: self.command_103(params); return True # Input Number
         elif code == 111: self.command_111(params, indent); return True # If
         elif code == 121: self.command_121(params); return True # Control Switches
         elif code == 122: self.command_122(params); return True # Control Variables
         elif code == 123: self.command_123(params); return True # Control Self Switch
         elif code == 124: self.command_124(params); return True # Control Timer
         elif code == 201: self.command_201(params); return False # Transfer Player
+        elif code == 303: self.command_303(params); return False # Input Name
         elif code == 356: self.command_356(params); return True # Plugin Command
         elif code == 411: self.command_411(indent); return True # Else
         elif code == 412: return True # End If
@@ -112,9 +140,8 @@ class GameInterpreter:
 
     def command_101(self, params: List[Any]):
         """Show Text"""
-        # In a full engine, you'd handle face graphics, position, etc.
-        # Here we just find all subsequent text lines.
-        text_lines = []
+        # TODO: handle face graphics, position, etc.
+        
         if not self._list or not JRPG.objects:
             return
         
@@ -131,23 +158,30 @@ class GameInterpreter:
             # text_lines.append(self._list[self._index]["parameters"][0])
             JRPG.objects.message.add(self._list[self._index]["parameters"][0])
         
-        try:
-            next_event_code = self._list[self._index]["code"]
-            if next_event_code == 102: # Show Choices
-                self._index += 1
-                pass
-            elif next_event_code == 103: # Input Number
-                self._index += 1
-                pass
-            elif next_event_code == 104: # Select Item
-                self._index += 1
-                pass
-        except:
-            pass
+        # try:
+        #     next_event_code = self._list[self._index]["code"]
+        #     if next_event_code == 102: # Show Choices
+        #         self._index += 1
+        #         pass
+        #     elif next_event_code == 103: # Input Number
+        #         self._index += 1
+        #         pass
+        #     elif next_event_code == 104: # Select Item
+        #         self._index += 1
+        #         pass
+        # except:
+        #     pass
 
-        # wait_for_message
-        # TODO: this should be removed later
-        # JRPG.objects.show_text(text_lines)
+        self._wait_mode = "message"
+
+    def command_103(self, params: List[Any]):
+        """Input Number"""
+        if JRPG.objects and not JRPG.objects.message.is_busy():
+            var_id, digits = params[0], params[1]
+            JRPG.objects.message.start_number_input(var_id, digits)
+            
+            self._wait_mode = "message"
+
 
     def command_111(self, params: List[Any], indent: int):
         """Conditional Branch"""
@@ -262,6 +296,13 @@ class GameInterpreter:
         
         if JRPG.objects and JRPG.objects.player:
             JRPG.objects.player.reserve_transfer(map_id, x, y)
+
+    def command_303(self, params: List[Any]):
+        """Name Input Processing"""
+        if JRPG.objects:
+            actor_id, max_chars = params[0], params[1]
+            JRPG.objects.message.start_name_input(actor_id, max_chars)
+            self._wait_mode = "message"
     
     def command_356(self, params: List[Any]):
         """Plugin Command"""

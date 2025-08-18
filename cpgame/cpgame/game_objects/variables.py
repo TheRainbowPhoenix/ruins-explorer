@@ -28,6 +28,11 @@ class GameVariables:
     def value(self, variable_id: int) -> Any:
         """Gets the value of a variable, returning 0 if it's not set."""
         return self._data.get(variable_id, 0)
+    
+    def set(self, variable_id: int, value: Any):
+        """Sets the value of a variable."""
+        self._data[variable_id] = value
+        self.on_change()
 
     def to_dict(self) -> Dict[int, Any]:
         """Serializes the variables for saving."""

@@ -35,12 +35,17 @@ events = {
                 {"code": 401, "parameters": ["Have you seen the crystal?"]},
                 {"code": 401, "parameters": ["The crystal is over there."]},
                 # Set Variable #42 to the value 4
-                {"code": 122, "parameters": [42, 42, 0, 0, 4]}, 
+                {"code": 401, "parameters": ["The secret answer was \\V[42]."]},
+                {"code": 122, "parameters": [42, 42, 0, 0, 42]}, 
                 # Show Text command
                 {"code": 101, "parameters": []},
                 # Text lines with control codes
                 {"code": 401, "parameters": ["Ah, \\N[1]! Your HP is \\HP[1]."]},
-                {"code": 401, "parameters": ["The secret answer is \\V[42]."]}
+                {"code": 401, "parameters": ["The secret answer is now \\V[42]."]},
+                {"code": 401, "parameters": ["Please enter a new secret"]},
+                {"code": 103, "parameters": [42, 3]},
+                {"code": 101, "parameters": []}, # Show Text
+                {"code": 401, "parameters": ["The secret answer is now \\V[42]."]}
             ]
         }, { # Page 2: Shows if Switch 25 is ON
             "conditions": {"switch1Id": 25, "switch1Valid": True},

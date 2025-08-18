@@ -13,6 +13,10 @@ from cpgame.game_objects.actor import GameActor
 from cpgame.game_windows.window_base import WindowBase
 from cpgame.game_windows.window_hud import WindowHUD
 from cpgame.game_windows.window_message import WindowMessage
+from cpgame.game_windows.window_number_input import WindowNumberInput
+from cpgame.game_windows.window_name_edit import WindowNameEdit
+from cpgame.game_windows.window_name_input import WindowNameInput
+
 
 from cpgame.engine.logger import log
 from cpgame.engine.text_parser import parse_text_codes
@@ -51,6 +55,7 @@ class JRPGScene(Scene):
 
         # --- Windowing ---
         self._windows: List[WindowBase] = []
+        self._active_window: Optional[WindowBase] = None # The window that currently has input focus
         self.hud_window = WindowHUD()
         self.message_window = WindowMessage()
 
@@ -86,7 +91,21 @@ class JRPGScene(Scene):
         # Create and manage windows
         # self.hud_window = WindowHUD()
         # self.message_window = WindowMessage()
-        self._windows = [self.hud_window, self.message_window]
+        self.number_input_window = WindowNumberInput(
+            on_confirm=self.on_number_input_confirm,
+            on_cancel=self.on_number_input_cancel
+        )
+        self.name_edit_window = WindowNameEdit(JRPG.objects.actors[1] if JRPG.objects else None, 8) # Placeholder
+        self.name_input_window = WindowNameInput(self.name_edit_window)
+        self.name_input_window.set_handler('ok', self.on_name_input_confirm)
+        self.name_input_window.set_handler('cancel', self.on_name_input_cancel)
+
+        self._windows = [
+            self.hud_window,
+            self.message_window,
+            self.number_input_window,
+            self.name_edit_window, self.name_input_window
+        ]
         
         # map_asset = self.assets.maps["jrpg_village"]
         # self.map_layout = map_asset["layout"]
@@ -123,9 +142,31 @@ class JRPGScene(Scene):
             #     self._update_dialog()
             #     return None # Prevent any other game logic from running
         
+        # Update the map, which in turn updates events and its interpreter
+        self.map.update()
+
         # Update all windows
         for window in self._windows:
             window.update()
+        
+        # --- INPUT & LOGIC PHASE ---
+        if self._active_window:
+            # If a modal window is active, it gets all input
+            self._active_window.handle_input(self.input) # update ? handle_input ?
+            # Add touch handling placeholder
+            # touch = get_touch_event() 
+            # if touch: self._active_window.handle_touch(touch.x, touch.y)
+
+            return None
+        
+        if JRPG.objects and JRPG.objects.message:
+            if JRPG.objects.message.is_number_input():
+                self.start_number_input()
+                return None
+            if JRPG.objects.message.is_name_input():
+                self.start_name_input()
+                return None
+            
 
         # --- Exploring State Logic ---
         # Handle scene transitions first
@@ -138,9 +179,6 @@ class JRPGScene(Scene):
         if JRPG.objects and JRPG.objects.message and JRPG.objects.message.is_busy():
             self._update_dialog()
             return None # Pause game logic while message is showing
-
-        # Update the map, which in turn updates events and its interpreter
-        self.map.update()
 
         dirty_from_map = self.map.get_dirty_tiles()
         if dirty_from_map:
@@ -224,15 +262,100 @@ class JRPGScene(Scene):
         # Tell the message window that a confirmation was pressed.
         # The window itself will handle the consequences.
         if self.input.interact:
-            self.message_window.on_confirm()
+            self.message_window.on_confirm(self.input)
             # After closing, the map might have changed (e.g., event page switched)
-            
-            # < OLD DIALOG SYSTEM > - nuke this later 
-            # if JRPG.objects:
-            #     JRPG.objects.clear_dialog()
-            # </ OLD DIALOG SYSTEM >
-
             self.full_redraw_needed = True 
+    
+    def start_number_input(self):
+        """Activates the number input window."""
+        if not JRPG.objects:
+            return 
+        
+        msg = JRPG.objects.message
+        var_id = msg.number_input_variable_id
+        if var_id:
+            initial_value = JRPG.objects.variables.value(var_id)
+        
+            self.number_input_window.start(initial_value, msg.number_input_digits_max)
+            self._active_window = self.number_input_window
+    
+    def on_number_input_confirm(self, number: int):
+        """Callback for when the user confirms a number."""
+        if not JRPG.objects:
+            return
+        
+        msg = JRPG.objects.message
+        var_id = msg.number_input_variable_id
+        if var_id:
+            JRPG.objects.variables.set(var_id, number)
+            log("Update V[{}] to {}".format(var_id, number))
+        
+            self.number_input_window.active = False
+            self.number_input_window.visible = False
+            self._active_window = None
+            JRPG.objects.message.clear() # Clear the request
+            JRPG.objects.message._number_input_variable_id = None
+            self.full_redraw_needed = True
+    
+    def start_name_input(self):
+        if not JRPG.objects:
+            return
+        
+        msg = JRPG.objects.message
+        if not msg.name_input_actor_id:
+            return
+
+        actor = JRPG.objects.actors[msg.name_input_actor_id]
+        if not actor: msg.clear(); return
+
+        self.name_edit_window = WindowNameEdit(actor, msg.name_input_max_chars)
+        self.name_input_window = WindowNameInput(self.name_edit_window)
+        self.name_input_window.set_handler('ok', self.on_name_input_confirm)
+        # We don't have a cancel button on keyboard, but touch could trigger it
+        
+        self.name_edit_window.visible = True
+        self.name_input_window.visible = True
+        self.name_input_window.activate()
+        self._active_window = self.name_input_window
+
+    def on_name_input_confirm(self, name: str):
+        if not JRPG.objects:
+            return
+        
+        msg = JRPG.objects.message
+        if not msg.name_input_actor_id:
+            return
+        
+        actor = JRPG.objects.actors[msg.name_input_actor_id]
+        if actor: actor.name = name
+
+        self.name_edit_window.visible = False
+        self.name_input_window.visible = False
+        self.name_input_window.deactivate()
+        self._active_window = None
+        msg.clear()
+        self.full_redraw_needed = True
+
+    def on_number_input_cancel(self):
+        """Callback for when the user cancels number input."""
+        self.number_input_window.active = False
+        self.number_input_window.visible = False
+        self._active_window = None
+        if JRPG.objects:
+            JRPG.objects.message.clear()
+        self.full_redraw_needed = True
+
+    def on_name_input_cancel(self):
+        """Callback for when the user cancels number input."""
+        self.name_edit_window.visible = False
+        self.name_input_window.visible = False
+        self.name_input_window.deactivate()
+        self._active_window = None
+        if JRPG.objects:
+            JRPG.objects.message.clear()
+        self.full_redraw_needed = True
+    
+    # --- Move helper ---
 
     def _handle_player_movement(self):
         """Checks for and processes player movement input."""
