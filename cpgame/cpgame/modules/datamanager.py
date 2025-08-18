@@ -196,6 +196,18 @@ class ModuleProxy:
         if type(object_name) == int:
             object_name = self._resolve_name(object_name)
         return self._load_object_from_module(str(object_name))
+    
+    def get_or(self, object_name: Union[str, int], default: Any = None) -> Optional[Any]:
+        """
+        Gets a specific data object. NOTE: This does not auto-cleanup memory.
+        Use `load()` with a `with` statement for better memory management.
+        """
+        try:
+            if type(object_name) == int:
+                object_name = self._resolve_name(object_name)
+            return self._load_object_from_module(str(object_name))
+        except:
+            return default
 
     def load(self, object_name: Union[str, int]) -> DataProxy:
         """

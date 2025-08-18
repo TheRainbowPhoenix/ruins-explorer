@@ -28,6 +28,17 @@
 
 ## TODO
 
+1. Finish the GameMap, make it load map from files
+2. Roll out various Game* classes
+3. Modules Vocab (for text templates) + SceneManager + BattleManager
+4. Windows support (basic, polyfill)
+5. Scenes Battle + Scene Map
+6. Add UI windows (like RPG Maker) and test the data
+7. All Scenes ported
+8. Add save / load support
+9. Finish Windows support
+10. Plugins support
+
 How to save binary files ? does repr works ? 
 Make an on-device fxconv to serialize and deserialize on the fly
 

@@ -11,6 +11,7 @@ from cpgame.game_objects.map import GameMap
 from cpgame.game_objects.party import GameParty
 from cpgame.game_objects.character import GamePlayer
 from cpgame.game_objects._actors import GameActors
+from cpgame.game_objects.system import GameSystem
 
 class GameObjects:
     """
@@ -27,6 +28,7 @@ class GameObjects:
         self.party = GameParty()
         self.player = GamePlayer()
         self.map = GameMap()
+        self.system = GameSystem()
         # self.switches = GameSwitches()
         # self.variables = GameVariables()
 
@@ -46,6 +48,7 @@ class GameObjects:
         # Each managed object is responsible for serializing its own state
         contents['actors'] = self.actors.to_dict()
         contents['party'] = self.party.to_dict()
+        # contents['system'] = self.system.to_dict()
         # contents['switches'] = self.switches.to_dict()
         # contents['variables'] = self.variables.to_dict()
         print("Saving game contents...")
@@ -58,6 +61,7 @@ class GameObjects:
         """
         self.actors.from_dict(contents.get('actors', {}))
         self.party.from_dict(contents.get('party', {}))
+        # self.system.from_dict(contents.get('system', {}))
         # self.switches.from_dict(contents.get('switches', {}))
         # self.variables.from_dict(contents.get('variables', {}))
         print("Extracted save contents.")
