@@ -654,6 +654,13 @@
                 </svg>
             </div>
             <div class="activity-separator"></div>
+            <div class="activity-item" data-panel="map" title="Map Settings">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+            </div>
             <div class="activity-item active" data-panel="tiles" title="Tiles">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -680,7 +687,7 @@
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <span id="sidebar-title">Tiles</span>
+                <span id="sidebar-title">Map Settings</span>
             </div>
             <div class="sidebar-content" id="sidebar-content">
                 <!-- Content will be injected based on state -->
@@ -723,6 +730,35 @@
     </div>
 
     <!-- Panel Templates -->
+    <template id="panel-map">
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Map Settings</h3>
+            </div>
+            <div class="panel-content">
+                <div class="form-group">
+                    <label class="form-label">Display Name</label>
+                    <input type="text" class="form-input" id="map-display-name" value="Quiet Village">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Width</label>
+                    <input type="number" class="form-input" id="map-width" min="1" max="100" value="32">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Height</label>
+                    <input type="number" class="form-input" id="map-height" min="1" max="100" value="20">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tileset ID</label>
+                    <input type="text" class="form-input" id="map-tileset-id" value="jrpg">
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-primary" id="resize-map">Resize Map</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
     <template id="panel-tiles">
         <div class="panel">
             <div class="panel-header">
@@ -782,12 +818,7 @@
                     <textarea class="form-textarea" id="export-map-data" readonly></textarea>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Events Data</label>
-                    <textarea class="form-textarea" id="export-events-data" readonly></textarea>
-                </div>
-                <div class="form-group">
                     <button class="btn btn-primary" id="copy-map-data">Copy Map Data</button>
-                    <button class="btn btn-primary" id="copy-events-data">Copy Events Data</button>
                 </div>
             </div>
         </div>
@@ -796,13 +827,17 @@
     <script>
         // Editor state
         const state = {
-            currentPanel: 'tiles',
+            currentPanel: 'map',
             currentTool: 'place',
             selectedTile: 0,
             zoomLevel: 1,
             mapWidth: 32,
             mapHeight: 20,
             tileSize: 20,
+            displayName: "Quiet Village",
+            tilesetId: "jrpg",
+            scrollType: 0,
+            specifyBattleback: false,
             // Initialize map with all 0s
             mapData: Array(32 * 20).fill(0),
             events: {},
@@ -967,6 +1002,20 @@
 
         // Sidebar buttons
         document.addEventListener('click', (e) => {
+            if (e.target.id === 'resize-map') {
+                const newWidth = parseInt(document.getElementById('map-width').value);
+                const newHeight = parseInt(document.getElementById('map-height').value);
+                const newDisplayName = document.getElementById('map-display-name').value;
+                const newTilesetId = document.getElementById('map-tileset-id').value;
+                
+                if (newWidth > 0 && newHeight > 0) {
+                    resizeMap(newWidth, newHeight);
+                    state.displayName = newDisplayName;
+                    state.tilesetId = newTilesetId;
+                    updateExportData();
+                }
+            }
+            
             if (e.target.id === 'fill-map') {
                 state.mapData = Array(state.mapWidth * state.mapHeight).fill(state.selectedTile);
                 renderMap();
@@ -1007,18 +1056,51 @@
                     document.getElementById('remove-event').disabled = true;
                 }
             }
-        });
-
-        // Export functionality
-        document.addEventListener('click', (e) => {
+            
             if (e.target.id === 'copy-map-data') {
                 navigator.clipboard.writeText(document.getElementById('export-map-data').value);
             }
-            
-            if (e.target.id === 'copy-events-data') {
-                navigator.clipboard.writeText(document.getElementById('export-events-data').value);
-            }
         });
+
+        // Map resizing function
+        function resizeMap(newWidth, newHeight) {
+            const oldWidth = state.mapWidth;
+            const oldHeight = state.mapHeight;
+            const oldMapData = [...state.mapData];
+            const oldEvents = { ...state.events };
+            
+            // Update dimensions
+            state.mapWidth = newWidth;
+            state.mapHeight = newHeight;
+            
+            // Create new map data
+            const newMapData = Array(newWidth * newHeight).fill(1); // Fill with 1s by default
+            
+            // Copy old data to new map (crop or expand)
+            for (let y = 0; y < Math.min(oldHeight, newHeight); y++) {
+                for (let x = 0; x < Math.min(oldWidth, newWidth); x++) {
+                    const oldIndex = y * oldWidth + x;
+                    const newIndex = y * newWidth + x;
+                    newMapData[newIndex] = oldMapData[oldIndex];
+                }
+            }
+            
+            state.mapData = newMapData;
+            
+            // Update events (remove events that are now out of bounds)
+            state.events = {};
+            Object.keys(oldEvents).forEach(posKey => {
+                const [x, y] = posKey.split(',').map(Number);
+                if (x < newWidth && y < newHeight) {
+                    state.events[posKey] = oldEvents[posKey];
+                }
+            });
+            
+            // Update canvas size
+            updateZoom();
+            renderMap();
+            updateEventList();
+        }
 
         // Initialize
         updateSidebar();
@@ -1031,6 +1113,7 @@
             
             if (panelTemplate) {
                 const panelTitles = {
+                    'map': 'Map Settings',
                     'tiles': 'Tiles',
                     'events': 'Events',
                     'export': 'Export'
@@ -1041,7 +1124,12 @@
                 sidebarContent.appendChild(panelTemplate.content.cloneNode(true));
                 
                 // Update panel-specific content
-                if (state.currentPanel === 'tiles') {
+                if (state.currentPanel === 'map') {
+                    document.getElementById('map-display-name').value = state.displayName;
+                    document.getElementById('map-width').value = state.mapWidth;
+                    document.getElementById('map-height').value = state.mapHeight;
+                    document.getElementById('map-tileset-id').value = state.tilesetId;
+                } else if (state.currentPanel === 'tiles') {
                     updateTilePalette();
                     updateSelectedTilePreview();
                     // Set active mode button
@@ -1588,43 +1676,56 @@
         }
 
         function updateExportData() {
-            const mapDataElement = document.getElementById('export-map-data');
-            const eventsDataElement = document.getElementById('export-events-data');
+            const exportElement = document.getElementById('export-map-data');
+            if (!exportElement) return;
             
-            if (mapDataElement) {
-                let mapDataStr = 'data = [\n';
-                for (let i = 0; i < state.mapData.length; i++) {
-                    if (i % state.mapWidth === 0 && i > 0) {
-                        mapDataStr += ',\n';
-                    }
-                    mapDataStr += `    ${state.mapData[i]}`;
-                    if (i < state.mapData.length - 1 && (i + 1) % state.mapWidth !== 0) {
-                        mapDataStr += ',';
+            let exportStr = 'HEADER = {\n';
+            exportStr += '    \'description\': \'Map Data\',\n';
+            exportStr += '    \'exports\': ["displayName", "tilesetId", "width", "height", "scrollType", "specifyBattleback", "data", "events"],\n';
+            exportStr += '}\n\n';
+            
+            exportStr += `displayName = "${state.displayName}"\n`;
+            exportStr += `tilesetId = "${state.tilesetId}" # Corresponds to the key in AssetManager\n`;
+            exportStr += `width = ${state.mapWidth}\n`;
+            exportStr += `height = ${state.mapHeight}\n`;
+            exportStr += `scrollType = ${state.scrollType}\n`;
+            exportStr += `specifyBattleback = ${state.specifyBattleback}\n\n`;
+            
+            exportStr += 'data = [\n';
+            for (let y = 0; y < state.mapHeight; y++) {
+                let rowStr = '    ';
+                for (let x = 0; x < state.mapWidth; x++) {
+                    const index = y * state.mapWidth + x;
+                    rowStr += state.mapData[index];
+                    if (x < state.mapWidth - 1) {
+                        rowStr += ', ';
                     }
                 }
-                mapDataStr += '\n]';
-                mapDataElement.value = mapDataStr;
+                if (y < state.mapHeight - 1) {
+                    rowStr += ',';
+                }
+                exportStr += rowStr + '\n';
             }
+            exportStr += ']\n\n';
             
-            if (eventsDataElement) {
-                let eventsDataStr = 'events = {\n';
-                const eventKeys = Object.keys(state.events);
-                eventKeys.forEach((posKey, index) => {
-                    const [x, y] = posKey.split(',').map(Number);
-                    const event = state.events[posKey];
-                    eventsDataStr += `    # Event at (x=${x}, y=${y})\n`;
-                    eventsDataStr += `    (${x}, ${y}): {\n`;
-                    eventsDataStr += `        "id": ${event.id}, "name": "${event.name}",\n`;
-                    eventsDataStr += `        "pages": [${JSON.stringify(event.pages[0])}]\n`;
-                    eventsDataStr += '    }';
-                    if (index < eventKeys.length - 1) {
-                        eventsDataStr += ',\n';
-                    }
-                    eventsDataStr += '\n';
-                });
-                eventsDataStr += '}';
-                eventsDataElement.value = eventsDataStr;
-            }
+            exportStr += 'events = {\n';
+            const eventKeys = Object.keys(state.events);
+            eventKeys.forEach((posKey, index) => {
+                const [x, y] = posKey.split(',').map(Number);
+                const event = state.events[posKey];
+                exportStr += `    # Event at (x=${x}, y=${y})\n`;
+                exportStr += `    (${x}, ${y}): {\n`;
+                exportStr += `        "id": ${event.id}, "name": "${event.name}",\n`;
+                exportStr += `        "pages": [${JSON.stringify(event.pages[0])}]\n`;
+                exportStr += '    }';
+                if (index < eventKeys.length - 1) {
+                    exportStr += ',\n';
+                }
+                exportStr += '\n';
+            });
+            exportStr += '}';
+            
+            exportElement.value = exportStr;
         }
     </script>
 </body>
