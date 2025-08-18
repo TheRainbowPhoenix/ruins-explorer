@@ -49,18 +49,23 @@ class JRPGScene(Scene):
         self.map_w: int = 0
         self.map_h: int = 0
 
+        # --- Windowing ---
+        self._windows: List[WindowBase] = []
+        self.hud_window = WindowHUD()
+        self.message_window = WindowMessage()
+
         # --- Camera & Rendering ---
+        self._map_render_offset_y = self.hud_window.height # Define the rendering offset for the map area
         self.cam_block_x: int = -1
         self.cam_block_y: int = -1
         self.screen_tiles_x = DWIDTH // TILE_SIZE
-        self.screen_tiles_y = DHEIGHT // TILE_SIZE
+        self.screen_tiles_y = (DHEIGHT - self._map_render_offset_y) // TILE_SIZE
         
         # --- Rendering Optimization ---
         self.dirty_tiles: Set[Tuple[int, int]] = set()
         self.full_redraw_needed = True
 
         # --- Dialog State ---
-        self._windows: List[WindowBase] = []
         self.dialog_active: bool = False
         self.dialog_pages: List[str] = []
         self.dialog_index: int = 0
@@ -79,8 +84,8 @@ class JRPGScene(Scene):
         # self.tileset = self.assets.tilesets["jrpg"]
 
         # Create and manage windows
-        self.hud_window = WindowHUD()
-        self.message_window = WindowMessage()
+        # self.hud_window = WindowHUD()
+        # self.message_window = WindowMessage()
         self._windows = [self.hud_window, self.message_window]
         
         # map_asset = self.assets.maps["jrpg_village"]
@@ -314,7 +319,10 @@ class JRPGScene(Scene):
 
     def _world_to_screen(self, world_x: int, world_y: int) -> Tuple[int, int]:
         """Converts world tile coordinates to screen pixel coordinates."""
-        return (world_x * TILE_SIZE - self.camera.x, world_y * TILE_SIZE - self.camera.y)
+        # return (world_x * TILE_SIZE - self.camera.x, world_y * TILE_SIZE - self.camera.y)
+        screen_x = world_x * TILE_SIZE - self.camera.x
+        screen_y = world_y * TILE_SIZE - self.camera.y + self._map_render_offset_y
+        return (screen_x, screen_y)
 
     def _draw_viewport(self):
         """Performs a full redraw of all visible tiles on the screen."""
@@ -333,9 +341,12 @@ class JRPGScene(Scene):
     def _draw_tile_at(self, map_x: int, map_y: int):
         """Redraws a single tile on the map, including any object on it."""
         screen_x, screen_y = self._world_to_screen(map_x, map_y)
+
+        top_bound = self._map_render_offset_y - TILE_SIZE
+        bottom_bound = DHEIGHT
         
         # Culling: Don't draw if it's off-screen
-        if not (-TILE_SIZE < screen_x < DWIDTH and -TILE_SIZE < screen_y < DHEIGHT):
+        if not (-TILE_SIZE < screen_x < DWIDTH and top_bound < screen_y < bottom_bound):
             return
 
         # Draw base map tile
