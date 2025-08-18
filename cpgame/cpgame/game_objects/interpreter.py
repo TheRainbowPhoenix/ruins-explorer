@@ -113,7 +113,7 @@ class GameInterpreter:
         elif code == 123: self.command_123(params); return True # Control Self Switch
         elif code == 124: self.command_124(params); return True # Control Timer
         elif code == 201: self.command_201(params); return False # Transfer Player
-        elif code == 303: self.command_303(params); return False # Input Name
+        elif code == 303: self.command_303(params); return True # Input Name
         elif code == 356: self.command_356(params); return True # Plugin Command
         elif code == 411: self.command_411(indent); return True # Else
         elif code == 412: return True # End If
@@ -299,7 +299,7 @@ class GameInterpreter:
 
     def command_303(self, params: List[Any]):
         """Name Input Processing"""
-        if JRPG.objects:
+        if JRPG.objects and not JRPG.objects.message.is_busy():
             actor_id, max_chars = params[0], params[1]
             JRPG.objects.message.start_name_input(actor_id, max_chars)
             self._wait_mode = "message"

@@ -35,6 +35,17 @@ class WindowNameEdit(WindowBase):
             self._name = self._name[:self._index]
             return True
         return False
+    
+    def start(self, actor, max_char: int):
+        self._actor = actor
+        self._max_char = max_char
+        if actor:
+            self._name = actor.name[:self._max_char]
+        else:
+            self._name = ""
+        
+        self.visible = True
+        self.active = True
 
     def draw(self):
         if not self.visible: return

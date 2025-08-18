@@ -308,14 +308,16 @@ class JRPGScene(Scene):
         actor = JRPG.objects.actors[msg.name_input_actor_id]
         if not actor: msg.clear(); return
 
-        self.name_edit_window = WindowNameEdit(actor, msg.name_input_max_chars)
-        self.name_input_window = WindowNameInput(self.name_edit_window)
+        # self.name_edit_window = WindowNameEdit(actor, msg.name_input_max_chars)
+        # self.name_input_window = WindowNameInput(self.name_edit_window)
         self.name_input_window.set_handler('ok', self.on_name_input_confirm)
         # We don't have a cancel button on keyboard, but touch could trigger it
         
         self.name_edit_window.visible = True
         self.name_input_window.visible = True
         self.name_input_window.activate()
+        self.name_input_window.start(self.name_edit_window)
+        self.name_edit_window.start(actor, msg.name_input_max_chars)
         self._active_window = self.name_input_window
 
     def on_name_input_confirm(self, name: str):

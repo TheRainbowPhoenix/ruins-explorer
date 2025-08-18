@@ -2,6 +2,12 @@
 from gint import *
 from cpgame.game_windows.window_selectable import WindowSelectable
 
+try:
+    from typing import Optional
+    from cpgame.engine.systems import InputManager
+except:
+    pass
+
 class WindowNameInput(WindowSelectable):
     """The virtual keyboard for name input."""
     LATIN1 = [
@@ -32,10 +38,18 @@ class WindowNameInput(WindowSelectable):
         self._cell_width = self.width // self.col_max
         self._cell_height = self.height // self.row_max
 
+    def start(self, edit_window):
+        self._edit_window = edit_window
+        self.index = 0
+        
+        self.visible = True
+        self.active = True
+
     def character(self) -> str:
         return self.LATIN1[self.index]
 
-    def handle_input(self, input_manager):
+    def handle_input(self, input_manager: Optional[InputManager]=None):
+        if not input_manager: return
         if not self.active: return
         
         # Cursor movement
@@ -48,8 +62,10 @@ class WindowNameInput(WindowSelectable):
         if input_manager.left:
             self.index = (self.index - 1 + (self.col_max * self.row_max)) % (self.col_max * self.row_max)
 
-        if input_manager.interact: self._process_ok()
-        if input_manager.exit: self._process_backspace() # Let's use EXIT for backspace
+        if input_manager.interact:
+            self._process_ok()
+        if input_manager.exit:
+            self._process_backspace() # Let's use EXIT for backspace
 
     def handle_touch(self, touch_x, touch_y):
         if not self.active or not self.visible: return

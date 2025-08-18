@@ -45,7 +45,8 @@ class GameMessage:
         self._number_input_digits_max = digits
     
     def start_name_input(self, actor_id, max_chars):
-        self._name_input_actor_id, self._name_input_max_chars = actor_id, max_chars
+        self._name_input_actor_id = actor_id
+        self._name_input_max_chars = max_chars
 
     @property
     def number_input_variable_id(self) -> Optional[int]:

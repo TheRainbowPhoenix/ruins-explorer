@@ -45,7 +45,10 @@ events = {
                 {"code": 401, "parameters": ["Please enter a new secret"]},
                 {"code": 103, "parameters": [42, 3]},
                 {"code": 101, "parameters": []}, # Show Text
-                {"code": 401, "parameters": ["The secret answer is now \\V[42]."]}
+                {"code": 401, "parameters": ["The secret answer is now \\V[42]."]},
+                {"code": 303, "parameters": [1, 10]},
+                {"code": 101, "parameters": []}, # Show Text
+                {"code": 401, "parameters": ["The name is now \\N[1]."]}
             ]
         }, { # Page 2: Shows if Switch 25 is ON
             "conditions": {"switch1Id": 25, "switch1Valid": True},
