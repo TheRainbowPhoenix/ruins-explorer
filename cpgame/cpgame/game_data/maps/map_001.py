@@ -93,7 +93,7 @@ events = {
                 # Change this event's (ID 0) graphic using the value from Variable #2
                 {"code": 501, "parameters": [0, 2, True]},
                 # Show text displaying the variable
-                {"code": 101},
+                {"code": 101, "parameters":["",0,0,2]},
                 {"code": 401, "parameters": ["The crystal hums. Power level: \\V[1]"]}
             ]
         }]

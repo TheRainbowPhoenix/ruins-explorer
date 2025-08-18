@@ -16,6 +16,7 @@ from cpgame.game_objects.variables import GameVariables
 from cpgame.game_objects.switches import GameSwitches
 from cpgame.game_objects.self_switches import GameSelfSwitches
 from cpgame.game_objects.timer import GameTimer
+from cpgame.game_objects.message import GameMessage
 
 # Plugins
 from cpgame.modules.plugin_manager import PluginManager
@@ -42,6 +43,7 @@ class GameObjects:
         self.self_switches = GameSelfSwitches()
         self.variables = GameVariables()
         self.timer = GameTimer()
+        self.message = GameMessage()
 
         self.plugin_manager = PluginManager()
         self.growth_manager = GrowthManager()

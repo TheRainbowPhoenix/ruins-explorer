@@ -119,15 +119,17 @@ class GameInterpreter:
             return
         
         # TODO: Add this !!
-        # JRPG.objects.message.face_name = params[0]
-        # JRPG.objects.message.face_index = params[1]
-        # JRPG.objects.message.background = params[2]
-        # JRPG.objects.message.position = params[3]
+        JRPG.objects.message.clear()
+        
+        JRPG.objects.message.face_name = params[0] if len(params) > 0 else ""
+        JRPG.objects.message.face_index = params[1] if len(params) > 1 else 0
+        JRPG.objects.message.background = params[2] if len(params) > 2 else 0
+        JRPG.objects.message.position = params[3] if len(params) > 3 else 2
         
         while self._index + 1 < len(self._list) and self._list[self._index + 1]["code"] == 401:
             self._index += 1
-            text_lines.append(self._list[self._index]["parameters"][0])
-            # TODO: JRPG.objects.message.add(self._list[self._index]["parameters"][0])
+            # text_lines.append(self._list[self._index]["parameters"][0])
+            JRPG.objects.message.add(self._list[self._index]["parameters"][0])
         
         try:
             next_event_code = self._list[self._index]["code"]
@@ -145,7 +147,7 @@ class GameInterpreter:
 
         # wait_for_message
         # TODO: this should be removed later
-        JRPG.objects.show_text(text_lines)
+        # JRPG.objects.show_text(text_lines)
 
     def command_111(self, params: List[Any], indent: int):
         """Conditional Branch"""

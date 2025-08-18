@@ -9,6 +9,11 @@ from cpgame.systems.jrpg import JRPG
 from cpgame.engine.scene import Scene
 from cpgame.engine.systems import Camera
 from cpgame.game_objects.actor import GameActor
+
+from cpgame.game_windows.window_base import WindowBase
+from cpgame.game_windows.window_hud import WindowHUD
+from cpgame.game_windows.window_message import WindowMessage
+
 from cpgame.engine.logger import log
 from cpgame.engine.text_parser import parse_text_codes
 
@@ -32,8 +37,8 @@ class JRPGScene(Scene):
         
         # --- Game State ---
         self.tileset = None
-        self.player.x: int = 0 # TODO: should be in player
-        self.player.y: int = 0
+        self.player.x = 0 # TODO: should be in player
+        self.player.y = 0
         self.move_cooldown: float = 0.0
 
         # --- Map Data ---
@@ -55,6 +60,7 @@ class JRPGScene(Scene):
         self.full_redraw_needed = True
 
         # --- Dialog State ---
+        self._windows: List[WindowBase] = []
         self.dialog_active: bool = False
         self.dialog_pages: List[str] = []
         self.dialog_index: int = 0
@@ -71,6 +77,11 @@ class JRPGScene(Scene):
         # Load all necessary assets from the manager
         self.tileset = self.assets.tilesets.get(self.map.tileset_id)
         # self.tileset = self.assets.tilesets["jrpg"]
+
+        # Create and manage windows
+        self.hud_window = WindowHUD()
+        self.message_window = WindowMessage()
+        self._windows = [self.hud_window, self.message_window]
         
         # map_asset = self.assets.maps["jrpg_village"]
         # self.map_layout = map_asset["layout"]
@@ -106,6 +117,10 @@ class JRPGScene(Scene):
             if JRPG.objects.dialog_in_progress:
                 self._update_dialog()
                 return None # Prevent any other game logic from running
+        
+        # Update all windows
+        for window in self._windows:
+            window.update()
 
         # --- Exploring State Logic ---
         # Handle scene transitions first
@@ -114,6 +129,10 @@ class JRPGScene(Scene):
             from cpgame.game_scenes.menu_scene import MenuScene
             self.game.clear_session() # Clean up party, datamanager, etc.
             return self.game.change_scene(MenuScene)
+        
+        if JRPG.objects and JRPG.objects.message and JRPG.objects.message.is_busy():
+            self._update_dialog()
+            return None # Pause game logic while message is showing
 
         # Update the map, which in turn updates events and its interpreter
         self.map.update()
@@ -182,6 +201,10 @@ class JRPGScene(Scene):
 
         self._draw_player()
 
+        # Draw all windows on top
+        for window in self._windows:
+            window.draw()
+
         # if self.dialog_active:
         if JRPG.objects and JRPG.objects.dialog_in_progress:
             self._draw_dialog_box()
@@ -189,12 +212,22 @@ class JRPGScene(Scene):
     # --- Private Update Helpers ---
 
     def _update_dialog(self):
-        """Handles input logic when a dialog box is active."""
+        """
+        Handles input logic when a dialog box is active. This is the only
+        place that should process input during a dialog.
+        """
+        # Tell the message window that a confirmation was pressed.
+        # The window itself will handle the consequences.
         if self.input.interact:
-            # Instead of managing pages locally, we just tell the system to clear the dialog
+            self.message_window.on_confirm()
+            # After closing, the map might have changed (e.g., event page switched)
+            
+            # < OLD DIALOG SYSTEM > - nuke this later 
             if JRPG.objects:
                 JRPG.objects.clear_dialog()
-                self.full_redraw_needed = True # Redraw the world underneath
+            # </ OLD DIALOG SYSTEM >
+
+            self.full_redraw_needed = True 
 
     def _handle_player_movement(self):
         """Checks for and processes player movement input."""
