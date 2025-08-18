@@ -28,7 +28,7 @@ events = {
         "name": "ActorNPC",
         "x": 3, "y": 3,
         "pages": [{ # Page 1: Default message
-            "graphic": {"tileId": 56, "direction": 2},
+            "graphic": {"tileId": 55, "direction": 2},
             "list": [
                 {"code": 101, "parameters": []}, # Show Text
                 {"code": 401, "parameters": ["Arion: Greetings, traveler."]},
@@ -44,7 +44,7 @@ events = {
             ]
         }, { # Page 2: Shows if Switch 25 is ON
             "conditions": {"switch1Id": 25, "switch1Valid": True},
-            "graphic": {"tileId": 57, "direction": 2},
+            "graphic": {"tileId": 81, "direction": 2},
             "list": [
                 {"code": 101},
                 {"code": 401, "parameters": ["Arion: You touched the crystal!"]},
@@ -56,7 +56,7 @@ events = {
     (6, 6): {
         "id": 2, "name": "Crystal", "x": 6, "y": 6,
         "pages": [{
-            "graphic": {"tileId": 52},
+            "graphic": {"tileId": 53},
             "list": [
                 {"code": 101, "parameters": []},
                 {"code": 401, "parameters": ["A strange, glowing crystal..."]},
@@ -69,7 +69,7 @@ events = {
     (10, 2): {
         "id": 3, "name": "Portal", "x": 10, "y": 2,
         "pages": [{
-            "graphic": {"tileId": 60},
+            "graphic": {"tileId": 4},
             "list": [
                 # Transfer player to Map 2 at coordinates (5, 5)
                 {"code": 201, "parameters": [0, 2, 5, 5]}
@@ -101,26 +101,42 @@ events = {
     (9,9): { # Event ID 4: A Farm Plot
         "id": 4, "name": "FarmPlot", "x": 9, "y": 9,
         "pages": [
-            { # PAGE 4: Harvestable (Highest Priority)
-                "conditions": {"selfSwitchCh": "D", "selfSwitchValid": True},
-                "graphic": {"tileId": 43}, # Ripe plant graphic
-                "list": [{"code": 356, "parameters": ["check_soil(4)"]}]
-            },
-            { # PAGE 3: Growing
-                "conditions": {"selfSwitchCh": "B", "selfSwitchValid": True},
-                "graphic": {"tileId": 42}, # Sprout graphic
-                "list": [{"code": 356, "parameters": ["check_soil(4)"]}]
+            { # PAGE 1: Untilled Soil (Default)
+                "conditions": {},
+                "graphic": {"tileId": 94}, # Normal soil graphic
+                "through": True,
+                "list": [
+                    {"code": 101}, {"code": 401, "parameters": ["PAGE 1: Untilled Soil (Default)"]},
+                    {"code": 356, "parameters": ["check_soil(4)"]}
+                ]
             },
             { # PAGE 2: Tilled Soil
                 "conditions": {"selfSwitchCh": "A", "selfSwitchValid": True},
-                "graphic": {"tileId": 41}, # Tilled soil graphic
-                "list": [{"code": 356, "parameters": ["check_soil(4)"]}]
+                "graphic": {"tileId": 95}, # Tilled soil graphic
+                "through": True,
+                "list": [
+                    {"code": 101}, {"code": 401, "parameters": ["PAGE 2: Tilled Soil"]},
+                    {"code": 356, "parameters": ["check_soil(4)"]}
+                ]
             },
-            { # PAGE 1: Untilled Soil (Default)
-                "conditions": {},
-                "graphic": {"tileId": 40}, # Normal soil graphic
-                "list": [{"code": 356, "parameters": ["check_soil(4)"]}]
-            }
+            { # PAGE 3: Growing
+                "conditions": {"selfSwitchCh": "B", "selfSwitchValid": True},
+                "graphic": {"tileId": 100}, # Sprout graphic
+                "through": True,
+                "list": [
+                    {"code": 101}, {"code": 401, "parameters": ["PAGE 3: Growing"]},
+                    {"code": 356, "parameters": ["check_soil(4)"]}
+                ]
+            },
+            { # PAGE 4: Harvestable (Highest Priority)
+                "conditions": {"selfSwitchCh": "D", "selfSwitchValid": True},
+                "graphic": {"tileId": 96}, # Ripe plant graphic
+                "through": True,
+                "list": [
+                    {"code": 101}, {"code": 401, "parameters": ["PAGE 4: Harvestable"]},
+                    {"code": 356, "parameters": ["check_soil(4)"]}
+                ]
+            }            
         ]
     },
     (8, 9): { # Event ID 4: A Farm Plot

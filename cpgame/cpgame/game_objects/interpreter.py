@@ -197,6 +197,8 @@ class GameInterpreter:
             for i in range(start_id, end_id + 1):
                 JRPG.objects.switches[i] = value
                 # log("Set Switch #{} to {}".format(i, value))
+            JRPG.objects.map.need_refresh = True
+
 
     def command_122(self, params: List[Any]):
         """Control Variables"""
@@ -222,6 +224,9 @@ class GameInterpreter:
                 elif op_type == 2: # Subtract
                     JRPG.objects.variables[i] = current_value - value
                 # TODO: Other operations (Mul, Div, Mod) can be added here
+        
+            # Refresh map if things changed
+            JRPG.objects.map.need_refresh = True
     
     def command_123(self, params: List[Any]):
         """Control Self Switch"""
@@ -230,7 +235,7 @@ class GameInterpreter:
             key = (self._map_id, self._event_id, switch_char)
             value = (op == 0) # 0 is ON, 1 is OFF
             if JRPG.objects:
-                JRPG.objects.self_switches[key] = value
+                JRPG.objects.self_switches.set(key, value)
                 log("Set Self Switch ({}) for Event {} to {}".format(key, self._event_id, value))
                 for ev in JRPG.objects.map.events.values():
                     if ev.id == self._event_id:
@@ -268,5 +273,7 @@ class GameInterpreter:
         if event and JRPG.objects:
             tile_id = JRPG.objects.variables[value] if is_variable else value
             event.set_graphic(tile_id)
+            
+            JRPG.objects.map.set_tile_dirty(event.x, event.y)
     
     # TODO: add more 

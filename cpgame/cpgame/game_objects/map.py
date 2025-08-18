@@ -35,6 +35,7 @@ class GameMap:
         
         # TODO: add more 
         self.need_refresh: bool = False
+        self._dirty_tiles = set()
 
     def setup(self, map_id: int):
         """Loads and initializes a new map."""
@@ -86,11 +87,20 @@ class GameMap:
     
     def update(self):
         """Update the map's interpreter and all its events."""
+        if self.need_refresh:
+            self.refresh_events()
+        
         if self.interpreter.is_running():
             self.interpreter.update()
         
         for event in self.events.values():
             event.update()
+
+    def refresh_events(self):
+        """Force all events to re-evaluate their pages."""
+        for event in self.events.values():
+            event.refresh()
+        self.need_refresh = False
     
     def start_event_interpreter(self, event: GameEvent):
         """Starts the interpreter if it's not already busy."""
@@ -103,11 +113,25 @@ class GameMap:
             return map_data[y * self.width + x]
         return 0
 
+    def set_tile_dirty(self, x, y):
+        """Flags a specific tile to be redrawn by the scene."""
+        self._dirty_tiles.add((x, y))
+
+    def get_dirty_tiles(self) -> set:
+        """Returns the set of dirty tiles and then clears it."""
+        tiles = self._dirty_tiles.copy()
+        self._dirty_tiles.clear()
+        return tiles
+
     def is_passable(self, x: int, y: int, tileset: 'Tilemap') -> bool:
         if not (0 <= x < self.width and 0 <= y < self.height):
             return False
+        
         if (x, y) in self.events:
-            return False
+            ev = self.events[(x, y)]
+            if ev and not ev.through:
+                return False
+        
         tile = self.tile_id(x, y)
         return tile not in tileset.solid
 

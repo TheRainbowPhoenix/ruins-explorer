@@ -15,14 +15,14 @@ def check_soil(event_id: int):
         key_d = (map_id, event_id, 'D') # Harvestable
         
         switches = JRPG.objects.self_switches
-        
+
         if switches[key_d]: # Harvestable
             # Add item to party, reset plot
             # JRPG.objects.party.gain_item(5, 1)
             JRPG.objects.show_text(["You harvested a ripe potato!"])
-            switches[key_a] = False
-            switches[key_b] = False
-            switches[key_d] = False
+            JRPG.objects.self_switches.set(key_a, False)
+            JRPG.objects.self_switches.set(key_b, False)
+            JRPG.objects.self_switches.set(key_d, False)
             JRPG.objects.growth_manager.harvest(map_id, event_id)
 
         elif switches[key_b]: # Planted
@@ -34,7 +34,7 @@ def check_soil(event_id: int):
             has_seeds = True # Assume true for now
             if has_seeds:
                 JRPG.objects.show_text(["You planted a potato seed."])
-                switches[key_b] = True
+                JRPG.objects.self_switches.set(key_b, True)
                 # Grow for 20 seconds
                 JRPG.objects.growth_manager.plant_seed(map_id, event_id, 20)
             else:
@@ -42,4 +42,9 @@ def check_soil(event_id: int):
                 
         else: # Untilled
             JRPG.objects.show_text(["You tilled the soil."])
-            switches[key_a] = True
+            JRPG.objects.self_switches.set(key_a, True)
+
+        for ev in JRPG.objects.map.events.values():
+            if ev.id == event_id:
+                ev.refresh()
+                break

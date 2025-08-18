@@ -118,6 +118,10 @@ class JRPGScene(Scene):
         # Update the map, which in turn updates events and its interpreter
         self.map.update()
 
+        dirty_from_map = self.map.get_dirty_tiles()
+        if dirty_from_map:
+            self.dirty_tiles.update(dirty_from_map)
+
         # Update timers
         if self.move_cooldown > 0:
             self.move_cooldown -= dt
@@ -192,30 +196,6 @@ class JRPGScene(Scene):
                 JRPG.objects.clear_dialog()
                 self.full_redraw_needed = True # Redraw the world underneath
 
-            # self.dialog_index += 1
-            # if self.dialog_index >= len(self.dialog_pages):
-            #     # Dialog has ended
-            #     self.dialog_active = False
-            #     self.full_redraw_needed = True # Redraw the world underneath
-    
-    def _process_text_codes(self, text: str) -> str:
-        """Replaces control codes like \\V[n] and \\N[n] with game data."""
-        # TODO: Simple, non-regex replacer for MicroPython compatibility. Later should be on a dedicated parser.
-        if not "\\" in text: # TODO: use .index and re-use the index later to parse completely the commands
-            return text # short-pass if no format.
-        
-        if JRPG.objects and JRPG.objects.variables and JRPG.objects.party:
-            processed_text = text.replace('\\V[42]', str(JRPG.objects.variables[42]))
-            
-            # Process \N[1] for party leader's name
-            leader = JRPG.objects.party.leader()
-            if leader:
-                processed_text = processed_text.replace('\\N[1]', leader.name)
-                processed_text = processed_text.replace('\\HP[1]', str(leader.hp))
-
-            return processed_text
-        return text
-
     def _handle_player_movement(self):
         """Checks for and processes player movement input."""
         if self.move_cooldown > 0:
@@ -241,20 +221,6 @@ class JRPGScene(Scene):
             next_x, next_y = self.player.x, self.player.y + dy
             if self.tileset and self.map.is_passable(next_x, next_y, self.tileset):
                 self._move_player_to(next_x, next_y)
-        
-        # if self._is_walkable(next_x, next_y):
-        #     old_pos = (self.player.x, self.player.y)
-        #     self.player.x, self.player.y = next_x, next_y
-            
-        #     self.move_cooldown = MOVE_DELAY # Reset timer
-            
-        #     # Mark tiles for redraw
-        #     self.dirty_tiles.add(old_pos)
-        #     self.dirty_tiles.add((self.player.x, self.player.y))
-            
-        #     # Check if the camera needs to move to a new screen block
-        #     if self._update_camera_block():
-        #         self.full_redraw_needed = True
     
     def _move_player_to(self, next_x, next_y):
         """Updates player state and marks tiles for redraw."""
@@ -275,68 +241,20 @@ class JRPGScene(Scene):
         """Checks for interaction with objects or signs."""
         if not self.input.interact:
             return
+        
+        #C heck for passable events on the player's current tile
+        event_here = self.map.events.get((self.player.x, self.player.y))
+        if event_here and event_here.through:
+            event_here.start()
+            return
 
         for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
             adj_pos = (self.player.x + dx, self.player.y + dy)
-            event = self.map.events.get(adj_pos)
-            if event:
-                event.start()
+            event_there = self.map.events.get(adj_pos)
+            if event_there and not event_there.through:
+                event_there.start()
                 return
-
-            # if event and event.payload:
-            #     self._process_event_payload(event.payload)
-            #     return
-            
-        # TODO: below is old code, untested
-
-        # Check interaction target in front of the player
-        # front_x = self.player.x + (1 if self.input.dx > 0 else -1 if self.input.dx < 0 else 0)
-        # front_y = self.player.y + (1 if self.input.dy > 0 else -1 if self.input.dy < 0 else 0)
-        
-        # # Check adjacent tiles if not moving
-        # if self.input.dx == 0 and self.input.dy == 0:
-        #     for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-        #         adj_pos = (self.player.y + dy, self.player.x + dx)
-        #         if self._check_interaction_at(adj_pos):
-        #             return
-        # else:
-        #      adj_pos = (self.player.y + self.input.dy, self.player.x + self.input.dx)
-        #      if self._check_interaction_at(adj_pos):
-        #         return
-        
-        # # Fallback to check player's current tile (e.g. for floor items)
-        # player_pos = (self.player.y, self.player.x)
-        # if self._check_interaction_at(player_pos):
-        #     return
     
-    def _process_event_payload(self, payload: Any):
-        """Processes the payload from an event interaction."""
-        # THIS METHOD IS NOW OBSOLETE. The interpreter handles payloads.
-        return
-    
-        if isinstance(payload, dict):
-            event_type = payload.get("type")
-            if event_type == "actor":
-                actor_id = payload.get("id")
-                if actor_id is not None and JRPG.objects and JRPG.objects.actors:
-                    actor = JRPG.objects.actors[actor_id]
-                    if actor:
-                        actor.hp -= 1 # Modify its state
-                        party_info = ["Party Leader: " + str(JRPG.objects.party.leader().name)]
-                        actor_info = ["Actor HP: " + str(actor.hp)]
-                        self._start_dialog(actor.get_info_text() + party_info + actor_info)
-            
-            elif event_type == "transfer":
-                if JRPG.objects and JRPG.objects.player:
-                    JRPG.objects.player.reserve_transfer(
-                        payload.get("map_id", 1), # TODO
-                        payload.get("x", 0),
-                        payload.get("y", 0)
-                    )
-        elif isinstance(payload, list):
-            print("TODO: event payload is list ??")
-            self._start_dialog(payload)
-
     def _update_camera_block(self) -> bool:
         """
         Updates the camera to a new screen-sized "block" if the player has moved into one.
@@ -420,9 +338,4 @@ class JRPGScene(Scene):
             for i, line in enumerate(pages):
                 final_text = parse_text_codes(line)
                 dtext(8, y0 + 8 + i * 16, C_BLACK, final_text)
-        # if self.dialog_index < len(self.dialog_pages):
-        #     page_text = self.dialog_pages[self.dialog_index]
-        #     # Handle both list of strings and single string with newlines
-        #     lines_to_draw = page_text if isinstance(page_text, list) else page_text.split("\n")
-        #     for i, line in enumerate(lines_to_draw):
-        #         dtext(8, y0 + 8 + i * 16, C_BLACK, line)
+    

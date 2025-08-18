@@ -20,6 +20,7 @@ class GameEvent(GameCharacter):
         self._erased = False
         self._starting = False
         self._active_page = None
+        self.through = False # Passability
         
         self.moveto(event_data.get('x', 0), event_data.get('y', 0))
         self.refresh()
@@ -90,9 +91,16 @@ class GameEvent(GameCharacter):
             self.character_index = graphic.get('characterIndex', 0)
             self.tile_id = graphic.get('tileId', 0)
             self.direction = graphic.get('direction', 2)
+            self.through = page.get('through', False) # Set passability
         else:
             self.tile_id = 0
             self.character_name = ""
+            self.through = True # An invisible event should be passable
+        self._starting = False
+        
+        # Mark the tile this event is on as dirty to force a redraw
+        if JRPG.objects and JRPG.objects.map:
+            JRPG.objects.map.set_tile_dirty(self.x, self.y)
 
     def update(self):
         """Updates the event, starting its interpreter if flagged."""

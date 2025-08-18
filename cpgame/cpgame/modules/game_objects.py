@@ -52,7 +52,7 @@ class GameObjects:
     def setup_new_game(self):
         """Sets up the initial state for a new game."""
         from cpgame.systems.jrpg import JRPG
-        
+
         self.plugin_manager.register("check_soil", check_soil)
 
         self.party.setup_starting_members()
