@@ -1,14 +1,99 @@
 
 try:
-    from typing import Dict, List, Optional, Any
+    from typing import Dict, List, Optional, Any, Tuple
 except:
     pass
 
 import math
 
 from cpgame.systems.jrpg import JRPG
+from cpgame.engine.assets import Tilemap
+
+# TODO: move it elsewhere
+class GameEvent:
+    """A simple data container for a map event."""
+    def __init__(self, event_data: Dict):
+        # TODO: this would parse pages and conditions.
+        # For now, we take the first page directly.
+        page = event_data.get('pages', [{}])[0]
+        graphic = page.get('graphic', {})
+        self.tile_id = graphic.get('tile_id', 0)
+        self.payload = page.get('payload', None)
 
 class GameMap:
+    """Manages map data, scrolling, and passage determination."""
+    def __init__(self):
+        self._map_id = 0
+        self._data = None
+        self.events: Dict[Tuple[int, int], GameEvent] = {}
+        # Cache loaded props
+        self._properties: Dict[str, Any] = {}
+        
+        # TODO: add more 
+        self.need_refresh: bool = False
+
+    def setup(self, map_id: int):
+        """Loads and initializes a new map."""
+        # print("Setting up map ID:", map_id)
+        self._map_id = map_id
+        
+        if JRPG.data and JRPG.data.maps:
+            self._map_proxy = JRPG.data.maps[map_id]
+
+            self.events.clear()
+            self._properties.clear() # Clear cached properties
+
+            with self._map_proxy.load("events") as event_data:
+                if event_data:
+                    for pos, data in event_data.items():
+                        if not isinstance(pos, tuple):
+                            if pos == "__name__":
+                                continue
+
+                            print("ERR: invalid pos (x, y) tuple")
+
+                        # The key is a string from the file, convert to tuple
+                        # pos_tuple = tuple(map(int, pos.strip('()').split(',')))
+                        self.events[pos] = GameEvent(data)
+    
+    def _get_property(self, prop_name: str, default: Any = None) -> Any:
+        """Lazy-loads a property from the map data file."""
+        if prop_name in self._properties:
+            return self._properties[prop_name]
+        
+        if self._map_proxy:
+            with self._map_proxy.load(prop_name) as value:
+                self._properties[prop_name] = value
+                return value
+        return default
+
+    @property
+    def width(self) -> int:
+        return self._get_property('width', 0)
+
+    @property
+    def height(self) -> int:
+        return self._get_property('height', 0)
+    
+    @property
+    def tileset_id(self) -> str:
+        return self._get_property('tilesetId', 'jrpg')
+
+    def tile_id(self, x: int, y: int) -> int:
+        map_data = self._get_property('data')
+        if map_data and 0 <= x < self.width and 0 <= y < self.height:
+            return map_data[y * self.width + x]
+        return 0
+
+    def is_passable(self, x: int, y: int, tileset: 'Tilemap') -> bool:
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return False
+        if (x, y) in self.events:
+            return False
+        tile = self.tile_id(x, y)
+        return tile not in tileset.solid
+
+class GameMapFULL_TODO:
     """
     This class handles maps. It includes scrolling and passage determination
     functions. The instance of this class is referenced by $game_map.

@@ -128,7 +128,7 @@ class DataObject:
 
     def items(self):
         """Returns the original (key, value) pairs of the underlying dictionary."""
-        return self._data.items()
+        return tuple(self._data.items())
 
     def __repr__(self) -> str:
         return "DataObject({})".format(repr(self._data))
@@ -139,9 +139,9 @@ class ModuleProxy:
     It loads the module's HEADER on creation and provides methods to load
     individual objects from it on demand, with cleanup.
     """
-    def __init__(self, data_category: str):
+    def __init__(self, data_category: str, module_path: str = "cpgame.game_data."):
         self.category = data_category
-        self.module_path = "cpgame.game_data." + self.category
+        self.module_path = module_path + self.category
         self.name_id = self.category.upper() + "_" # HACK: to avoid the "id" int. Should be removed later.
         self._module = None
         self._header = None
@@ -197,7 +197,7 @@ class ModuleProxy:
             object_name = self._resolve_name(object_name)
         return self._load_object_from_module(str(object_name))
     
-    def get_or(self, object_name: Union[str, int], default: Any = None) -> Optional[Any]:
+    def get_or(self, object_name: Union[str, int], default: Any = None) -> Any:
         """
         Gets a specific data object. NOTE: This does not auto-cleanup memory.
         Use `load()` with a `with` statement for better memory management.
@@ -265,6 +265,29 @@ class ModuleProxy:
         if self._module:
             _cleanup_module(self.module_path, self._module)
 
+class MapProxy:
+    """
+    A proxy that lazy-loads ModuleProxy instances for individual maps on demand.
+    Acts like a dictionary where keys are map IDs.
+    """
+    def __init__(self):
+        self._proxies: Dict[int, ModuleProxy] = {}
+
+    def __getitem__(self, map_id: int) -> ModuleProxy:
+        """
+        Gets the ModuleProxy for a given map ID, creating it if it doesn't exist.
+        """
+        if map_id not in self._proxies:
+            # print("Creating proxy for Map ID:", map_id)
+            map_name = "map_{:03d}".format(map_id)
+            module_path = "cpgame.game_data.maps."
+            self._proxies[map_id] = ModuleProxy(map_name, module_path=module_path)
+        return self._proxies[map_id]
+
+    def clear(self):
+        """Clears all cached map proxies."""
+        self._proxies.clear()
+
 class DataManager:
     """
     A central manager for accessing game data through proxy objects.
@@ -285,9 +308,12 @@ class DataManager:
         self.common_events = ModuleProxy("common_events")
         self.system        = ModuleProxy("system")
         self.mapinfos      = ModuleProxy("mapinfos")
+
+        # Special object to handle maps
+        self.maps = MapProxy()
     
     def init(self):
-        self.setup_battle_test() # TODO
+        self.setup_battle_test() # TODO: only if test
     
     def setup_battle_test(self):
         from cpgame.systems.jrpg import JRPG

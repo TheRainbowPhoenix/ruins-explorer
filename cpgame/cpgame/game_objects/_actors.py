@@ -34,7 +34,7 @@ class GameActors:
             print("Warning: Attempted to access non-existent actor:", actor_name_id)
             return None
 
-        print("Instantiating actor for the first time:", actor_id)
+        # print("Instantiating actor for the first time:", actor_id)
         # Load the base data using the DataManager's context manager
         with JRPG.data.actors.load(actor_name_id) as actor_data:
             if actor_data:

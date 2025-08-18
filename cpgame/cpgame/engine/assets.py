@@ -25,7 +25,7 @@ class AssetManager:
     def __init__(self):
         self.animations: Dict[str, List[AnimationFrame]] = {}
         self.tilesets: Dict[str, Tilemap] = {} # tilemap
-        self.maps: Dict[str, Dict] = {}
+        self.maps: Dict[str, Dict] = {} # TODO: do not use this
         self.is_loaded = False
 
     def load_all(self):
@@ -40,10 +40,11 @@ class AssetManager:
         for name, data in templar_data.sprites.items(): # type: ignore
             self.animations[name] = [AnimationFrame(*frame) for frame in data]
         for name, data in templar_data.bounce.items(): # type: ignore
-            self.animations[name] = [AnimationFrame(*frame) for frame in data]
+            self.animations[name or "default"] = [AnimationFrame(*frame) for frame in data]
         self.tilesets["templar"] = Tilemap(*templar_data.tileset) # type: ignore
 
         # --- Load JRPG Assets ---
+        # TODO: remove this later !!
         self.tilesets["jrpg"] = Tilemap(fanta_tileset_img, [], jrpg_data.solid_tiles) # type: ignore
         self.maps["jrpg_village"] = {
             "layout": jrpg_data.map_layout, # type: ignore

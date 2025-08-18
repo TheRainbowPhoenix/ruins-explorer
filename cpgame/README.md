@@ -28,6 +28,8 @@
 
 ## TODO
 
+extra+ : ADD LOGGER (to print on desktop, but not on device) 
+
 1. Finish the GameMap, make it load map from files
 2. Roll out various Game* classes
 3. Modules Vocab (for text templates) + SceneManager + BattleManager

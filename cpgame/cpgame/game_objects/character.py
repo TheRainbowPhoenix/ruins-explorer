@@ -42,7 +42,32 @@ class GameCharacter(GameCharacterBase):
     """
     def __init__(self):
         super(GameCharacter, self).__init__()
+        self.clear_transfer_info()
         # Logic for move routes, etc., would go here.
+
+    def clear_transfer_info(self):
+        self.transfer_pending = False
+        self.new_map_id = 0
+        self.new_x = 0
+        self.new_y = 0
+
+    def reserve_transfer(self, map_id, x, y):
+        self.transfer_pending = True
+        self.new_map_id = map_id
+        self.new_x = x
+        self.new_y = y
+
+    def perform_transfer(self):
+        if self.transfer_pending:
+            from cpgame.systems.jrpg import JRPG
+            
+            if JRPG.objects and JRPG.objects.map:
+                JRPG.objects.map.setup(self.new_map_id)
+
+                self.moveto(self.new_x, self.new_y)
+                self.clear_transfer_info()
+            else:
+                raise Exception("Transfer failed ! Invalid JRPG.objects.map")
 
     def move_straight(self, d: int):
         # Simplified movement for demonstration

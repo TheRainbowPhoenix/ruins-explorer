@@ -34,10 +34,18 @@ class GameObjects:
 
     def setup_new_game(self):
         """Sets up the initial state for a new game."""
-        # In a real game, you would load starting actor IDs from system data
-        # self.party.setup_starting_members(["ACTOR_1"])
-        # You would also set initial player position, etc.
-        pass
+        from cpgame.systems.jrpg import JRPG
+
+        self.party.setup_starting_members()
+
+        if JRPG.data and JRPG.data.system:
+            self.map.setup(JRPG.data.system.get_or("start_map_id", 0))
+
+            self.player.moveto(
+                JRPG.data.system.get_or("start_x", 0),
+                JRPG.data.system.get_or("start_y", 0)
+            )
+        
 
     def make_save_contents(self) -> Dict[str, Any]:
         """

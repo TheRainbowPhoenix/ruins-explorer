@@ -20,25 +20,17 @@ class JRPGScene(Scene):
     """
     def __init__(self, game):
         super().__init__(game)
-
-        if not JRPG.objects:
-            raise Exception("No JRPG data loaded !")
-        
-        # --- Game Objects references ---
-        self.map = JRPG.objects.map
-        self.player = JRPG.objects.player
         
         # --- Game State ---
-        self.tileset = None
-        self.player.x: int = 0 # TODO: should be in player
-        self.player.y: int = 0
+        self.player_x: int = 0
+        self.player_y: int = 0
         self.move_cooldown: float = 0.0
 
         # --- Map Data ---
         self.tileset = None
-        # self.map_layout: List[List[int]] = []
-        # self.map_objects: Dict[Tuple[int, int], Tuple[int, Any]] = {} # Use Any for payload
-        # self.map_signs: Dict[Tuple[int, int], List[str]] = {}
+        self.map_layout: List[List[int]] = []
+        self.map_objects: Dict[Tuple[int, int], Tuple[int, Any]] = {} # Use Any for payload
+        self.map_signs: Dict[Tuple[int, int], List[str]] = {}
         self.map_w: int = 0
         self.map_h: int = 0
 
@@ -67,20 +59,17 @@ class JRPGScene(Scene):
         # print("JRPGScene: Creating...")
 
         # Load all necessary assets from the manager
-        self.tileset = self.assets.tilesets.get(self.map.tileset_id)
-        # self.tileset = self.assets.tilesets["jrpg"]
-        
-        # map_asset = self.assets.maps["jrpg_village"]
-        # self.map_layout = map_asset["layout"]
-        # self.map_objects = map_asset["objects"]
-        # self.map_signs = map_asset["signs"]
-        self.map_h = self.map.height # len(self.map_layout)
-        self.map_w = self.map.width # len(self.map_layout[0])
+        self.tileset = self.assets.tilesets["jrpg"]
+        map_asset = self.assets.maps["jrpg_village"]
+        self.map_layout = map_asset["layout"]
+        self.map_objects = map_asset["objects"]
+        self.map_signs = map_asset["signs"]
+        self.map_h = len(self.map_layout)
+        self.map_w = len(self.map_layout[0])
 
         # Set player's starting position
-        # TODO: should not be done here. player should do it.
-        self.player.x = self.map_w // 2
-        self.player.y = self.map_h // 2
+        self.player_x = self.map_w // 2
+        self.player_y = self.map_h // 2
 
         # Initialize the camera's first position
         self._update_camera_block()
@@ -110,28 +99,11 @@ class JRPGScene(Scene):
         if self.move_cooldown > 0:
             self.move_cooldown -= dt
 
-        
         # Handle player input for movement and interaction
         self._handle_player_movement()
         self._handle_player_interaction()
 
-        if self._check_for_map_transfer():
-            return None
-
         return None
-    
-    def _check_for_map_transfer(self) -> bool:
-        """Checks if a map transfer has been requested."""
-        if self.player.transfer_pending:
-            # print("Executing map transfer...")
-            self.player.perform_transfer()
-            # Re-initialize this scene's view of it.
-            if JRPG.objects:
-                self.map = JRPG.objects.map
-                self.player = JRPG.objects.player
-                self.create() # Re-run create to sync tileset and camera
-                return True
-        return False
 
     def draw(self, frame_time_ms: int):
         """
@@ -177,112 +149,101 @@ class JRPGScene(Scene):
         if dx == 0 and dy == 0:
             return
 
-        next_x, next_y = self.player.x + dx, self.player.y + dy
+        next_x, next_y = self.player_x + dx, self.player_y + dy
 
-        if dx != 0:
-            next_x, next_y = self.player.x + dx, self.player.y
-            if self.tileset and self.map.is_passable(next_x, next_y, self.tileset):
-                self._move_player_to(next_x, next_y)
-        elif dy != 0:
-            next_x, next_y = self.player.x, self.player.y + dy
-            if self.tileset and self.map.is_passable(next_x, next_y, self.tileset):
-                self._move_player_to(next_x, next_y)
-        
-        # if self._is_walkable(next_x, next_y):
-        #     old_pos = (self.player.x, self.player.y)
-        #     self.player.x, self.player.y = next_x, next_y
+        if self._is_walkable(next_x, next_y):
+            old_pos = (self.player_x, self.player_y)
+            self.player_x, self.player_y = next_x, next_y
             
-        #     self.move_cooldown = MOVE_DELAY # Reset timer
+            self.move_cooldown = MOVE_DELAY # Reset timer
             
-        #     # Mark tiles for redraw
-        #     self.dirty_tiles.add(old_pos)
-        #     self.dirty_tiles.add((self.player.x, self.player.y))
+            # Mark tiles for redraw
+            self.dirty_tiles.add(old_pos)
+            self.dirty_tiles.add((self.player_x, self.player_y))
             
-        #     # Check if the camera needs to move to a new screen block
-        #     if self._update_camera_block():
-        #         self.full_redraw_needed = True
-    
-    def _move_player_to(self, next_x, next_y):
-        """Updates player state and marks tiles for redraw."""
-        old_pos = (self.player.x, self.player.y)
-        self.player.moveto(next_x, next_y)
-
-        self.move_cooldown = MOVE_DELAY
-        
-        # Mark tiles for redraw
-        self.dirty_tiles.add(old_pos)
-        self.dirty_tiles.add((self.player.x, self.player.y))
-        
-        # Check if the camera needs to move to a new screen block
-        if self._update_camera_block():
-            self.full_redraw_needed = True
+            # Check if the camera needs to move to a new screen block
+            if self._update_camera_block():
+                self.full_redraw_needed = True
 
     def _handle_player_interaction(self):
         """Checks for interaction with objects or signs."""
         if not self.input.interact:
             return
 
-        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-            adj_pos = (self.player.x + dx, self.player.y + dy)
-            event = self.map.events.get(adj_pos)
-            if event and event.payload:
-                self._process_event_payload(event.payload)
-                return
-            
-        # TODO: below is old code, untested
-
         # Check interaction target in front of the player
-        # front_x = self.player.x + (1 if self.input.dx > 0 else -1 if self.input.dx < 0 else 0)
-        # front_y = self.player.y + (1 if self.input.dy > 0 else -1 if self.input.dy < 0 else 0)
+        front_x = self.player_x + (1 if self.input.dx > 0 else -1 if self.input.dx < 0 else 0)
+        front_y = self.player_y + (1 if self.input.dy > 0 else -1 if self.input.dy < 0 else 0)
         
-        # # Check adjacent tiles if not moving
-        # if self.input.dx == 0 and self.input.dy == 0:
-        #     for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-        #         adj_pos = (self.player.y + dy, self.player.x + dx)
-        #         if self._check_interaction_at(adj_pos):
-        #             return
-        # else:
-        #      adj_pos = (self.player.y + self.input.dy, self.player.x + self.input.dx)
-        #      if self._check_interaction_at(adj_pos):
-        #         return
+        # Check adjacent tiles if not moving
+        if self.input.dx == 0 and self.input.dy == 0:
+            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                adj_pos = (self.player_y + dy, self.player_x + dx)
+                if self._check_interaction_at(adj_pos):
+                    return
+        else:
+             adj_pos = (self.player_y + self.input.dy, self.player_x + self.input.dx)
+             if self._check_interaction_at(adj_pos):
+                return
         
-        # # Fallback to check player's current tile (e.g. for floor items)
-        # player_pos = (self.player.y, self.player.x)
-        # if self._check_interaction_at(player_pos):
-        #     return
+        # Fallback to check player's current tile (e.g. for floor items)
+        player_pos = (self.player_y, self.player_x)
+        if self._check_interaction_at(player_pos):
+            return
     
-    def _process_event_payload(self, payload: Any):
-        """Processes the payload from an event interaction."""
-        if isinstance(payload, dict):
-            event_type = payload.get("type")
-            if event_type == "actor":
-                actor_id = payload.get("id")
-                if actor_id is not None and JRPG.objects and JRPG.objects.actors:
+    def _check_interaction_at(self, pos: Tuple[int, int]) -> bool:
+        """Helper to check for and handle interaction at a specific map coordinate."""
+        if pos in self.map_objects:
+            _, payload = self.map_objects[pos]
+            # Handle different payload types
+            if isinstance(payload, dict) and payload.get("type") == "actor":
+                # It's an actor, load it using the DataManager
+                actor_id = payload.get("id", None)
+                if actor_id and JRPG.objects:
+                    # This will lazy-load the actor on first access.
                     actor = JRPG.objects.actors[actor_id]
+                    # Could also do self.game.session_data.get('objects') for direct access
                     if actor:
                         actor.hp -= 1 # Modify its state
                         party_info = ["Party Leader: " + str(JRPG.objects.party.leader().name)]
                         actor_info = ["Actor HP: " + str(actor.hp)]
                         self._start_dialog(actor.get_info_text() + party_info + actor_info)
+                    return True
+            else:
+                # It's a simple dialog object
+                self._start_dialog(payload)
+                return True # Interaction handled
+
+        # Check for signs
+        if pos in self.map_signs:
+            pages = self.map_signs[pos]
+            self._start_dialog(pages)
+            return True # Interaction handled
             
-            elif event_type == "transfer":
-                if JRPG.objects and JRPG.objects.player:
-                    JRPG.objects.player.reserve_transfer(
-                        payload.get("map_id", 1), # TODO
-                        payload.get("x", 0),
-                        payload.get("y", 0)
-                    )
-        elif isinstance(payload, list):
-            print("TODO: event payload is list ??")
-            self._start_dialog(payload)
+        return False # No interaction found
+
+    def _is_walkable(self, x: int, y: int) -> bool:
+        """Checks if a given map coordinate is within bounds and not a solid tile."""
+        if not (0 <= y < self.map_h and 0 <= x < self.map_w):
+            return False
+        
+        # Prevent walking on tiles occupied by objects/actors
+        tile_id = self.map_layout[y][x]
+        # Also consider tiles with objects on them as not walkable
+        # TODO: Some should be passable, should be done without needing to query each elements data !!
+        if (y, x) in self.map_objects:
+            o = self.map_objects.get((x, y))
+            if type(o) == object and o.get("type") in ["actor"]:
+                return False
+        
+        return tile_id not in self.tileset.solid # type: ignore
 
     def _update_camera_block(self) -> bool:
         """
         Updates the camera to a new screen-sized "block" if the player has moved into one.
         Returns True if the camera moved, False otherwise.
         """
-        new_block_x = self.player.x // self.screen_tiles_x
-        new_block_y = self.player.y // self.screen_tiles_y
+        new_block_x = self.player_x // self.screen_tiles_x
+        new_block_y = self.player_y // self.screen_tiles_y
 
         if new_block_x != self.cam_block_x or new_block_y != self.cam_block_y:
             self.cam_block_x = new_block_x
@@ -314,7 +275,6 @@ class JRPGScene(Scene):
         for ry in range(self.screen_tiles_y + 1):
             for rx in range(self.screen_tiles_x + 1):
                 map_x, map_y = base_x + rx, base_y + ry
-                # TODO: clamp instead of if each loop ? 
                 if 0 <= map_y < self.map_h and 0 <= map_x < self.map_w:
                     self._draw_tile_at(map_x, map_y)
 
@@ -327,22 +287,22 @@ class JRPGScene(Scene):
             return
 
         # Draw base map tile
-        tile_id = self.map.tile_id(map_x, map_y)
+        tile_id = self.map_layout[map_y][map_x]
         src_x = (tile_id % 16) * TILE_SIZE
         src_y = (tile_id // 16) * TILE_SIZE
         dsubimage(screen_x, screen_y, self.tileset.img, src_x, src_y, TILE_SIZE, TILE_SIZE) # type: ignore
 
         # Draw object on top, if any
-        event = self.map.events.get((map_x, map_y))
-        if event and event.tile_id > 0:
-            obj_id = event.tile_id
+        pos = (map_y, map_x)
+        if pos in self.map_objects:
+            obj_id, _ = self.map_objects[pos]
             obj_src_x = (obj_id % 16) * TILE_SIZE
             obj_src_y = (obj_id // 16) * TILE_SIZE
             dsubimage(screen_x, screen_y, self.tileset.img, obj_src_x, obj_src_y, TILE_SIZE, TILE_SIZE) # type: ignore
 
     def _draw_player(self):
         """Draws the player representation on the screen."""
-        scr_x, scr_y = self._world_to_screen(self.player.x, self.player.y)
+        scr_x, scr_y = self._world_to_screen(self.player_x, self.player_y)
         center_x = scr_x + TILE_SIZE // 2
         center_y = scr_y + TILE_SIZE // 2
         dcircle(center_x, center_y, TILE_SIZE // 2 - 2, C_BLUE, C_NONE)

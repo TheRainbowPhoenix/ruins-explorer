@@ -141,7 +141,7 @@ class GameParty(GameUnit):
         self._last_item = GameBaseItem()
         self._menu_actor_id = 0
         self._target_actor_id = 0
-        self._actors = []
+        self._actors: List[int] = []
         self.init_all_items()
 
     def init_all_items(self) -> None:
@@ -207,7 +207,7 @@ class GameParty(GameUnit):
 
     def setup_starting_members(self) -> None:
         if JRPG.data and JRPG.data.system:
-            self._actors = JRPG.data.system.get('party_members')
+            self._actors = JRPG.data.system.get_or('party_members', [1]) # type: ignore
     
     #--------------------------------------------------------------------------
     # * Get Party Name
