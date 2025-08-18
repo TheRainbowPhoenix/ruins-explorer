@@ -15,6 +15,7 @@ from cpgame.game_objects.system import GameSystem
 from cpgame.game_objects.variables import GameVariables
 from cpgame.game_objects.switches import GameSwitches
 from cpgame.game_objects.self_switches import GameSelfSwitches
+from cpgame.game_objects.timer import GameTimer
 
 class GameObjects:
     """
@@ -35,6 +36,7 @@ class GameObjects:
         self.switches = GameSwitches()
         self.self_switches = GameSelfSwitches()
         self.variables = GameVariables()
+        self.timer = GameTimer()
 
         self.dialog_in_progress = False
         self.dialog_pages = []
@@ -67,6 +69,7 @@ class GameObjects:
         contents['switches'] = self.switches.to_dict()
         contents['self_switches'] = self.self_switches.to_dict()
         contents['variables'] = self.variables.to_dict()
+        # contents['timer'] = self.timer.to_dict() 
         print("Saving game contents...")
         return contents
 
@@ -81,6 +84,7 @@ class GameObjects:
         self.switches.from_dict(contents.get('switches', {}))
         self.self_switches.from_dict(contents.get('self_switches', {}))
         self.variables.from_dict(contents.get('variables', {}))
+        # self.timer.from_dict(contents.get('timer', {}))
         print("Extracted save contents.")
 
     # Debug stuff, should be later replaced by proper dialog system

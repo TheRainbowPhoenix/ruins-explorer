@@ -95,11 +95,14 @@ class JRPGScene(Scene):
         # First, poll the input state for this frame
         self.input.update()
 
-        # --- State Machine: Are we in a dialog or exploring? ---
-        # if self.dialog_active:
-        if JRPG.objects and JRPG.objects.dialog_in_progress:
-            self._update_dialog()
-            return None # Prevent any other game logic from running
+        # --- State Machine ---
+        if JRPG.objects:
+            if JRPG.objects.timer:
+                JRPG.objects.timer.update(dt)
+
+            if JRPG.objects.dialog_in_progress:
+                self._update_dialog()
+                return None # Prevent any other game logic from running
 
         # --- Exploring State Logic ---
         # Handle scene transitions first

@@ -84,6 +84,7 @@ class GameInterpreter:
         elif code == 121: self.command_121(params); return True # Control Switches
         elif code == 122: self.command_122(params); return True # Control Variables
         elif code == 122: self.command_123(params); return True # Control Self Switch
+        elif code == 122: self.command_124(params); return True # Control Timer
         elif code == 201: self.command_201(params); return False # Transfer Player
         elif code == 411: self.command_411(indent); return True # Else
         elif code == 412: return True # End If
@@ -230,6 +231,15 @@ class GameInterpreter:
             if JRPG.objects:
                 JRPG.objects.self_switches[key] = value
                 log("Set Self Switch ({}) for Event {} to {}".format(key, self._event_id, value))
+
+    def command_124(self, params: List[Any]):
+        """Control Timer"""
+        if JRPG.objects and JRPG.objects.timer:
+            if params[0] == 0:  # Start
+                seconds = params[1]
+                JRPG.objects.timer.start(seconds)
+            else:  # Stop
+                JRPG.objects.timer.stop()
 
     def command_201(self, params: List[Any]):
         """Transfer Player"""
