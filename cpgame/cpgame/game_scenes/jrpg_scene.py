@@ -207,19 +207,6 @@ class JRPGScene(Scene):
                         party_info = ["Party Leader: " + str(JRPG.objects.party.leader().name)]
                         self._start_dialog(actor.get_info_text() + party_info)
                     return True
-                
-                    # Access the DataManager and Party via self.game.session_data
-                    data_manager = self.game.session_data.get('data')
-                    party = self.game.session_data.get('party')
-                    
-                    if data_manager and party:
-                        with data_manager.actors.load(actor_id) as actor_data:
-                            if actor_data:
-                                actor = GameActor(1, actor_data)
-                                # Demonstrate access to another session object (party)
-                                party_info = ["Party Members: " + str(party.size())]
-                                self._start_dialog(actor.get_info_text() + party_info)
-                        return True
             else:
                 # It's a simple dialog object
                 self._start_dialog(payload)
