@@ -48,7 +48,7 @@ class GameObjects:
         self.plugin_manager = PluginManager()
         self.growth_manager = GrowthManager()
 
-        self.dialog_in_progress = False
+        # self.dialog_in_progress = False
         self.dialog_pages = []
 
     def setup_new_game(self):
@@ -100,12 +100,12 @@ class GameObjects:
         print("Extracted save contents.")
 
     # Debug stuff, should be later replaced by proper dialog system
-    def show_text(self, pages: List[str]):
-        """Flags that a dialog needs to be shown."""
-        self.dialog_in_progress = True
-        self.dialog_pages = pages
+    # def show_text(self, pages: List[str]):
+    #     """Flags that a dialog needs to be shown."""
+    #     self.dialog_in_progress = True
+    #     self.dialog_pages = pages
 
-    def clear_dialog(self):
-        """Clears the dialog state."""
-        self.dialog_in_progress = False
-        self.dialog_pages = []
+    # def clear_dialog(self):
+    #     """Clears the dialog state."""
+    #     self.dialog_in_progress = False
+    #     self.dialog_pages = []

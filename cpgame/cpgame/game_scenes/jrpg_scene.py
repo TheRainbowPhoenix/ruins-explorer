@@ -119,9 +119,9 @@ class JRPGScene(Scene):
             if JRPG.objects.growth_manager:
                 JRPG.objects.growth_manager.update(dt)
 
-            if JRPG.objects.dialog_in_progress:
-                self._update_dialog()
-                return None # Prevent any other game logic from running
+            # if JRPG.objects.dialog_in_progress:
+            #     self._update_dialog()
+            #     return None # Prevent any other game logic from running
         
         # Update all windows
         for window in self._windows:
@@ -211,8 +211,8 @@ class JRPGScene(Scene):
             window.draw()
 
         # if self.dialog_active:
-        if JRPG.objects and JRPG.objects.dialog_in_progress:
-            self._draw_dialog_box()
+        # if JRPG.objects and JRPG.objects.dialog_in_progress:
+        #     self._draw_dialog_box()
 
     # --- Private Update Helpers ---
 
@@ -228,8 +228,8 @@ class JRPGScene(Scene):
             # After closing, the map might have changed (e.g., event page switched)
             
             # < OLD DIALOG SYSTEM > - nuke this later 
-            if JRPG.objects:
-                JRPG.objects.clear_dialog()
+            # if JRPG.objects:
+            #     JRPG.objects.clear_dialog()
             # </ OLD DIALOG SYSTEM >
 
             self.full_redraw_needed = True 
@@ -369,17 +369,3 @@ class JRPGScene(Scene):
         center_x = scr_x + TILE_SIZE // 2
         center_y = scr_y + TILE_SIZE // 2
         dcircle(center_x, center_y, TILE_SIZE // 2 - 2, C_BLUE, C_NONE)
-
-    def _draw_dialog_box(self):
-        """Draws the UI for the dialog box at the bottom of the screen."""
-        box_h = DHEIGHT // 3
-        y0 = DHEIGHT - box_h
-        drect(0, y0, DWIDTH - 1, DHEIGHT - 1, C_WHITE)
-        drect_border(0, y0, DWIDTH - 1, DHEIGHT - 1, C_NONE, 1, C_BLACK)
-
-        if JRPG.objects and JRPG.objects.dialog_pages:
-            pages = JRPG.objects.dialog_pages
-            for i, line in enumerate(pages):
-                final_text = parse_text_codes(line)
-                dtext(8, y0 + 8 + i * 16, C_BLACK, final_text)
-    
