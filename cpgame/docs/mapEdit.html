@@ -224,6 +224,9 @@
         #tilemap-canvas {
             background: var(--bg-surface);
             box-shadow: var(--shadow-lg);
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
         }
 
         /* Panels */
@@ -369,6 +372,9 @@
             border: 2px solid transparent;
             cursor: pointer;
             transition: var(--transition);
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
         }
 
         .tile-item:hover {
@@ -453,6 +459,161 @@
 
         .status-item {
             margin-right: 16px;
+        }
+
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .mode-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        /* Dialog */
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .dialog {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--border-radius);
+            width: 600px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dialog-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dialog-content {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .dialog-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border-primary);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        /* Page Editor */
+        .page-editor {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .graphic-picker {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .graphic-item {
+            width: 100%;
+            aspect-ratio: 1;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: var(--transition);
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .graphic-item.selected {
+            border-color: var(--accent-primary);
+        }
+
+        .payload-editor {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .payload-type-selector {
+            display: flex;
+            gap: 8px;
+        }
+
+        .payload-type-btn {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .payload-type-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .dialog-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .dialog-message {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dialog-message input {
+            flex: 1;
+        }
+
+        .action-fields {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
         }
 
         /* Scrollbars */
@@ -569,8 +730,16 @@
             </div>
             <div class="panel-content">
                 <div class="form-group">
+                    <label class="form-label">Drawing Mode</label>
+                    <div class="mode-selector">
+                        <div class="mode-btn active" data-mode="place">Place</div>
+                        <div class="mode-btn" data-mode="brush">Brush</div>
+                        <div class="mode-btn" data-mode="area">Area</div>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Selected Tile</label>
-                    <div id="selected-tile-preview" style="width: 64px; height: 64px; border: 2px solid var(--border-primary); background: var(--bg-tertiary);"></div>
+                    <div id="selected-tile-preview" style="width: 64px; height: 64px; border: 2px solid var(--border-primary); background: var(--bg-tertiary); image-rendering: pixelated;"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Tiles</label>
@@ -595,33 +764,8 @@
                 </div>
                 <div class="form-group">
                     <button class="btn btn-primary" id="add-event">Add Event</button>
+                    <button class="btn btn-secondary" id="edit-event" disabled>Edit Event</button>
                     <button class="btn btn-danger" id="remove-event" disabled>Remove Event</button>
-                </div>
-            </div>
-        </div>
-    </template>
-
-    <template id="panel-event-edit">
-        <div class="panel">
-            <div class="panel-header">
-                <h3 class="panel-title">Edit Event</h3>
-            </div>
-            <div class="panel-content">
-                <div class="form-group">
-                    <label class="form-label">Event Name</label>
-                    <input type="text" class="form-input" id="event-name" placeholder="Enter event name">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Tile ID</label>
-                    <input type="number" class="form-input" id="event-tile-id" min="0" max="319" value="0">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Payload (JSON)</label>
-                    <textarea class="form-textarea" id="event-payload" placeholder='{"type": "actor", "id": 1}'>{"type": "actor", "id": 1}</textarea>
-                </div>
-                <div class="form-group">
-                    <button class="btn btn-primary" id="save-event">Save Event</button>
-                    <button class="btn btn-secondary" id="cancel-edit">Cancel</button>
                 </div>
             </div>
         </div>
@@ -653,7 +797,7 @@
         // Editor state
         const state = {
             currentPanel: 'tiles',
-            currentTool: 'tile',
+            currentTool: 'place',
             selectedTile: 0,
             zoomLevel: 1,
             mapWidth: 32,
@@ -663,7 +807,10 @@
             mapData: Array(32 * 20).fill(0),
             events: {},
             selectedEvent: null,
-            selectedPosition: { x: 0, y: 0 }
+            selectedPosition: { x: 0, y: 0 },
+            isDrawing: false,
+            areaStart: null,
+            areaEnd: null
         };
 
         // Canvas and context
@@ -692,6 +839,17 @@
             });
         });
 
+        // Mode selector
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('mode-btn')) {
+                document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                state.currentTool = e.target.dataset.mode;
+                document.getElementById('editor-mode').textContent = 
+                    state.currentTool.charAt(0).toUpperCase() + state.currentTool.slice(1);
+            }
+        });
+
         // Zoom controls
         document.getElementById('zoom-in').addEventListener('click', () => {
             if (state.zoomLevel < 4) {
@@ -713,7 +871,7 @@
         });
 
         // Canvas interaction
-        canvas.addEventListener('click', (e) => {
+        canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
             const x = Math.floor((e.clientX - rect.left) / (state.tileSize * state.zoomLevel));
             const y = Math.floor((e.clientY - rect.top) / (state.tileSize * state.zoomLevel));
@@ -723,18 +881,21 @@
                 document.getElementById('cursor-position').textContent = `${x}, ${y}`;
                 
                 if (state.currentPanel === 'tiles') {
-                    // Place tile
-                    const index = y * state.mapWidth + x;
-                    state.mapData[index] = state.selectedTile;
-                    renderMap();
-                    updateExportData();
+                    state.isDrawing = true;
+                    if (state.currentTool === 'place') {
+                        placeTile(x, y);
+                    } else if (state.currentTool === 'area') {
+                        state.areaStart = { x, y };
+                        state.areaEnd = { x, y };
+                    }
                 } else if (state.currentPanel === 'events') {
                     // Handle event placement/editing
                     const posKey = `${x},${y}`;
                     if (state.events[posKey]) {
                         // Edit existing event
                         state.selectedEvent = state.events[posKey];
-                        showEventEditPanel();
+                        document.getElementById('edit-event').disabled = false;
+                        document.getElementById('remove-event').disabled = false;
                     } else {
                         // Add new event
                         state.selectedEvent = {
@@ -742,26 +903,76 @@
                             name: `Event ${Object.keys(state.events).length + 1}`,
                             pages: [{
                                 graphic: { tile_id: 0 },
-                                payload: { type: "actor", id: 1 }
+                                payload: ["New message..."]
                             }]
                         };
-                        showEventEditPanel();
+                        document.getElementById('edit-event').disabled = false;
+                        document.getElementById('remove-event').disabled = false;
+                    }
+                    updateEventList();
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!state.isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / (state.tileSize * state.zoomLevel));
+            const y = Math.floor((e.clientY - rect.top) / (state.tileSize * state.zoomLevel));
+            
+            if (x >= 0 && x < state.mapWidth && y >= 0 && y < state.mapHeight) {
+                if (state.currentPanel === 'tiles') {
+                    if (state.currentTool === 'brush') {
+                        placeTile(x, y);
+                    } else if (state.currentTool === 'area') {
+                        state.areaEnd = { x, y };
+                        renderMap();
                     }
                 }
             }
         });
 
-        // Fill map button
+        canvas.addEventListener('mouseup', () => {
+            if (state.isDrawing && state.currentTool === 'area' && state.areaStart) {
+                // Fill the area
+                const startX = Math.min(state.areaStart.x, state.areaEnd.x);
+                const endX = Math.max(state.areaStart.x, state.areaEnd.x);
+                const startY = Math.min(state.areaStart.y, state.areaEnd.y);
+                const endY = Math.max(state.areaStart.y, state.areaEnd.y);
+                
+                for (let y = startY; y <= endY; y++) {
+                    for (let x = startX; x <= endX; x++) {
+                        const index = y * state.mapWidth + x;
+                        state.mapData[index] = state.selectedTile;
+                    }
+                }
+                
+                state.areaStart = null;
+                state.areaEnd = null;
+                renderMap();
+                updateExportData();
+            }
+            
+            state.isDrawing = false;
+        });
+
+        // Tile placement function
+        function placeTile(x, y) {
+            const index = y * state.mapWidth + x;
+            state.mapData[index] = state.selectedTile;
+            renderMap();
+            updateExportData();
+        }
+
+        // Sidebar buttons
         document.addEventListener('click', (e) => {
             if (e.target.id === 'fill-map') {
                 state.mapData = Array(state.mapWidth * state.mapHeight).fill(state.selectedTile);
                 renderMap();
                 updateExportData();
             }
-        });
-
-        // Event management
-        document.addEventListener('click', (e) => {
+            
             if (e.target.id === 'add-event') {
                 // Add event at selected position
                 const posKey = `${state.selectedPosition.x},${state.selectedPosition.y}`;
@@ -771,7 +982,7 @@
                         name: `Event ${Object.keys(state.events).length + 1}`,
                         pages: [{
                             graphic: { tile_id: 0 },
-                            payload: { type: "actor", id: 1 }
+                            payload: ["New message..."]
                         }]
                     };
                     updateEventList();
@@ -779,36 +990,22 @@
                 }
             }
             
+            if (e.target.id === 'edit-event') {
+                if (state.selectedEvent) {
+                    showEventEditorDialog();
+                }
+            }
+            
             if (e.target.id === 'remove-event') {
                 const posKey = `${state.selectedPosition.x},${state.selectedPosition.y}`;
                 if (state.events[posKey]) {
                     delete state.events[posKey];
+                    state.selectedEvent = null;
                     updateEventList();
                     updateExportData();
+                    document.getElementById('edit-event').disabled = true;
                     document.getElementById('remove-event').disabled = true;
                 }
-            }
-        });
-
-        // Event editing
-        document.addEventListener('click', (e) => {
-            if (e.target.id === 'save-event') {
-                const posKey = `${state.selectedPosition.x},${state.selectedPosition.y}`;
-                state.events[posKey] = {
-                    id: state.selectedEvent.id,
-                    name: document.getElementById('event-name').value,
-                    pages: [{
-                        graphic: { tile_id: parseInt(document.getElementById('event-tile-id').value) },
-                        payload: JSON.parse(document.getElementById('event-payload').value)
-                    }]
-                };
-                updateEventList();
-                updateExportData();
-                showEventListPanel();
-            }
-            
-            if (e.target.id === 'cancel-edit') {
-                showEventListPanel();
             }
         });
 
@@ -847,6 +1044,10 @@
                 if (state.currentPanel === 'tiles') {
                     updateTilePalette();
                     updateSelectedTilePreview();
+                    // Set active mode button
+                    document.querySelectorAll('.mode-btn').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.mode === state.currentTool);
+                    });
                 } else if (state.currentPanel === 'events') {
                     updateEventList();
                 } else if (state.currentPanel === 'export') {
@@ -883,6 +1084,23 @@
                 drawEvent(x, y, event.pages[0].graphic.tile_id);
             });
             
+            // Draw area selection
+            if (state.areaStart && state.areaEnd) {
+                const startX = Math.min(state.areaStart.x, state.areaEnd.x);
+                const endX = Math.max(state.areaStart.x, state.areaEnd.x);
+                const startY = Math.min(state.areaStart.y, state.areaEnd.y);
+                const endY = Math.max(state.areaStart.y, state.areaEnd.y);
+                
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(
+                    startX * state.tileSize * state.zoomLevel,
+                    startY * state.tileSize * state.zoomLevel,
+                    (endX - startX + 1) * state.tileSize * state.zoomLevel,
+                    (endY - startY + 1) * state.tileSize * state.zoomLevel
+                );
+            }
+            
             // Highlight selected position
             ctx.strokeStyle = '#ff0000';
             ctx.lineWidth = 2;
@@ -899,6 +1117,7 @@
             const srcX = (tileId % tilesPerRow) * state.tileSize;
             const srcY = Math.floor(tileId / tilesPerRow) * state.tileSize;
             
+            ctx.imageSmoothingEnabled = false;
             ctx.drawImage(
                 tileset,
                 srcX, srcY, state.tileSize, state.tileSize,
@@ -914,6 +1133,7 @@
             
             ctx.save();
             ctx.globalAlpha = 0.7;
+            ctx.imageSmoothingEnabled = false;
             ctx.drawImage(
                 tileset,
                 srcX, srcY, state.tileSize, state.tileSize,
@@ -945,6 +1165,7 @@
                 const srcX = (i % tilesPerRow) * state.tileSize;
                 const srcY = Math.floor(i / tilesPerRow) * state.tileSize;
                 
+                tileCtx.imageSmoothingEnabled = false;
                 tileCtx.drawImage(
                     tileset,
                     srcX, srcY, state.tileSize, state.tileSize,
@@ -1007,7 +1228,6 @@
                 eventItem.className = 'event-item';
                 if (x === state.selectedPosition.x && y === state.selectedPosition.y) {
                     eventItem.classList.add('active');
-                    document.getElementById('remove-event').disabled = false;
                 }
                 
                 eventItem.innerHTML = `
@@ -1017,9 +1237,11 @@
                 
                 eventItem.addEventListener('click', () => {
                     state.selectedPosition = { x, y };
+                    state.selectedEvent = event;
                     document.getElementById('cursor-position').textContent = `${x}, ${y}`;
                     document.querySelectorAll('.event-item').forEach(item => item.classList.remove('active'));
                     eventItem.classList.add('active');
+                    document.getElementById('edit-event').disabled = false;
                     document.getElementById('remove-event').disabled = false;
                     renderMap();
                 });
@@ -1028,25 +1250,341 @@
             });
         }
 
-        function showEventEditPanel() {
-            const sidebarContent = document.getElementById('sidebar-content');
-            const editTemplate = document.getElementById('panel-event-edit');
+        function showEventEditorDialog() {
+            // Create dialog overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'dialog-overlay';
             
-            document.getElementById('sidebar-title').textContent = 'Edit Event';
-            sidebarContent.innerHTML = '';
-            sidebarContent.appendChild(editTemplate.content.cloneNode(true));
+            // Create dialog
+            const dialog = document.createElement('div');
+            dialog.className = 'dialog';
             
-            // Populate form with selected event data
-            if (state.selectedEvent) {
-                document.getElementById('event-name').value = state.selectedEvent.name;
-                document.getElementById('event-tile-id').value = state.selectedEvent.pages[0].graphic.tile_id;
-                document.getElementById('event-payload').value = JSON.stringify(state.selectedEvent.pages[0].payload, null, 2);
+            // Dialog header
+            const header = document.createElement('div');
+            header.className = 'dialog-header';
+            header.innerHTML = `
+                <h3>Edit Event</h3>
+                <button class="btn btn-secondary" id="close-dialog">✕</button>
+            `;
+            
+            // Dialog content
+            const content = document.createElement('div');
+            content.className = 'dialog-content';
+            content.innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Event Name</label>
+                    <input type="text" class="form-input" id="event-name" value="${state.selectedEvent.name}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Page</label>
+                    <select class="form-select" id="page-selector">
+                        ${state.selectedEvent.pages.map((page, index) => 
+                            `<option value="${index}">Page ${index + 1}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="page-editor" id="page-editor">
+                    <!-- Page editor content will be inserted here -->
+                </div>
+            `;
+            
+            // Dialog footer
+            const footer = document.createElement('div');
+            footer.className = 'dialog-footer';
+            footer.innerHTML = `
+                <button class="btn btn-secondary" id="add-page">Add Page</button>
+                <button class="btn btn-danger" id="delete-page">Delete Page</button>
+                <button class="btn btn-primary" id="save-event-dialog">Save</button>
+            `;
+            
+            dialog.appendChild(header);
+            dialog.appendChild(content);
+            dialog.appendChild(footer);
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+            
+            // Initialize page editor
+            updatePageEditor(0);
+            
+            // Event listeners
+            document.getElementById('close-dialog').addEventListener('click', () => {
+                document.body.removeChild(overlay);
+            });
+            
+            document.getElementById('page-selector').addEventListener('change', (e) => {
+                updatePageEditor(parseInt(e.target.value));
+            });
+            
+            document.getElementById('add-page').addEventListener('click', () => {
+                state.selectedEvent.pages.push({
+                    graphic: { tile_id: 0 },
+                    payload: ["New message..."]
+                });
+                const selector = document.getElementById('page-selector');
+                const newIndex = state.selectedEvent.pages.length - 1;
+                const option = document.createElement('option');
+                option.value = newIndex;
+                option.textContent = `Page ${newIndex + 1}`;
+                selector.appendChild(option);
+                selector.value = newIndex;
+                updatePageEditor(newIndex);
+            });
+            
+            document.getElementById('delete-page').addEventListener('click', () => {
+                const selector = document.getElementById('page-selector');
+                const index = parseInt(selector.value);
+                if (state.selectedEvent.pages.length > 1) {
+                    state.selectedEvent.pages.splice(index, 1);
+                    selector.innerHTML = state.selectedEvent.pages.map((page, i) => 
+                        `<option value="${i}">Page ${i + 1}</option>`
+                    ).join('');
+                    selector.value = Math.max(0, index - 1);
+                    updatePageEditor(parseInt(selector.value));
+                }
+            });
+            
+            document.getElementById('save-event-dialog').addEventListener('click', () => {
+                // Save current page
+                saveCurrentPage();
+                
+                // Update event data
+                state.selectedEvent.name = document.getElementById('event-name').value;
+                
+                // Save to events object
+                const posKey = `${state.selectedPosition.x},${state.selectedPosition.y}`;
+                state.events[posKey] = state.selectedEvent;
+                
+                // Update UI
+                updateEventList();
+                updateExportData();
+                renderMap();
+                
+                // Close dialog
+                document.body.removeChild(overlay);
+            });
+        }
+
+        function updatePageEditor(pageIndex) {
+            const page = state.selectedEvent.pages[pageIndex];
+            const editor = document.getElementById('page-editor');
+            
+            editor.innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Graphic</label>
+                    <div class="graphic-picker" id="graphic-picker">
+                        <!-- Graphic tiles will be inserted here -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payload Type</label>
+                    <div class="payload-type-selector">
+                        <div class="payload-type-btn ${Array.isArray(page.payload) ? 'active' : ''}" data-type="dialog">Dialog</div>
+                        <div class="payload-type-btn ${!Array.isArray(page.payload) ? 'active' : ''}" data-type="action">Action</div>
+                    </div>
+                </div>
+                <div class="payload-editor" id="payload-editor">
+                    <!-- Payload editor will be inserted here -->
+                </div>
+            `;
+            
+            // Populate graphic picker
+            const graphicPicker = document.getElementById('graphic-picker');
+            for (let i = 0; i < 160; i++) {
+                const graphicItem = document.createElement('div');
+                graphicItem.className = 'graphic-item';
+                graphicItem.dataset.tileId = i;
+                
+                const tileCanvas = document.createElement('canvas');
+                tileCanvas.width = 20;
+                tileCanvas.height = 20;
+                const tileCtx = tileCanvas.getContext('2d');
+                
+                const tilesPerRow = Math.floor(tileset.width / state.tileSize);
+                const srcX = (i % tilesPerRow) * state.tileSize;
+                const srcY = Math.floor(i / tilesPerRow) * state.tileSize;
+                
+                tileCtx.imageSmoothingEnabled = false;
+                tileCtx.drawImage(
+                    tileset,
+                    srcX, srcY, state.tileSize, state.tileSize,
+                    0, 0, 20, 20
+                );
+                
+                graphicItem.appendChild(tileCanvas);
+                
+                if (i === page.graphic.tile_id) {
+                    graphicItem.classList.add('selected');
+                }
+                
+                graphicItem.addEventListener('click', () => {
+                    document.querySelectorAll('.graphic-item').forEach(item => item.classList.remove('selected'));
+                    graphicItem.classList.add('selected');
+                    page.graphic.tile_id = i;
+                });
+                
+                graphicPicker.appendChild(graphicItem);
+            }
+            
+            // Set up payload type buttons
+            document.querySelectorAll('.payload-type-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.payload-type-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updatePayloadEditor(pageIndex, btn.dataset.type);
+                });
+            });
+            
+            // Initialize payload editor
+            const payloadType = Array.isArray(page.payload) ? 'dialog' : 'action';
+            updatePayloadEditor(pageIndex, payloadType);
+        }
+
+        function updatePayloadEditor(pageIndex, type) {
+            const page = state.selectedEvent.pages[pageIndex];
+            const editor = document.getElementById('payload-editor');
+            
+            if (type === 'dialog') {
+                // Convert to dialog if needed
+                if (!Array.isArray(page.payload)) {
+                    page.payload = ["New message..."];
+                }
+                
+                let messagesHtml = '';
+                page.payload.forEach((msg, index) => {
+                    messagesHtml += `
+                        <div class="dialog-message">
+                            <input type="text" class="form-input dialog-message-input" data-index="${index}" value="${msg}">
+                            <button class="btn btn-danger remove-message" data-index="${index}">✕</button>
+                        </div>
+                    `;
+                });
+                
+                editor.innerHTML = `
+                    <div class="dialog-messages">
+                        ${messagesHtml}
+                        <button class="btn btn-secondary" id="add-message">Add Message</button>
+                    </div>
+                `;
+                
+                // Add message button
+                document.getElementById('add-message').addEventListener('click', () => {
+                    page.payload.push("New message...");
+                    updatePayloadEditor(pageIndex, 'dialog');
+                });
+                
+                // Remove message buttons
+                document.querySelectorAll('.remove-message').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        page.payload.splice(index, 1);
+                        updatePayloadEditor(pageIndex, 'dialog');
+                    });
+                });
+                
+                // Message input handlers
+                document.querySelectorAll('.dialog-message-input').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        page.payload[index] = e.target.value;
+                    });
+                });
+            } else {
+                // Convert to action if needed
+                if (Array.isArray(page.payload)) {
+                    page.payload = { type: "actor", id: 1 };
+                }
+                
+                const actionType = page.payload.type || "actor";
+                
+                editor.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Action Type</label>
+                        <select class="form-select" id="action-type">
+                            <option value="actor" ${actionType === 'actor' ? 'selected' : ''}>Actor</option>
+                            <option value="transfer" ${actionType === 'transfer' ? 'selected' : ''}>Transfer</option>
+                        </select>
+                    </div>
+                    <div class="action-fields" id="action-fields">
+                        <!-- Action fields will be inserted here -->
+                    </div>
+                `;
+                
+                updateActionFields(pageIndex);
+                
+                document.getElementById('action-type').addEventListener('change', () => {
+                    updateActionFields(pageIndex);
+                });
             }
         }
 
-        function showEventListPanel() {
-            state.currentPanel = 'events';
-            updateSidebar();
+        function updateActionFields(pageIndex) {
+            const page = state.selectedEvent.pages[pageIndex];
+            const actionType = document.getElementById('action-type').value;
+            const fields = document.getElementById('action-fields');
+            
+            if (actionType === 'actor') {
+                page.payload = { type: "actor", id: page.payload.id || 1 };
+                fields.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Actor ID</label>
+                        <input type="number" class="form-input" id="actor-id" min="1" value="${page.payload.id}">
+                    </div>
+                `;
+            } else {
+                page.payload = { 
+                    type: "transfer", 
+                    map_id: page.payload.map_id || 1,
+                    x: page.payload.x || 0,
+                    y: page.payload.y || 0
+                };
+                fields.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Map ID</label>
+                        <input type="number" class="form-input" id="map-id" min="1" value="${page.payload.map_id}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">X Position</label>
+                        <input type="number" class="form-input" id="x-pos" value="${page.payload.x}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Y Position</label>
+                        <input type="number" class="form-input" id="y-pos" value="${page.payload.y}">
+                    </div>
+                `;
+            }
+        }
+
+        function saveCurrentPage() {
+            const pageIndex = parseInt(document.getElementById('page-selector').value);
+            const page = state.selectedEvent.pages[pageIndex];
+            
+            // Save graphic
+            const selectedGraphic = document.querySelector('.graphic-item.selected');
+            if (selectedGraphic) {
+                page.graphic.tile_id = parseInt(selectedGraphic.dataset.tileId);
+            }
+            
+            // Save payload
+            const payloadType = document.querySelector('.payload-type-btn.active').dataset.type;
+            if (payloadType === 'dialog') {
+                // Dialog messages are already saved in real-time
+            } else {
+                // Save action fields
+                const actionType = document.getElementById('action-type').value;
+                if (actionType === 'actor') {
+                    page.payload = {
+                        type: "actor",
+                        id: parseInt(document.getElementById('actor-id').value)
+                    };
+                } else {
+                    page.payload = {
+                        type: "transfer",
+                        map_id: parseInt(document.getElementById('map-id').value),
+                        x: parseInt(document.getElementById('x-pos').value),
+                        y: parseInt(document.getElementById('y-pos').value)
+                    };
+                }
+            }
         }
 
         function updateExportData() {
