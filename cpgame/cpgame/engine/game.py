@@ -64,6 +64,6 @@ class Game:
     
     def clear_session(self):
         """Clears all session data and runs garbage collection."""
-        print("Clearing game session data...")
+        # print("Clearing game session data...")
         self.session_data.clear()
         gc.collect()

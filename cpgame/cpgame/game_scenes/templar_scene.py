@@ -137,7 +137,7 @@ class TemplarScene(Scene):
 
     def create(self):
         """Initializes the game state, called once when the scene starts."""
-        print("TemplarScene: Creating...")
+        # print("TemplarScene: Creating...")
         
         # Load assets from the manager
         self.tileset = self.assets.tilesets["templar"]

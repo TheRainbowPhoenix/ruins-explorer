@@ -5,6 +5,7 @@ try:
 except:
     pass
 
+from cpgame.systems.jrpg import JRPG
 from cpgame.engine.scene import Scene
 from cpgame.engine.systems import Camera
 from cpgame.game_objects.actor import GameActor
@@ -55,7 +56,7 @@ class JRPGScene(Scene):
         Called once by the game loop when this scene starts.
         Responsible for loading assets and setting up initial state.
         """
-        print("JRPGScene: Creating...")
+        # print("JRPGScene: Creating...")
 
         # Load all necessary assets from the manager
         self.tileset = self.assets.tilesets["jrpg"]
@@ -196,8 +197,17 @@ class JRPGScene(Scene):
             # Handle different payload types
             if isinstance(payload, dict) and payload.get("type") == "actor":
                 # It's an actor, load it using the DataManager
-                actor_id = payload.get("id", "")
-                if actor_id:
+                actor_id = payload.get("id", None)
+                if actor_id and JRPG.objects:
+                    # This will lazy-load the actor on first access.
+                    actor = JRPG.objects.actors[actor_id]
+                    # Could also do self.game.session_data.get('objects') for direct access
+                    if actor:
+                        actor.hp -= 1 # Modify its state
+                        party_info = ["Party Leader: " + str(JRPG.objects.party.leader().name)]
+                        self._start_dialog(actor.get_info_text() + party_info)
+                    return True
+                
                     # Access the DataManager and Party via self.game.session_data
                     data_manager = self.game.session_data.get('data')
                     party = self.game.session_data.get('party')
@@ -231,9 +241,12 @@ class JRPGScene(Scene):
         # Prevent walking on tiles occupied by objects/actors
         tile_id = self.map_layout[y][x]
         # Also consider tiles with objects on them as not walkable
-        # TODO: Some should be passable !!
+        # TODO: Some should be passable, should be done without needing to query each elements data !!
         if (y, x) in self.map_objects:
-            return False
+            o = self.map_objects.get((x, y))
+            if type(o) == object and o.get("type") in ["actor"]:
+                return False
+        
         return tile_id not in self.tileset.solid # type: ignore
 
     def _update_camera_block(self) -> bool:

@@ -3,10 +3,9 @@
 
 from cpgame.engine.scene import Scene
 from cpgame.game_scenes.jrpg_scene import JRPGScene
-
-# Import the JRPG-specific systems we need to create
 from cpgame.modules.datamanager import DataManager
-from cpgame.game_objects.party import Game_Party
+from cpgame.modules.game_objects import GameObjects
+from cpgame.systems.jrpg import JRPG
 
 class JRPG_BootScene(Scene):
     """
@@ -14,19 +13,25 @@ class JRPG_BootScene(Scene):
     (Party, DataManager, etc.) before the game starts.
     """
     def create(self):
-        print("JRPG_BootScene: Initializing JRPG subsystem...")
+        # print("JRPG_BootScene: Initializing JRPG subsystem...")
 
         # Create instances of all JRPG-specific "global" objects
         data_manager = DataManager()
-        party = Game_Party()
+        # Temp fix to use DataManager in GameObjects
+        JRPG.setup(data_manager=data_manager, game_objects=None)
 
-        # Initialize the starting party
-        # In a real game, this might come from a system data file
-        party.setup_starting_members(["ACTOR_001"]) # Start with Arion
-
+        # party = GameParty()
+        game_objects = GameObjects()
         # Store these instances in the generic session container
         self.game.session_data['data'] = data_manager
-        self.game.session_data['party'] = party
+        self.game.session_data['objects'] = game_objects
+
+        JRPG.setup(data_manager=data_manager, game_objects=game_objects)
+
+        # Set up a new game state within the game objects manager
+        game_objects.setup_new_game()
+        data_manager.init()
+        
         
         # Immediately transition to the actual first scene of the JRPG
         self.game.change_scene(JRPGScene)

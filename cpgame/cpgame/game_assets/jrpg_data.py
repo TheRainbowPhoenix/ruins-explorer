@@ -28,5 +28,5 @@ map_signs = {
 map_objects = {
     (6, 6): (52, ["You found a", "strange, glowing", "crystal."]),
     # Special type of object: actor. Would be pulled from game_data/actors
-    (3, 3): (56, {"type": "actor", "id": "ACTOR_001"}) 
+    (3, 3): (56, {"type": "actor", "id": 1}) # id: 1 => ACTOR_1
 }

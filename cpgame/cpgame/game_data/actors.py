@@ -5,11 +5,11 @@
 # without loading the entire file.
 HEADER = {
     'description': 'Contains all actor base data.',
-    'exports': ['ACTOR_001', 'ACTOR_002'],
+    'exports': ['ACTOR_1', 'ACTOR_2'],
 }
 
 # Data for the first actor
-ACTOR_001 = {
+ACTOR_1 = {
     "name": "Arion",
     "nickname": "The Valiant",
     "class_id": 1,
@@ -24,7 +24,7 @@ ACTOR_001 = {
 }
 
 # Data for a second actor
-ACTOR_002 = {
+ACTOR_2 = {
     "name": "Lyra",
     "nickname": "The Sage",
     "class_id": 2,

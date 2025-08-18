@@ -1,9 +1,9 @@
 # cpgame/game_objects/character.py
-# Contains the class hierarchy for map characters (Game_CharacterBase, Game_Character, Game_Player)
+# Contains the class hierarchy for map characters (GameCharacterBase, GameCharacter, GamePlayer)
 
 from cpgame.engine.geometry import Vec2
 
-class Game_CharacterBase:
+class GameCharacterBase:
     """
     Base class for map characters. Manages position, graphics, and basic movement state.
     """
@@ -36,12 +36,12 @@ class Game_CharacterBase:
         self.real_y = float(y)
 
 
-class Game_Character(Game_CharacterBase):
+class GameCharacter(GameCharacterBase):
     """
     Inherits from CharacterBase and adds more complex movement logic.
     """
     def __init__(self):
-        super(Game_Character, self).__init__()
+        super(GameCharacter, self).__init__()
         # Logic for move routes, etc., would go here.
 
     def move_straight(self, d: int):
@@ -59,15 +59,18 @@ class Game_Character(Game_CharacterBase):
             self._moving = False
 
 
-class Game_Player(Game_Character):
+class GamePlayer(GameCharacter):
     """
-    The player character. Inherits from Game_Character and handles input.
+    The player character. Inherits from GameCharacter and handles input.
     """
     def __init__(self):
-        super(Game_Player, self).__init__()
+        super(GamePlayer, self).__init__()
     
     # The actual player logic is currently handled directly in JRPGScene,
     # but this class provides the correct hierarchy for future expansion.
     def update(self):
         # Player-specific updates would go here
-        super(Game_Player, self).update()
+        super(GamePlayer, self).update()
+
+    def refresh(self):
+        pass # TODO

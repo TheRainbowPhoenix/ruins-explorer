@@ -31,7 +31,7 @@ class AssetManager:
     def load_all(self):
         """Processes all raw asset data into usable game objects."""
         if self.is_loaded: return
-        print("AssetManager: Loading all assets...")
+        # print("AssetManager: Loading all assets...")
 
         # TODO: use PAK if successful, and make it a PAK loader
         # TODO: else, use the class loader with cleanup
@@ -52,4 +52,4 @@ class AssetManager:
         }
         
         self.is_loaded = True
-        print("AssetManager: Load complete.")
+        # print("AssetManager: Load complete.")

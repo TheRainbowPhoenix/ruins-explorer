@@ -9,7 +9,9 @@ except:
 import random
 import math
 
+from cpgame.game_objects.item import GameBaseItem
 from cpgame.game_objects.action import GameAction, GameActionResult
+from cpgame.systems.jrpg import JRPG
 
 class GameBattlerBase:
     """
@@ -788,7 +790,7 @@ class GameBattler(GameBattlerBase):
     def state_addable(self, state_id: int) -> bool:
         """Determine if states are addable."""
         return (self.alive() and 
-                self.datastates.get(state_id) and 
+                JRPG.is_data_state(state_id) and 
                 not self.state_resist(state_id) and
                 not self.state_removed(state_id) and 
                 not self.state_restrict(state_id))
@@ -799,9 +801,10 @@ class GameBattler(GameBattlerBase):
     
     def state_restrict(self, state_id: int) -> bool:
         """Determine states removed by action restriction."""
-        state = self.datastates.get(state_id)
-        if state:
-            return state.remove_by_restriction and self.restriction() > 0
+        if JRPG.data:    
+            state = JRPG.data.states.get(state_id)
+            if state:
+                return state.remove_by_restriction and self.restriction() > 0
         return False
     
     def add_new_state(self, state_id: int):
@@ -827,11 +830,12 @@ class GameBattler(GameBattlerBase):
     
     def reset_state_counts(self, state_id: int):
         """Reset state counts (turns and steps)."""
-        state = self.datastates.get(state_id)
-        if state:
-            variance = 1 + max(state.max_turns - state.min_turns, 0)
-            self.state_turns[state_id] = state.min_turns + random.randint(0, variance - 1) if variance > 0 else state.min_turns
-            self.state_steps[state_id] = state.steps_to_remove
+        if JRPG.data:    
+            state = JRPG.data.states.get(state_id)
+            if state:
+                variance = 1 + max(state.max_turns - state.min_turns, 0)
+                self.state_turns[state_id] = state.min_turns + random.randint(0, variance - 1) if variance > 0 else state.min_turns
+                self.state_steps[state_id] = state.steps_to_remove
     
     def remove_state(self, state_id: int):
         """Remove state."""
@@ -858,7 +862,7 @@ class GameBattler(GameBattlerBase):
     
     def escape(self):
         """Escape."""
-        if hasattr(self, 'hide') and self.game_party.in_battle:
+        if hasattr(self, 'hide') and (JRPG.objects and JRPG.objects.party is not None and JRPG.objects.party.in_battle):
             self.hide()
         self.clear_actions()
         self.clearstates()
@@ -1001,7 +1005,7 @@ class GameBattler(GameBattlerBase):
         if not self.movable():
             return
         times = self.make_action_times()
-        self.actions = [Game_Action(self) for _ in range(times)]
+        self.actions = [GameAction(self) for _ in range(times)]
     
     def make_speed(self):
         """Determine action speed."""
@@ -1095,18 +1099,18 @@ class GameBattler(GameBattlerBase):
     
     def use_item(self, item):
         """Use skill/item."""
-        if isinstance(item, RPG_Skill):
-            self.pay_skill_cost(item)
-        if isinstance(item, RPG_Item):
-            self.consume_item(item)
+        # if isinstance(item, RPGSkill): # TODO
+        #     self.pay_skill_cost(item)
+        # if isinstance(item, RPGItem): # TODO
+        #     self.consume_item(item)
         
         for effect in item.effects:
             self.item_global_effect_apply(effect)
     
     def consume_item(self, item):
         """Consume items."""
-        # self.game_party.consume_item(item)  # Would be implemented in full version
-        pass
+        if JRPG.objects and JRPG.objects.party:
+            JRPG.objects.party.consume_item(item)
     
     def item_global_effect_apply(self, effect):
         """Apply effect of use to other than user."""
@@ -1118,7 +1122,8 @@ class GameBattler(GameBattlerBase):
         """Test skill/item application."""
         if item.for_dead_friend != self.dead():
             return False
-        if self.game_party.in_battle:
+        
+        if JRPG.objects and JRPG.objects.party and JRPG.objects.party.in_battle:
             return True
         if item.for_opponent:
             return True
@@ -1213,7 +1218,18 @@ class GameBattler(GameBattlerBase):
         elif effect.code == self.EFFECT_REMOVE_DEBUFF:
             return self.debuff(effect.data_id)
         elif effect.code == self.EFFECT_LEARN_SKILL:
-            return self.actor() and self.skills and not self.skills.include(self.data_skills.get(effect.data_id))
+            if self.actor():
+                if JRPG.data and JRPG.data.skills:
+                    skill_ref = JRPG.data.skills.get(effect.data_id)
+                else:
+                    skill_ref = None
+
+                try:
+                    return self.actor() and self.skills and not self.skills.include(skill_ref) # type: ignore
+                except:
+                    pass
+            
+            return False
         else:
             return True
     
@@ -1242,8 +1258,10 @@ class GameBattler(GameBattlerBase):
     def item_effect_recover_hp(self, user, item, effect):
         """[HP Recovery] effect."""
         value = (self.mhp * effect.value1 + effect.value2) * self.rec
-        if isinstance(item, RPG_Item):
+        if effect.type == "RPG_Item":
             value *= user.pha
+        # if isinstance(item, RPG_Item):
+        #     value *= user.pha
         value = int(value)
         self.result.hp_damage -= value
         self.result.success = True
@@ -1252,8 +1270,10 @@ class GameBattler(GameBattlerBase):
     def item_effect_recover_mp(self, user, item, effect):
         """[MP Recovery] effect."""
         value = (self.mmp * effect.value1 + effect.value2) * self.rec
-        if isinstance(item, RPG_Item):
+        if effect.type == "RPG_Item":
             value *= user.pha
+        # if isinstance(item, RPG_Item):
+        #     value *= user.pha
         value = int(value)
         self.result.mp_damage -= value
         self.result.success = (value != 0)
@@ -1336,6 +1356,10 @@ class GameBattler(GameBattlerBase):
         self.add_param(effect.data_id, int(effect.value1))
         self.result.success = True
     
+    def learn_skill(self, skill_id: int):
+        """Learn skill."""
+        pass
+    
     def item_effect_learn_skill(self, user, item, effect):
         """[Learn Skill] effect."""
         if self.actor():
@@ -1377,7 +1401,7 @@ class GameBattler(GameBattlerBase):
     def regenerate_hp(self):
         """Regenerate HP."""
         damage = -int(self.mhp * self.hrg)
-        if self.game_party.in_battle and damage > 0:
+        if JRPG.objects and JRPG.objects.party and JRPG.objects.party.in_battle and damage > 0:
             self.perform_map_damage_effect()
         self.result.hp_damage = min(damage, self.max_slip_damage())
         self.hp -= self.result.hp_damage
@@ -1442,7 +1466,7 @@ class GameBattler(GameBattlerBase):
 
 class GameActor(GameBattler):
     """
-    Handles actor data. It is used within GameActors and Game_Party.
+    Handles actor data. It is used within GameActors and GameParty.
     This class is data-driven, initialized from a dictionary.
     """
     def __init__(self, actor_id: int, actor_data: Dict[str, Any]):
@@ -1454,10 +1478,10 @@ class GameActor(GameBattler):
         self.class_id: int = actor_data.get("class_id", 1)
         self.level: int = actor_data.get("initial_level", 1)
         self.exp = {}
-        self.equips = []
+        self.equips: List[int] = actor_data.get("equips", [0,0,0,0,0])
         self.skills = []
         self.action_input_index = 0
-        self.last_skill = None # TODO: Game_BaseItem()
+        self.last_skill = GameBaseItem()
 
         # Graphics
         self.character_name: str = actor_data.get("character_name", "")
@@ -1467,7 +1491,8 @@ class GameActor(GameBattler):
         
         # Misc
         self._description: List[str] = actor_data.get("description", ["A mysterious hero."])
-        self.params: List[int] = actor_data.get("params", [0,0,0,0,0,0,0,0])
+        self.params: List[int] = actor_data.get("params", [0,0,0,0,0,0,0,0]) # TODO: params are from classes !
+        self.note: str = actor_data.get("note", "")
 
         GameActor.setup(self, actor_id)
     
@@ -1891,3 +1916,69 @@ class GameActor(GameBattler):
         info = [self.name + ", Lvl " + str(self.level)]
         info.extend(self.description())
         return info
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Serializes the actor's current mutable state."""
+        return {
+            "id": self._actor_id,
+            "battlerName": self.battler_name or "",
+            "characterIndex": self.character_index,
+            "characterName": self.character_name or "!Crystal",
+            "classId": self.class_id or 0,
+            "equips": self.equips[:5],
+            "faceIndex": self.face_index or 0,
+            "faceName": self.face_name or "",
+            "traits": [],
+            "initialLevel": self.level or 1,
+            "maxLevel": self.max_level or 99,
+            "name": self.name or "",
+            "nickname": self.nickname or "",
+            "params": self.params or [0,0,0,0,0,0,0,0],
+            "note": self.note or "",
+            "description": self.description or [""]
+        }
+
+    def from_dict(self, data: Dict[str, Any]):
+        """Applies saved state data to this actor instance."""
+        # Restore basic properties
+        self._actor_id = data.get("id", self._actor_id)
+        self.battler_name = data.get("battlerName", self.battler_name)
+        self.character_index = data.get("characterIndex", self.character_index)
+        self.character_name = data.get("characterName", self.character_name)
+        self.class_id = data.get("classId", self.class_id)
+        self.face_index = data.get("faceIndex", self.face_index)
+        self.face_name = data.get("faceName", self.face_name)
+        self.name = data.get("name", self.name)
+        self.nickname = data.get("nickname", self.nickname)
+        self.note = data.get("note", self.note)
+        self.description = data.get("description", self.description)
+
+        # Restore equips (ensure it's a list, take up to 5)
+        equips = data.get("equips", self.equips)
+        if isinstance(equips, list):
+            self.equips[:] = equips[:5]
+        else:
+            self.equips[:] = self.equips[:5]  # fallback
+
+        # Restore parameters (ensure correct length and type)
+        params = data.get("params", self.params)
+        if isinstance(params, list) and len(params) == 8:
+            self.params[:] = params
+        else:
+            self.params = [0, 0, 0, 0, 0, 0, 0, 0]
+
+        # Level-related
+        self.level = data.get("initialLevel", self.level)
+        self.max_level = data.get("maxLevel", self.max_level)
+
+        # HP and MP (must be within valid bounds)
+        self._hp = data.get("hp", self._hp)
+        self._mp = data.get("mp", self._mp)
+
+        # Other runtime state
+        self.talk_count = data.get("talk_count", 0)
+
+        # Traits (currently empty)
+        # traits_data = data.get("traits", [])
+
+        self.refresh()

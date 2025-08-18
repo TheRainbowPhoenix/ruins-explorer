@@ -62,7 +62,7 @@ class JRPGScene(Scene):
         Called once by the game loop when this scene starts.
         Responsible for loading assets and setting up initial state.
         """
-        print("JRPGScene: Creating...")
+        # print("JRPGScene: Creating...")
 
         # Load all necessary assets from the manager
         self.tileset = self.assets.tilesets["jrpg"]
