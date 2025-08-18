@@ -8,9 +8,11 @@ import math
 
 from cpgame.systems.jrpg import JRPG
 from cpgame.engine.assets import Tilemap
+from cpgame.game_objects.event import GameEvent
+from cpgame.game_objects.interpreter import GameInterpreter
 
 # TODO: move it elsewhere
-class GameEvent:
+class GameEvent_Simple:
     """A simple data container for a map event."""
     def __init__(self, event_data: Dict):
         # TODO: this would parse pages and conditions.
@@ -24,10 +26,12 @@ class GameMap:
     """Manages map data, scrolling, and passage determination."""
     def __init__(self):
         self._map_id = 0
+        self._map_proxy = None
         self._data = None
         self.events: Dict[Tuple[int, int], GameEvent] = {}
         # Cache loaded props
         self._properties: Dict[str, Any] = {}
+        self.interpreter = GameInterpreter()
         
         # TODO: add more 
         self.need_refresh: bool = False
@@ -42,6 +46,7 @@ class GameMap:
 
             self.events.clear()
             self._properties.clear() # Clear cached properties
+            self.interpreter.clear()
 
             with self._map_proxy.load("events") as event_data:
                 if event_data:
@@ -54,7 +59,7 @@ class GameMap:
 
                         # The key is a string from the file, convert to tuple
                         # pos_tuple = tuple(map(int, pos.strip('()').split(',')))
-                        self.events[pos] = GameEvent(data)
+                        self.events[pos] = GameEvent(map_id, data)
     
     def _get_property(self, prop_name: str, default: Any = None) -> Any:
         """Lazy-loads a property from the map data file."""
@@ -78,6 +83,19 @@ class GameMap:
     @property
     def tileset_id(self) -> str:
         return self._get_property('tilesetId', 'jrpg')
+    
+    def update(self):
+        """Update the map's interpreter and all its events."""
+        if self.interpreter.is_running():
+            self.interpreter.update()
+        
+        for event in self.events.values():
+            event.update()
+    
+    def start_event_interpreter(self, event: GameEvent):
+        """Starts the interpreter if it's not already busy."""
+        if not self.interpreter.is_running():
+            self.interpreter.setup(event.command_list, event.id)
 
     def tile_id(self, x: int, y: int) -> int:
         map_data = self._get_property('data')

@@ -94,7 +94,8 @@ class JRPGScene(Scene):
         self.input.update()
 
         # --- State Machine: Are we in a dialog or exploring? ---
-        if self.dialog_active:
+        # if self.dialog_active:
+        if JRPG.objects and JRPG.objects.dialog_in_progress:
             self._update_dialog()
             return None # Prevent any other game logic from running
 
@@ -106,14 +107,18 @@ class JRPGScene(Scene):
             self.game.clear_session() # Clean up party, datamanager, etc.
             return self.game.change_scene(MenuScene)
 
+        # Update the map, which in turn updates events and its interpreter
+        self.map.update()
+
         # Update timers
         if self.move_cooldown > 0:
             self.move_cooldown -= dt
 
         
-        # Handle player input for movement and interaction
-        self._handle_player_movement()
-        self._handle_player_interaction()
+        # Player movement is only possible if the event interpreter is not running
+        if not self.map.interpreter.is_running():
+            self._handle_player_movement()
+            self._handle_player_interaction()
 
         if self._check_for_map_transfer():
             return None
@@ -148,7 +153,8 @@ class JRPGScene(Scene):
 
         self._draw_player()
 
-        if self.dialog_active:
+        # if self.dialog_active:
+        if JRPG.objects and JRPG.objects.dialog_in_progress:
             self._draw_dialog_box()
 
     # --- Private Update Helpers ---
@@ -156,11 +162,16 @@ class JRPGScene(Scene):
     def _update_dialog(self):
         """Handles input logic when a dialog box is active."""
         if self.input.interact:
-            self.dialog_index += 1
-            if self.dialog_index >= len(self.dialog_pages):
-                # Dialog has ended
-                self.dialog_active = False
+            # Instead of managing pages locally, we just tell the system to clear the dialog
+            if JRPG.objects:
+                JRPG.objects.clear_dialog()
                 self.full_redraw_needed = True # Redraw the world underneath
+
+            # self.dialog_index += 1
+            # if self.dialog_index >= len(self.dialog_pages):
+            #     # Dialog has ended
+            #     self.dialog_active = False
+            #     self.full_redraw_needed = True # Redraw the world underneath
 
     def _handle_player_movement(self):
         """Checks for and processes player movement input."""
@@ -225,9 +236,13 @@ class JRPGScene(Scene):
         for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
             adj_pos = (self.player.x + dx, self.player.y + dy)
             event = self.map.events.get(adj_pos)
-            if event and event.payload:
-                self._process_event_payload(event.payload)
+            if event:
+                event.start()
                 return
+
+            # if event and event.payload:
+            #     self._process_event_payload(event.payload)
+            #     return
             
         # TODO: below is old code, untested
 
@@ -253,6 +268,9 @@ class JRPGScene(Scene):
     
     def _process_event_payload(self, payload: Any):
         """Processes the payload from an event interaction."""
+        # THIS METHOD IS NOW OBSOLETE. The interpreter handles payloads.
+        return
+    
         if isinstance(payload, dict):
             event_type = payload.get("type")
             if event_type == "actor":
@@ -354,9 +372,13 @@ class JRPGScene(Scene):
         drect(0, y0, DWIDTH - 1, DHEIGHT - 1, C_WHITE)
         drect_border(0, y0, DWIDTH - 1, DHEIGHT - 1, C_NONE, 1, C_BLACK)
 
-        if self.dialog_index < len(self.dialog_pages):
-            page_text = self.dialog_pages[self.dialog_index]
-            # Handle both list of strings and single string with newlines
-            lines_to_draw = page_text if isinstance(page_text, list) else page_text.split("\n")
-            for i, line in enumerate(lines_to_draw):
+        if JRPG.objects and JRPG.objects.dialog_pages:
+            pages = JRPG.objects.dialog_pages
+            for i, line in enumerate(pages):
                 dtext(8, y0 + 8 + i * 16, C_BLACK, line)
+        # if self.dialog_index < len(self.dialog_pages):
+        #     page_text = self.dialog_pages[self.dialog_index]
+        #     # Handle both list of strings and single string with newlines
+        #     lines_to_draw = page_text if isinstance(page_text, list) else page_text.split("\n")
+        #     for i, line in enumerate(lines_to_draw):
+        #         dtext(8, y0 + 8 + i * 16, C_BLACK, line)

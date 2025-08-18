@@ -22,8 +22,14 @@ data = [
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
 ]
 events = {
-    (5, 5): {
-        "id": 1, "name": "ReturnPortal",
-        "pages": [{"graphic": {"tile_id": 60}, "payload": {"type": "transfer", "map_id": 1, "x": 10, "y": 3}}]
+    (5, 6): {
+        "id": 3, "name": "ReturnPortal", "x": 5, "y": 6,
+        "pages": [{
+            "graphic": {"tileId": 60},
+            "list": [
+                # Transfer player to Map 1 at coordinates (5, 5)
+                {"code": 201, "parameters": [0, 1, 5, 5]}
+            ]
+        }]
     }
 }

@@ -359,19 +359,24 @@
 
         /* Tile Palette */
         .tile-palette {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
+            display: flex;
+            flex-wrap: wrap;
             gap: 4px;
             max-height: 300px;
             overflow-y: auto;
+            padding: 4px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--border-radius);
         }
 
         .tile-item {
-            width: 100%;
-            aspect-ratio: 1;
+            width: 40px;
+            height: 40px;
             border: 2px solid transparent;
             cursor: pointer;
             transition: var(--transition);
+            background-size: 320px 200px;
             image-rendering: pixelated;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
@@ -383,7 +388,6 @@
 
         .tile-item.selected {
             border-color: var(--accent-primary);
-            box-shadow: 0 0 0 2px var(--accent-primary);
         }
 
         /* Event List */
@@ -868,9 +872,6 @@
             areaEnd: null
         };
 
-        // document.getElementById('map-width').value = width
-        // document.getElementById('map-height').value = height
-
         // Canvas and context
         const canvas = document.getElementById('tilemap-canvas');
         const ctx = canvas.getContext('2d');
@@ -939,7 +940,6 @@
                     state.isDrawing = true;
                     state.selectedPosition = { x, y };
                     document.getElementById('cursor-position').textContent = `${x}, ${y}`;
-                    // document.getElementById('selected-position-label').textContent = `${x}, ${y}`;
                     renderMap(); // Re-render to show selection
                     
                     if (state.currentTool === 'place') {
@@ -1289,30 +1289,20 @@
             
             palette.innerHTML = '';
             
-            // Create 160 tiles (8x20 grid)
+            // Create 160 tiles using background images like graphic-picker
             for (let i = 0; i < 160; i++) {
                 const tileItem = document.createElement('div');
                 tileItem.className = 'tile-item';
                 tileItem.dataset.tileId = i;
                 
-                // Create canvas for tile preview
-                const tileCanvas = document.createElement('canvas');
-                tileCanvas.width = 20;
-                tileCanvas.height = 20;
-                const tileCtx = tileCanvas.getContext('2d');
-                
+                // Calculate background position
                 const tilesPerRow = Math.floor(tileset.width / state.tileSize);
                 const srcX = (i % tilesPerRow) * state.tileSize;
                 const srcY = Math.floor(i / tilesPerRow) * state.tileSize;
                 
-                tileCtx.imageSmoothingEnabled = false;
-                tileCtx.drawImage(
-                    tileset,
-                    srcX, srcY, state.tileSize, state.tileSize,
-                    0, 0, 20, 20
-                );
-                
-                tileItem.appendChild(tileCanvas);
+                tileItem.style.backgroundImage = `url('${tileset.src}')`;
+                tileItem.style.backgroundPosition = `-${srcX * 2}px -${srcY * 2}px`;
+                tileItem.style.backgroundSize = `${tileset.width * 2}px ${tileset.height * 2}px`;
                 
                 if (i === state.selectedTile) {
                     tileItem.classList.add('selected');

@@ -2,7 +2,7 @@
 # This module manages all stateful game objects like actors, party, etc.
 
 try:
-    from typing import Dict, Any
+    from typing import Dict, Any, List
     # Import the proxy class that this manager will use
 except:
     pass
@@ -31,6 +31,9 @@ class GameObjects:
         self.system = GameSystem()
         # self.switches = GameSwitches()
         # self.variables = GameVariables()
+
+        self.dialog_in_progress = False
+        self.dialog_pages = []
 
     def setup_new_game(self):
         """Sets up the initial state for a new game."""
@@ -73,3 +76,14 @@ class GameObjects:
         # self.switches.from_dict(contents.get('switches', {}))
         # self.variables.from_dict(contents.get('variables', {}))
         print("Extracted save contents.")
+
+    # Debug stuff, should be later replaced by proper dialog system
+    def show_text(self, pages: List[str]):
+        """Flags that a dialog needs to be shown."""
+        self.dialog_in_progress = True
+        self.dialog_pages = pages
+
+    def clear_dialog(self):
+        """Clears the dialog state."""
+        self.dialog_in_progress = False
+        self.dialog_pages = []

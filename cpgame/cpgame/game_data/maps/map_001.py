@@ -23,18 +23,39 @@ data = [
 ]
 events = {
     # Event at (x=3, y=3)
-    (3, 3): {
-        "id": 1, "name": "ActorNPC",
-        "pages": [{"graphic": {"tile_id": 56}, "payload": {"type": "actor", "id": 1}}]
+    (3, 3): { # Event ID 1
+        "id": 1,
+        "name": "ActorNPC",
+        "x": 3, "y": 3,
+        "pages": [{
+            "graphic": {"tileId": 56, "direction": 2},
+            "list": [
+                {"code": 101, "parameters": []}, # Show Text
+                {"code": 401, "parameters": ["Arion: Greetings, traveler."]},
+                {"code": 401, "parameters": ["The crystal is over there."]}
+            ]
+        }]
     },
     # Event at (x=6, y=6)
     (6, 6): {
-        "id": 2, "name": "Crystal",
-        "pages": [{"graphic": {"tile_id": 52}, "payload": ["A strange crystal..."]}]
+        "id": 2, "name": "Crystal", "x": 6, "y": 6,
+        "pages": [{
+            "graphic": {"tileId": 52},
+            "list": [
+                {"code": 101, "parameters": []},
+                {"code": 401, "parameters": ["A strange, glowing crystal..."]}
+            ]
+        }]
     },
     # Event at (x=10, y=2) - Teleport to Map 2
     (10, 2): {
-        "id": 3, "name": "Portal",
-        "pages": [{"graphic": {"tile_id": 60}, "payload": {"type": "transfer", "map_id": 2, "x": 5, "y": 5}}]
+        "id": 3, "name": "Portal", "x": 10, "y": 2,
+        "pages": [{
+            "graphic": {"tileId": 60},
+            "list": [
+                # Transfer player to Map 2 at coordinates (5, 5)
+                {"code": 201, "parameters": [0, 2, 5, 5]}
+            ]
+        }]
     }
 }
