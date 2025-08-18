@@ -831,9 +831,6 @@
 
     <template id="panel-events">
         <div class="form-group">
-            <label class="form-label text-muted">Selected Position: <span id="selected-position-label">0, 0</span></label>
-        </div>
-        <div class="form-group">
             <label class="form-label">Event List</label>
             <div class="event-list" id="event-list"></div>
         </div>
@@ -852,8 +849,12 @@
         </div>
         <div class="form-group">
             <button class="btn btn-primary" id="copy-map-data">Copy Map Data</button>
+            <button class="btn btn-secondary" id="save-project">Save Project</button>
+            <button class="btn btn-secondary" id="load-project">Load Project</button>
         </div>
     </template>
+
+    <input type="file" id="project-file-input" accept=".json" style="display: none;">
 
     <script>
         // Editor state
@@ -961,7 +962,7 @@
                     // Handle event placement/editing
                     state.selectedPosition = { x, y };
                     document.getElementById('cursor-position').textContent = `${x}, ${y}`;
-                    document.getElementById('selected-position-label').textContent = `${x}, ${y}`;
+                    // document.getElementById('selected-position-label').textContent = `${x}, ${y}`;
                     renderMap(); // Re-render to show selection
                     
                     const posKey = `${x},${y}`;
@@ -1113,6 +1114,69 @@
             if (e.target.id === 'copy-map-data') {
                 navigator.clipboard.writeText(document.getElementById('export-map-data').value);
             }
+            
+            if (e.target.id === 'save-project') {
+                const projectData = {
+                    displayName: state.displayName,
+                    tilesetId: state.tilesetId,
+                    width: state.mapWidth,
+                    height: state.mapHeight,
+                    scrollType: state.scrollType,
+                    specifyBattleback: state.specifyBattleback,
+                    data: state.mapData,
+                    events: state.events
+                };
+                
+                const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${state.displayName || 'project'}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+            
+            if (e.target.id === 'load-project') {
+                document.getElementById('project-file-input').click();
+            }
+        });
+
+        // Project file input
+        document.getElementById('project-file-input') && document.getElementById('project-file-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const projectData = JSON.parse(event.target.result);
+                        
+                        // Load project data
+                        state.displayName = projectData.displayName || "Untitled";
+                        state.tilesetId = projectData.tilesetId || "default";
+                        state.mapWidth = projectData.width || 20;
+                        state.mapHeight = projectData.height || 15;
+                        state.scrollType = projectData.scrollType || 0;
+                        state.specifyBattleback = projectData.specifyBattleback || false;
+                        state.mapData = projectData.data || Array(state.mapWidth * state.mapHeight).fill(0);
+                        state.events = projectData.events || {};
+                        
+                        // Update UI
+                        updateSidebar();
+                        updateZoom();
+                        renderMap();
+                        updateEventList();
+                        updateExportData();
+                        
+                        // Reset file input
+                        document.getElementById('project-file-input').value = '';
+                    } catch (error) {
+                        alert('Error loading project file: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
         });
 
         // Map resizing function
@@ -1190,8 +1254,9 @@
                         btn.classList.toggle('active', btn.dataset.mode === state.currentTool);
                     });
                 } else if (state.currentPanel === 'events') {
-                    document.getElementById('selected-position-label').textContent = 
-                        `${state.selectedPosition.x}, ${state.selectedPosition.y}`;
+                    document.getElementById('cursor-position').textContent = `${state.selectedPosition.x}, ${state.selectedPosition.y}`;
+                    // document.getElementById('selected-position-label').textContent = 
+                    //     `${state.selectedPosition.x}, ${state.selectedPosition.y}`;
                     updateEventList();
                 } else if (state.currentPanel === 'export') {
                     updateExportData();
@@ -1382,7 +1447,7 @@
                     state.selectedPosition = { x, y };
                     state.selectedEvent = event;
                     document.getElementById('cursor-position').textContent = `${x}, ${y}`;
-                    document.getElementById('selected-position-label').textContent = `${x}, ${y}`;
+                    // document.getElementById('selected-position-label').textContent = `${x}, ${y}`;
                     document.querySelectorAll('.event-item').forEach(item => item.classList.remove('active'));
                     eventItem.classList.add('active');
                     document.getElementById('edit-event').disabled = false;
@@ -1583,6 +1648,8 @@
                     commandItem.textContent = `Text: ${command.parameters[0]}`;
                 } else if (command.code === 201) {
                     commandItem.textContent = `Transfer Player: Map ${command.parameters[1]}, (${command.parameters[2]}, ${command.parameters[3]})`;
+                } else if (command.code === 122) {
+                    commandItem.textContent = `Control Variables: Set Variable #${command.parameters[0]} to ${command.parameters[4]}`;
                 } else {
                     commandItem.textContent = `Command ${command.code}`;
                 }
@@ -1619,6 +1686,9 @@
                 <div class="form-group">
                     <button class="btn btn-primary" id="add-transfer-player">Transfer Player</button>
                 </div>
+                <div class="form-group">
+                    <button class="btn btn-primary" id="add-control-variables">Control Variables</button>
+                </div>
             `;
             
             dialog.appendChild(header);
@@ -1641,6 +1711,13 @@
             document.getElementById('add-transfer-player').addEventListener('click', () => {
                 const page = state.selectedEvent.pages[pageIndex];
                 page.list.push({ code: 201, parameters: [0, 1, 0, 0] });
+                updateCommandList(pageIndex);
+                document.body.removeChild(overlay);
+            });
+            
+            document.getElementById('add-control-variables').addEventListener('click', () => {
+                const page = state.selectedEvent.pages[pageIndex];
+                page.list.push({ code: 122, parameters: [1, 1, 0, 0, 0] });
                 updateCommandList(pageIndex);
                 document.body.removeChild(overlay);
             });
@@ -1694,6 +1771,42 @@
                         <input type="number" class="form-input" id="y-pos" value="${command.parameters[3]}">
                     </div>
                 `;
+            } else if (command.code === 122) {
+                contentHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Variable ID (Start)</label>
+                        <input type="number" class="form-input" id="var-start" value="${command.parameters[0]}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Variable ID (End)</label>
+                        <input type="number" class="form-input" id="var-end" value="${command.parameters[1]}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Operation</label>
+                        <select class="form-select" id="operation">
+                            <option value="0" ${command.parameters[2] === 0 ? 'selected' : ''}>Set</option>
+                            <option value="1" ${command.parameters[2] === 1 ? 'selected' : ''}>Add</option>
+                            <option value="2" ${command.parameters[2] === 2 ? 'selected' : ''}>Sub</option>
+                            <option value="3" ${command.parameters[2] === 3 ? 'selected' : ''}>Mult</option>
+                            <option value="4" ${command.parameters[2] === 4 ? 'selected' : ''}>Div</option>
+                            <option value="5" ${command.parameters[2] === 5 ? 'selected' : ''}>Mod</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Operand Type</label>
+                        <select class="form-select" id="operand-type">
+                            <option value="0" ${command.parameters[3] === 0 ? 'selected' : ''}>Constant</option>
+                            <option value="1" ${command.parameters[3] === 1 ? 'selected' : ''}>Variable</option>
+                            <option value="2" ${command.parameters[3] === 2 ? 'selected' : ''}>Random</option>
+                            <option value="3" ${command.parameters[3] === 3 ? 'selected' : ''}>Game Data</option>
+                            <option value="4" ${command.parameters[3] === 4 ? 'selected' : ''}>Script</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Value</label>
+                        <input type="number" class="form-input" id="operand-value" value="${command.parameters[4]}">
+                    </div>
+                `;
             }
             
             const content = document.createElement('div');
@@ -1740,6 +1853,12 @@
                     command.parameters[1] = parseInt(document.getElementById('map-id').value);
                     command.parameters[2] = parseInt(document.getElementById('x-pos').value);
                     command.parameters[3] = parseInt(document.getElementById('y-pos').value);
+                } else if (command.code === 122) {
+                    command.parameters[0] = parseInt(document.getElementById('var-start').value);
+                    command.parameters[1] = parseInt(document.getElementById('var-end').value);
+                    command.parameters[2] = parseInt(document.getElementById('operation').value);
+                    command.parameters[3] = parseInt(document.getElementById('operand-type').value);
+                    command.parameters[4] = parseInt(document.getElementById('operand-value').value);
                 }
                 updateCommandList(pageIndex);
                 document.body.removeChild(overlay);

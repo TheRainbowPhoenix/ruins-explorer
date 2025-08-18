@@ -28,6 +28,7 @@ class GameEvent(GameCharacter):
         """Flags the event to start running on the next update."""
         if self._active_page and self._active_page.get('list'):
             self._starting = True
+        self.refresh()
 
     def refresh(self):
         """Finds the correct event page to display and sets it up."""
@@ -47,8 +48,37 @@ class GameEvent(GameCharacter):
 
     def _conditions_met(self, page: Dict) -> bool:
         """Checks if the conditions for an event page are met."""
-        # TODO: This is a placeholder for a full condition system (switches, variables, etc.)
-        # For now, all pages are considered valid.
+        from cpgame.modules.datamanager import DataObject
+        p = DataObject(page)
+        c = p.get('conditions')
+
+        if not c:
+            return True
+
+        # Check Switch 1
+        if c.get('switch1Valid') and JRPG.objects and not JRPG.objects.switches[c.get('switch1Id')]:
+            return False
+            
+        # Check Switch 2
+        if c.get('switch2Valid') and JRPG.objects and not JRPG.objects.switches[c.get('switch2Id')]:
+            return False
+
+        # Check Variable
+        if c.get('variableValid') and JRPG.objects:
+            var_value = JRPG.objects.variables[c.get('variableId')]
+            if var_value < c.get('variableValue', 0):
+                return False
+
+        # Check Self Switch
+        if c.get('selfSwitchValid') and JRPG.objects:
+            key = (self._map_id, self.id, c.get('selfSwitchCh'))
+            if not JRPG.objects.self_switches[key]:
+                return False
+        
+        # Placeholder for Item and Actor conditions
+        # if c.get('itemValid'): ...
+        # if c.get('actorValid'): ...
+
         return True
 
     def setup_page(self, page: Optional[Dict]):
@@ -72,6 +102,13 @@ class GameEvent(GameCharacter):
             if JRPG.objects and JRPG.objects.map:
                 JRPG.objects.map.start_event_interpreter(self)
             self._starting = False
+
+    def set_graphic(self, tile_id: int):
+        """Public method to change the event's graphic tile ID."""
+        if self.tile_id != tile_id:
+            self.tile_id = tile_id
+            # TODO: mark this event's tile as "dirty" for the renderer.
+            # For now, the scene redraws it automatically.
 
     @property
     def command_list(self) -> List:

@@ -12,6 +12,9 @@ from cpgame.game_objects.party import GameParty
 from cpgame.game_objects.character import GamePlayer
 from cpgame.game_objects._actors import GameActors
 from cpgame.game_objects.system import GameSystem
+from cpgame.game_objects.variables import GameVariables
+from cpgame.game_objects.switches import GameSwitches
+from cpgame.game_objects.self_switches import GameSelfSwitches
 
 class GameObjects:
     """
@@ -29,8 +32,9 @@ class GameObjects:
         self.player = GamePlayer()
         self.map = GameMap()
         self.system = GameSystem()
-        # self.switches = GameSwitches()
-        # self.variables = GameVariables()
+        self.switches = GameSwitches()
+        self.self_switches = GameSelfSwitches()
+        self.variables = GameVariables()
 
         self.dialog_in_progress = False
         self.dialog_pages = []
@@ -60,8 +64,9 @@ class GameObjects:
         contents['actors'] = self.actors.to_dict()
         contents['party'] = self.party.to_dict()
         # contents['system'] = self.system.to_dict()
-        # contents['switches'] = self.switches.to_dict()
-        # contents['variables'] = self.variables.to_dict()
+        contents['switches'] = self.switches.to_dict()
+        contents['self_switches'] = self.self_switches.to_dict()
+        contents['variables'] = self.variables.to_dict()
         print("Saving game contents...")
         return contents
 
@@ -73,8 +78,9 @@ class GameObjects:
         self.actors.from_dict(contents.get('actors', {}))
         self.party.from_dict(contents.get('party', {}))
         # self.system.from_dict(contents.get('system', {}))
-        # self.switches.from_dict(contents.get('switches', {}))
-        # self.variables.from_dict(contents.get('variables', {}))
+        self.switches.from_dict(contents.get('switches', {}))
+        self.self_switches.from_dict(contents.get('self_switches', {}))
+        self.variables.from_dict(contents.get('variables', {}))
         print("Extracted save contents.")
 
     # Debug stuff, should be later replaced by proper dialog system

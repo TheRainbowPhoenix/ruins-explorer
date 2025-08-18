@@ -9,6 +9,8 @@ from cpgame.systems.jrpg import JRPG
 from cpgame.engine.scene import Scene
 from cpgame.engine.systems import Camera
 from cpgame.game_objects.actor import GameActor
+from cpgame.engine.logger import log
+from cpgame.engine.text_parser import parse_text_codes
 
 TILE_SIZE = 20
 MOVE_DELAY = 0.15
@@ -128,6 +130,8 @@ class JRPGScene(Scene):
     def _check_for_map_transfer(self) -> bool:
         """Checks if a map transfer has been requested."""
         if self.player.transfer_pending:
+            self.draw_loading_screen()
+
             # print("Executing map transfer...")
             self.player.perform_transfer()
             # Re-initialize this scene's view of it.
@@ -137,6 +141,21 @@ class JRPGScene(Scene):
                 self.create() # Re-run create to sync tileset and camera
                 return True
         return False
+    
+    def draw_loading_screen(self):
+        """Clears the screen and draws a centered 'Loading...' message."""
+        dclear(C_BLACK)
+        text = "Loading..."
+        
+        try:
+            w, h = dsize(text, None) # Use default font
+        except:
+            w, h = len(text) * 8, 16 # Fallback size
+            
+        x = (DWIDTH - w) // 2
+        y = (DHEIGHT - h) // 2
+        dtext(x, y, C_WHITE, text)
+        dupdate() # Force the screen to update immediately
 
     def draw(self, frame_time_ms: int):
         """
@@ -172,6 +191,24 @@ class JRPGScene(Scene):
             #     # Dialog has ended
             #     self.dialog_active = False
             #     self.full_redraw_needed = True # Redraw the world underneath
+    
+    def _process_text_codes(self, text: str) -> str:
+        """Replaces control codes like \\V[n] and \\N[n] with game data."""
+        # TODO: Simple, non-regex replacer for MicroPython compatibility. Later should be on a dedicated parser.
+        if not "\\" in text: # TODO: use .index and re-use the index later to parse completely the commands
+            return text # short-pass if no format.
+        
+        if JRPG.objects and JRPG.objects.variables and JRPG.objects.party:
+            processed_text = text.replace('\\V[42]', str(JRPG.objects.variables[42]))
+            
+            # Process \N[1] for party leader's name
+            leader = JRPG.objects.party.leader()
+            if leader:
+                processed_text = processed_text.replace('\\N[1]', leader.name)
+                processed_text = processed_text.replace('\\HP[1]', str(leader.hp))
+
+            return processed_text
+        return text
 
     def _handle_player_movement(self):
         """Checks for and processes player movement input."""
@@ -375,7 +412,8 @@ class JRPGScene(Scene):
         if JRPG.objects and JRPG.objects.dialog_pages:
             pages = JRPG.objects.dialog_pages
             for i, line in enumerate(pages):
-                dtext(8, y0 + 8 + i * 16, C_BLACK, line)
+                final_text = parse_text_codes(line)
+                dtext(8, y0 + 8 + i * 16, C_BLACK, final_text)
         # if self.dialog_index < len(self.dialog_pages):
         #     page_text = self.dialog_pages[self.dialog_index]
         #     # Handle both list of strings and single string with newlines

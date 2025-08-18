@@ -6,7 +6,9 @@ try:
 except:
     pass
 
-class Game_Variables:
+from cpgame.systems.jrpg import JRPG
+
+class GameVariables:
     """
     This class handles game variables. It's a wrapper around a dictionary.
     An instance of this class is managed by Game_Objects.
@@ -21,6 +23,11 @@ class Game_Variables:
     def __setitem__(self, variable_id: int, value: Any):
         """Sets the value of a variable."""
         self._data[variable_id] = value
+        self.on_change()
+
+    def value(self, variable_id: int) -> Any:
+        """Gets the value of a variable, returning 0 if it's not set."""
+        return self._data.get(variable_id, 0)
 
     def to_dict(self) -> Dict[int, Any]:
         """Serializes the variables for saving."""
@@ -29,3 +36,8 @@ class Game_Variables:
     def from_dict(self, data: Dict[int, Any]):
         """Loads variable state from a dictionary."""
         self._data = data if data else {}
+    
+    def on_change(self):
+        """Processing When Setting Variables"""
+        if JRPG.objects:
+            JRPG.objects.map.need_refresh = True
