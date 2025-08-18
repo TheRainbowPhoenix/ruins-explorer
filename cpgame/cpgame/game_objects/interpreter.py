@@ -83,9 +83,10 @@ class GameInterpreter:
         elif code == 111: self.command_111(params, indent); return True # If
         elif code == 121: self.command_121(params); return True # Control Switches
         elif code == 122: self.command_122(params); return True # Control Variables
-        elif code == 122: self.command_123(params); return True # Control Self Switch
-        elif code == 122: self.command_124(params); return True # Control Timer
+        elif code == 123: self.command_123(params); return True # Control Self Switch
+        elif code == 124: self.command_124(params); return True # Control Timer
         elif code == 201: self.command_201(params); return False # Transfer Player
+        elif code == 356: self.command_356(params); return True # Plugin Command
         elif code == 411: self.command_411(indent); return True # Else
         elif code == 412: return True # End If
         elif code == 501: self.command_501(params); return True # Set tile
@@ -180,10 +181,10 @@ class GameInterpreter:
     def skip_branch(self):
         """Skips commands until the indentation level decreases."""
         if self._list:
-            start_indent = self._list[self._index]['indent']
+            start_indent = self._list[self._index].get("indent", 0)
             while self._index + 1 < len(self._list):
                 next_command = self._list[self._index + 1]
-                if next_command['indent'] <= start_indent:
+                if next_command.get("indent", 0) <= start_indent:
                     break
                 self._index += 1
 
@@ -231,6 +232,10 @@ class GameInterpreter:
             if JRPG.objects:
                 JRPG.objects.self_switches[key] = value
                 log("Set Self Switch ({}) for Event {} to {}".format(key, self._event_id, value))
+                for ev in JRPG.objects.map.events.values():
+                    if ev.id == self._event_id:
+                        ev.refresh()
+                        break
 
     def command_124(self, params: List[Any]):
         """Control Timer"""
@@ -250,6 +255,11 @@ class GameInterpreter:
         
         if JRPG.objects and JRPG.objects.player:
             JRPG.objects.player.reserve_transfer(map_id, x, y)
+    
+    def command_356(self, params: List[Any]):
+        """Plugin Command"""
+        if JRPG.objects and JRPG.objects.plugin_manager and len(params) > 0:
+            JRPG.objects.plugin_manager.execute(params[0])
 
     def command_501(self, params: List[Any]):
         """Change Event Graphic. Params: [event_id, tile_id_or_variable_id, is_variable]"""

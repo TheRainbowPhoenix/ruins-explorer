@@ -99,6 +99,9 @@ class JRPGScene(Scene):
         if JRPG.objects:
             if JRPG.objects.timer:
                 JRPG.objects.timer.update(dt)
+            
+            if JRPG.objects.growth_manager:
+                JRPG.objects.growth_manager.update(dt)
 
             if JRPG.objects.dialog_in_progress:
                 self._update_dialog()

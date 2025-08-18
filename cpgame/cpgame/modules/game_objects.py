@@ -17,6 +17,11 @@ from cpgame.game_objects.switches import GameSwitches
 from cpgame.game_objects.self_switches import GameSelfSwitches
 from cpgame.game_objects.timer import GameTimer
 
+# Plugins
+from cpgame.modules.plugin_manager import PluginManager
+from cpgame.modules.growth_manager import GrowthManager
+from cpgame.game_plugins import check_soil
+
 class GameObjects:
     """
     This class handles the creation and management of all runtime game objects
@@ -38,12 +43,17 @@ class GameObjects:
         self.variables = GameVariables()
         self.timer = GameTimer()
 
+        self.plugin_manager = PluginManager()
+        self.growth_manager = GrowthManager()
+
         self.dialog_in_progress = False
         self.dialog_pages = []
 
     def setup_new_game(self):
         """Sets up the initial state for a new game."""
         from cpgame.systems.jrpg import JRPG
+        
+        self.plugin_manager.register("check_soil", check_soil)
 
         self.party.setup_starting_members()
 

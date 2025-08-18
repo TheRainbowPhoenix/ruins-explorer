@@ -2,7 +2,7 @@
 # Data for the JRPG scene, including a static map.
 
 # Tile IDs that the player cannot walk on.
-solid_tiles = {4} # The Sign ID
+solid_tiles = [4] # The Sign ID
 
 # A static map layout represented by tile IDs.
 # 1=grass, 5=dirt_path

@@ -11,6 +11,7 @@ class GameTimer:
     def __init__(self):
         self._count = 0.0  # Use a float for accurate dt accumulation
         self._working = False
+        self._total_seconds = 0.0
 
     def is_working(self) -> bool:
         """Returns True if the timer is running."""
@@ -27,11 +28,17 @@ class GameTimer:
 
     def update(self, dt: float):
         """Updates the timer countdown. Called once per frame."""
+        self._total_seconds += dt
         if self._working and self._count > 0:
             self._count -= dt
             if self._count <= 0:
                 self._count = 0
                 self.on_expire()
+
+    @property
+    def total_play_time(self) -> int:
+        """Returns the total elapsed game time in seconds."""
+        return int(math.ceil(self._total_seconds))
 
     @property
     def sec(self) -> int:

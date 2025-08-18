@@ -97,5 +97,58 @@ events = {
                 {"code": 401, "parameters": ["The crystal hums. Power level: \\V[1]"]}
             ]
         }]
+    },
+    (9,9): { # Event ID 4: A Farm Plot
+        "id": 4, "name": "FarmPlot", "x": 9, "y": 9,
+        "pages": [
+            { # PAGE 4: Harvestable (Highest Priority)
+                "conditions": {"selfSwitchCh": "D", "selfSwitchValid": True},
+                "graphic": {"tileId": 43}, # Ripe plant graphic
+                "list": [{"code": 356, "parameters": ["check_soil(4)"]}]
+            },
+            { # PAGE 3: Growing
+                "conditions": {"selfSwitchCh": "B", "selfSwitchValid": True},
+                "graphic": {"tileId": 42}, # Sprout graphic
+                "list": [{"code": 356, "parameters": ["check_soil(4)"]}]
+            },
+            { # PAGE 2: Tilled Soil
+                "conditions": {"selfSwitchCh": "A", "selfSwitchValid": True},
+                "graphic": {"tileId": 41}, # Tilled soil graphic
+                "list": [{"code": 356, "parameters": ["check_soil(4)"]}]
+            },
+            { # PAGE 1: Untilled Soil (Default)
+                "conditions": {},
+                "graphic": {"tileId": 40}, # Normal soil graphic
+                "list": [{"code": 356, "parameters": ["check_soil(4)"]}]
+            }
+        ]
+    },
+    (8, 9): { # Event ID 4: A Farm Plot
+        "id": 5, "name": "FarmPlot", "x": 8, "y": 9,
+        "pages": [
+            { # PAGE 1: Untilled Soil (Default Page)
+                "conditions": {},
+                "graphic": {"tileId": 40}, # Normal soil graphic
+                "list": [
+                    {"code": 101}, {"code": 401, "parameters": ["It's a patch of fertile soil."]},
+                    # On interaction, "till" the soil
+                    {"code": 123, "parameters": ["A", 0]} # Turn Self Switch 'A' ON
+                ]
+            }, { # PAGE 2: Tilled Soil (Condition: Self Switch 'A' is ON)
+                "conditions": {"selfSwitchCh": "A", "selfSwitchValid": True},
+                "graphic": {"tileId": 41}, # Tilled soil graphic
+                "list": [
+                    # If player has Potato Seeds (item ID 5)...
+                    {"code": 111, "parameters": ["item", 5]}, # Placeholder for item condition
+                        # ...then plant them.
+                        {"code": 126, "parameters": [5, 1, 1]}, # Remove 1 potato seed
+                        {"code": 101,"indent":1}, {"code": 401,"indent":1, "parameters": ["You planted the seeds."]},
+                        {"code": 123,"indent":1, "parameters": ["B", 0]}, # Turn Self Switch 'B' ON
+                    {"code": 411}, # Else...
+                        {"code": 101,"indent":1}, {"code": 401,"indent":1, "parameters": ["The soil is ready for planting."]},
+                    {"code": 412} # End If
+                ]
+            }
+        ]
     }
 }
