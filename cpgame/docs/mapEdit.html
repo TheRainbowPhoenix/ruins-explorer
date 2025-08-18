@@ -635,6 +635,42 @@
             pointer-events: none;
         }
 
+        /* Command List */
+        .command-list {
+            border: 1px solid var(--border-primary);
+            border-radius: var(--border-radius);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .command-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-primary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .command-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .command-item:last-child {
+            border-bottom: none;
+        }
+
+        .add-command {
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border-primary);
+            cursor: pointer;
+            text-align: center;
+            font-weight: var(--font-weight-medium);
+        }
+
+        .add-command:hover {
+            background: var(--accent-primary-subtle);
+        }
+
         /* Scrollbars */
         ::-webkit-scrollbar {
             width: 8px;
@@ -750,99 +786,72 @@
 
     <!-- Panel Templates -->
     <template id="panel-map">
-        <div class="panel">
-            <div class="panel-header">
-                <h3 class="panel-title">Map Settings</h3>
-            </div>
-            <div class="panel-content">
-                <div class="form-group">
-                    <label class="form-label">Display Name</label>
-                    <input type="text" class="form-input" id="map-display-name" value="Quiet Village">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Width</label>
-                    <input type="number" class="form-input" id="map-width" min="1" max="100" value="32">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Height</label>
-                    <input type="number" class="form-input" id="map-height" min="1" max="100" value="20">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Tileset ID</label>
-                    <input type="text" class="form-input" id="map-tileset-id" value="jrpg">
-                </div>
-                <div class="form-group">
-                    <button class="btn btn-primary" id="resize-map">Resize Map</button>
-                </div>
-            </div>
+        <div class="form-group">
+            <label class="form-label">Display Name</label>
+            <input type="text" class="form-input" id="map-display-name" value="Quiet Village">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Width</label>
+            <input type="number" class="form-input" id="map-width" min="1" max="100" value="32">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Height</label>
+            <input type="number" class="form-input" id="map-height" min="1" max="100" value="20">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Tileset ID</label>
+            <input type="text" class="form-input" id="map-tileset-id" value="jrpg">
+        </div>
+        <div class="form-group">
+            <button class="btn btn-primary" id="resize-map">Resize Map</button>
         </div>
     </template>
 
     <template id="panel-tiles">
-        <div class="panel">
-            <div class="panel-header">
-                <h3 class="panel-title">Tile Palette</h3>
+        <div class="form-group">
+            <label class="form-label">Drawing Mode</label>
+            <div class="mode-selector">
+                <div class="mode-btn active" data-mode="place">Place</div>
+                <div class="mode-btn" data-mode="brush">Brush</div>
+                <div class="mode-btn" data-mode="area">Area</div>
             </div>
-            <div class="panel-content">
-                <div class="form-group">
-                    <label class="form-label">Drawing Mode</label>
-                    <div class="mode-selector">
-                        <div class="mode-btn active" data-mode="place">Place</div>
-                        <div class="mode-btn" data-mode="brush">Brush</div>
-                        <div class="mode-btn" data-mode="area">Area</div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Selected Tile</label>
-                    <div id="selected-tile-preview" style="width: 64px; height: 64px; border: 2px solid var(--border-primary); background: var(--bg-tertiary); image-rendering: pixelated;"></div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Tiles</label>
-                    <div class="tile-palette" id="tile-palette"></div>
-                </div>
-                <div class="form-group">
-                    <button class="btn btn-primary" id="fill-map">Fill Map</button>
-                </div>
-            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Selected Tile</label>
+            <div id="selected-tile-preview" style="width: 64px; height: 64px; border: 2px solid var(--border-primary); background: var(--bg-tertiary); image-rendering: pixelated;"></div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Tiles</label>
+            <div class="tile-palette" id="tile-palette"></div>
+        </div>
+        <div class="form-group">
+            <button class="btn btn-primary" id="fill-map">Fill Map</button>
         </div>
     </template>
 
     <template id="panel-events">
-        <div class="panel">
-            <div class="panel-header">
-                <h3 class="panel-title">Events</h3>
-            </div>
-            <div class="panel-content">
-                <div class="form-group">
-                    <label class="form-label text-muted">Selected Position: <span id="selected-position-label">0, 0</span></label>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Event List</label>
-                    <div class="event-list" id="event-list"></div>
-                </div>
-                <div class="form-group">
-                    <button class="btn btn-primary" id="add-event">Add Event</button>
-                    <button class="btn btn-secondary" id="edit-event" disabled>Edit Event</button>
-                    <button class="btn btn-danger" id="remove-event" disabled>Remove Event</button>
-                </div>
-            </div>
+        <div class="form-group">
+            <label class="form-label text-muted">Selected Position: <span id="selected-position-label">0, 0</span></label>
         </div>
+        <div class="form-group">
+            <label class="form-label">Event List</label>
+            <div class="event-list" id="event-list"></div>
+        </div>
+        <div class="form-group">
+            <button class="btn btn-primary" id="add-event">Add Event</button>
+            <button class="btn btn-secondary" id="edit-event" disabled>Edit Event</button>
+            <button class="btn btn-danger" id="remove-event" disabled>Remove Event</button>
+        </div>
+    
     </template>
 
     <template id="panel-export">
-        <div class="panel">
-            <div class="panel-header">
-                <h3 class="panel-title">Export Data</h3>
-            </div>
-            <div class="panel-content">
-                <div class="form-group">
-                    <label class="form-label">Map Data</label>
-                    <textarea class="form-textarea" id="export-map-data" readonly></textarea>
-                </div>
-                <div class="form-group">
-                    <button class="btn btn-primary" id="copy-map-data">Copy Map Data</button>
-                </div>
-            </div>
+        <div class="form-group">
+            <label class="form-label">Map Data</label>
+            <textarea class="form-textarea" id="export-map-data" readonly></textarea>
+        </div>
+        <div class="form-group">
+            <button class="btn btn-primary" id="copy-map-data">Copy Map Data</button>
         </div>
     </template>
 
@@ -966,9 +975,11 @@
                         state.selectedEvent = {
                             id: Object.keys(state.events).length + 1,
                             name: `Event ${Object.keys(state.events).length + 1}`,
+                            x: x,
+                            y: y,
                             pages: [{
-                                graphic: { tile_id: 0 },
-                                payload: ["New message..."]
+                                graphic: { tileId: 0 },
+                                list: []
                             }]
                         };
                         document.getElementById('edit-event').disabled = false;
@@ -1067,9 +1078,11 @@
                     state.events[posKey] = {
                         id: Object.keys(state.events).length + 1,
                         name: `Event ${Object.keys(state.events).length + 1}`,
+                        x: state.selectedPosition.x,
+                        y: state.selectedPosition.y,
                         pages: [{
-                            graphic: { tile_id: 0 },
-                            payload: ["New message..."]
+                            graphic: { tileId: 0 },
+                            list: []
                         }]
                     };
                     updateEventList();
@@ -1211,7 +1224,7 @@
             Object.keys(state.events).forEach(posKey => {
                 const [x, y] = posKey.split(',').map(Number);
                 const event = state.events[posKey];
-                drawEvent(x, y, event.pages[0].graphic.tile_id);
+                drawEvent(x, y, event.pages[0].graphic.tileId);
             });
             
             // Draw area selection
@@ -1448,8 +1461,8 @@
             
             document.getElementById('add-page').addEventListener('click', () => {
                 state.selectedEvent.pages.push({
-                    graphic: { tile_id: 0 },
-                    payload: ["New message..."]
+                    graphic: { tileId: 0 },
+                    list: []
                 });
                 const selector = document.getElementById('page-selector');
                 const newIndex = state.selectedEvent.pages.length - 1;
@@ -1482,7 +1495,7 @@
                 state.selectedEvent.name = document.getElementById('event-name').value;
                 
                 // Save to events object
-                const posKey = `${state.selectedPosition.x},${state.selectedPosition.y}`;
+                const posKey = `${state.selectedEvent.x},${state.selectedEvent.y}`;
                 state.events[posKey] = state.selectedEvent;
                 
                 // Update UI
@@ -1507,14 +1520,11 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Payload Type</label>
-                    <div class="payload-type-selector">
-                        <div class="payload-type-btn ${Array.isArray(page.payload) ? 'active' : ''}" data-type="dialog">Dialog</div>
-                        <div class="payload-type-btn ${!Array.isArray(page.payload) ? 'active' : ''}" data-type="action">Action</div>
+                    <label class="form-label">Commands</label>
+                    <div class="command-list" id="command-list">
+                        <!-- Commands will be inserted here -->
                     </div>
-                </div>
-                <div class="payload-editor" id="payload-editor">
-                    <!-- Payload editor will be inserted here -->
+                    <div class="add-command" id="add-command">+ Add Command</div>
                 </div>
             `;
             
@@ -1534,146 +1544,206 @@
                 graphicItem.style.backgroundPosition = `-${srcX * 2}px -${srcY * 2}px`;
                 graphicItem.style.backgroundSize = `${tileset.width * 2}px ${tileset.height * 2}px`;
                 
-                if (i === page.graphic.tile_id) {
+                if (i === page.graphic.tileId) {
                     graphicItem.classList.add('selected');
                 }
                 
                 graphicItem.addEventListener('click', () => {
                     document.querySelectorAll('.graphic-item').forEach(item => item.classList.remove('selected'));
                     graphicItem.classList.add('selected');
-                    page.graphic.tile_id = i;
+                    page.graphic.tileId = i;
                 });
                 
                 graphicPicker.appendChild(graphicItem);
             }
             
-            // Set up payload type buttons
-            document.querySelectorAll('.payload-type-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.payload-type-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    updatePayloadEditor(pageIndex, btn.dataset.type);
+            // Populate command list
+            updateCommandList(pageIndex);
+            
+            // Add command button
+            document.getElementById('add-command').addEventListener('click', () => {
+                showAddCommandDialog(pageIndex);
+            });
+        }
+
+        function updateCommandList(pageIndex) {
+            const page = state.selectedEvent.pages[pageIndex];
+            const commandList = document.getElementById('command-list');
+            
+            commandList.innerHTML = '';
+            
+            page.list.forEach((command, index) => {
+                const commandItem = document.createElement('div');
+                commandItem.className = 'command-item';
+                commandItem.dataset.index = index;
+                
+                if (command.code === 101) {
+                    commandItem.textContent = 'Show Text';
+                } else if (command.code === 401) {
+                    commandItem.textContent = `Text: ${command.parameters[0]}`;
+                } else if (command.code === 201) {
+                    commandItem.textContent = `Transfer Player: Map ${command.parameters[1]}, (${command.parameters[2]}, ${command.parameters[3]})`;
+                } else {
+                    commandItem.textContent = `Command ${command.code}`;
+                }
+                
+                commandItem.addEventListener('click', () => {
+                    showEditCommandDialog(pageIndex, index);
                 });
+                
+                commandList.appendChild(commandItem);
+            });
+        }
+
+        function showAddCommandDialog(pageIndex) {
+            const overlay = document.createElement('div');
+            overlay.className = 'dialog-overlay';
+            
+            const dialog = document.createElement('div');
+            dialog.className = 'dialog';
+            dialog.style.width = '400px';
+            
+            const header = document.createElement('div');
+            header.className = 'dialog-header';
+            header.innerHTML = `
+                <h3>Add Command</h3>
+                <button class="btn btn-secondary" id="close-add-command">✕</button>
+            `;
+            
+            const content = document.createElement('div');
+            content.className = 'dialog-content';
+            content.innerHTML = `
+                <div class="form-group">
+                    <button class="btn btn-primary" id="add-show-text">Show Text</button>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-primary" id="add-transfer-player">Transfer Player</button>
+                </div>
+            `;
+            
+            dialog.appendChild(header);
+            dialog.appendChild(content);
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+            
+            document.getElementById('close-add-command').addEventListener('click', () => {
+                document.body.removeChild(overlay);
             });
             
-            // Initialize payload editor
-            const payloadType = Array.isArray(page.payload) ? 'dialog' : 'action';
-            updatePayloadEditor(pageIndex, payloadType);
+            document.getElementById('add-show-text').addEventListener('click', () => {
+                const page = state.selectedEvent.pages[pageIndex];
+                page.list.push({ code: 101, parameters: [] });
+                page.list.push({ code: 401, parameters: [""] });
+                updateCommandList(pageIndex);
+                document.body.removeChild(overlay);
+            });
+            
+            document.getElementById('add-transfer-player').addEventListener('click', () => {
+                const page = state.selectedEvent.pages[pageIndex];
+                page.list.push({ code: 201, parameters: [0, 1, 0, 0] });
+                updateCommandList(pageIndex);
+                document.body.removeChild(overlay);
+            });
         }
 
-        function updatePayloadEditor(pageIndex, type) {
+        function showEditCommandDialog(pageIndex, commandIndex) {
             const page = state.selectedEvent.pages[pageIndex];
-            const editor = document.getElementById('payload-editor');
+            const command = page.list[commandIndex];
             
-            if (type === 'dialog') {
-                // Convert to dialog if needed
-                if (!Array.isArray(page.payload)) {
-                    page.payload = ["New message..."];
-                }
-                
-                let messagesHtml = '';
-                page.payload.forEach((msg, index) => {
-                    messagesHtml += `
-                        <div class="dialog-message">
-                            <input type="text" class="form-input dialog-message-input" data-index="${index}" value="${msg}">
-                            <button class="btn btn-danger remove-message" data-index="${index}">✕</button>
-                        </div>
-                    `;
-                });
-                
-                editor.innerHTML = `
-                    <div class="dialog-messages">
-                        ${messagesHtml}
-                        <button class="btn btn-secondary" id="add-message">Add Message</button>
-                    </div>
-                `;
-                
-                // Add message button
-                document.getElementById('add-message').addEventListener('click', () => {
-                    page.payload.push("New message...");
-                    updatePayloadEditor(pageIndex, 'dialog');
-                });
-                
-                // Remove message buttons
-                document.querySelectorAll('.remove-message').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const index = parseInt(e.target.dataset.index);
-                        page.payload.splice(index, 1);
-                        updatePayloadEditor(pageIndex, 'dialog');
-                    });
-                });
-                
-                // Message input handlers
-                document.querySelectorAll('.dialog-message-input').forEach(input => {
-                    input.addEventListener('change', (e) => {
-                        const index = parseInt(e.target.dataset.index);
-                        page.payload[index] = e.target.value;
-                    });
-                });
-            } else {
-                // Convert to action if needed
-                if (Array.isArray(page.payload)) {
-                    page.payload = { type: "actor", id: 1 };
-                }
-                
-                const actionType = page.payload.type || "actor";
-                
-                editor.innerHTML = `
-                    <div class="form-group">
-                        <label class="form-label">Action Type</label>
-                        <select class="form-select" id="action-type">
-                            <option value="actor" ${actionType === 'actor' ? 'selected' : ''}>Actor</option>
-                            <option value="transfer" ${actionType === 'transfer' ? 'selected' : ''}>Transfer</option>
-                        </select>
-                    </div>
-                    <div class="action-fields" id="action-fields">
-                        <!-- Action fields will be inserted here -->
-                    </div>
-                `;
-                
-                updateActionFields(pageIndex);
-                
-                document.getElementById('action-type').addEventListener('change', () => {
-                    updateActionFields(pageIndex);
-                });
-            }
-        }
-
-        function updateActionFields(pageIndex) {
-            const page = state.selectedEvent.pages[pageIndex];
-            const actionType = document.getElementById('action-type').value;
-            const fields = document.getElementById('action-fields');
+            const overlay = document.createElement('div');
+            overlay.className = 'dialog-overlay';
             
-            if (actionType === 'actor') {
-                page.payload = { type: "actor", id: page.payload.id || 1 };
-                fields.innerHTML = `
+            const dialog = document.createElement('div');
+            dialog.className = 'dialog';
+            
+            const header = document.createElement('div');
+            header.className = 'dialog-header';
+            header.innerHTML = `
+                <h3>Edit Command</h3>
+                <button class="btn btn-secondary" id="close-edit-command">✕</button>
+            `;
+            
+            let contentHTML = '';
+            
+            if (command.code === 101) {
+                contentHTML = `
                     <div class="form-group">
-                        <label class="form-label">Actor ID</label>
-                        <input type="number" class="form-input" id="actor-id" min="1" value="${page.payload.id}">
+                        <label class="form-label">Show Text Command</label>
+                        <p>This is a text display command.</p>
                     </div>
                 `;
-            } else {
-                page.payload = { 
-                    type: "transfer", 
-                    map_id: page.payload.map_id || 1,
-                    x: page.payload.x || 0,
-                    y: page.payload.y || 0
-                };
-                fields.innerHTML = `
+            } else if (command.code === 401) {
+                contentHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Text Line</label>
+                        <input type="text" class="form-input" id="text-line" value="${command.parameters[0]}">
+                    </div>
+                `;
+            } else if (command.code === 201) {
+                contentHTML = `
                     <div class="form-group">
                         <label class="form-label">Map ID</label>
-                        <input type="number" class="form-input" id="map-id" min="1" value="${page.payload.map_id}">
+                        <input type="number" class="form-input" id="map-id" value="${command.parameters[1]}">
                     </div>
                     <div class="form-group">
                         <label class="form-label">X Position</label>
-                        <input type="number" class="form-input" id="x-pos" value="${page.payload.x}">
+                        <input type="number" class="form-input" id="x-pos" value="${command.parameters[2]}">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Y Position</label>
-                        <input type="number" class="form-input" id="y-pos" value="${page.payload.y}">
+                        <input type="number" class="form-input" id="y-pos" value="${command.parameters[3]}">
                     </div>
                 `;
             }
+            
+            const content = document.createElement('div');
+            content.className = 'dialog-content';
+            content.innerHTML = contentHTML;
+            
+            const footer = document.createElement('div');
+            footer.className = 'dialog-footer';
+            footer.innerHTML = `
+                <button class="btn btn-danger" id="delete-command">Delete</button>
+                <button class="btn btn-primary" id="save-command">Save</button>
+            `;
+            
+            dialog.appendChild(header);
+            dialog.appendChild(content);
+            dialog.appendChild(footer);
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+            
+            document.getElementById('close-edit-command').addEventListener('click', () => {
+                document.body.removeChild(overlay);
+            });
+            
+            document.getElementById('delete-command').addEventListener('click', () => {
+                // For text commands, we need to remove both the 101 and 401 commands
+                if (command.code === 101) {
+                    // Remove the 101 and the next 401
+                    page.list.splice(commandIndex, 2);
+                } else if (command.code === 401) {
+                    // Remove the 401 and the previous 101
+                    page.list.splice(commandIndex - 1, 2);
+                } else {
+                    // Remove just this command
+                    page.list.splice(commandIndex, 1);
+                }
+                updateCommandList(pageIndex);
+                document.body.removeChild(overlay);
+            });
+            
+            document.getElementById('save-command').addEventListener('click', () => {
+                if (command.code === 401) {
+                    command.parameters[0] = document.getElementById('text-line').value;
+                } else if (command.code === 201) {
+                    command.parameters[1] = parseInt(document.getElementById('map-id').value);
+                    command.parameters[2] = parseInt(document.getElementById('x-pos').value);
+                    command.parameters[3] = parseInt(document.getElementById('y-pos').value);
+                }
+                updateCommandList(pageIndex);
+                document.body.removeChild(overlay);
+            });
         }
 
         function saveCurrentPage() {
@@ -1683,29 +1753,7 @@
             // Save graphic
             const selectedGraphic = document.querySelector('.graphic-item.selected');
             if (selectedGraphic) {
-                page.graphic.tile_id = parseInt(selectedGraphic.dataset.tileId);
-            }
-            
-            // Save payload
-            const payloadType = document.querySelector('.payload-type-btn.active').dataset.type;
-            if (payloadType === 'dialog') {
-                // Dialog messages are already saved in real-time
-            } else {
-                // Save action fields
-                const actionType = document.getElementById('action-type').value;
-                if (actionType === 'actor') {
-                    page.payload = {
-                        type: "actor",
-                        id: parseInt(document.getElementById('actor-id').value)
-                    };
-                } else {
-                    page.payload = {
-                        type: "transfer",
-                        map_id: parseInt(document.getElementById('map-id').value),
-                        x: parseInt(document.getElementById('x-pos').value),
-                        y: parseInt(document.getElementById('y-pos').value)
-                    };
-                }
+                page.graphic.tileId = parseInt(selectedGraphic.dataset.tileId);
             }
         }
 
@@ -1748,8 +1796,10 @@
                 const [x, y] = posKey.split(',').map(Number);
                 const event = state.events[posKey];
                 exportStr += `    # Event at (x=${x}, y=${y})\n`;
-                exportStr += `    (${x}, ${y}): {\n`;
-                exportStr += `        "id": ${event.id}, "name": "${event.name}",\n`;
+                exportStr += `    (${x}, ${y}): { # Event ID ${event.id}\n`;
+                exportStr += `        "id": ${event.id},\n`;
+                exportStr += `        "name": "${event.name}",\n`;
+                exportStr += `        "x": ${event.x}, "y": ${event.y},\n`;
                 exportStr += `        "pages": [${JSON.stringify(event.pages[0])}]\n`;
                 exportStr += '    }';
                 if (index < eventKeys.length - 1) {
