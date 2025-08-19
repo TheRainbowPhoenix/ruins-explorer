@@ -35,15 +35,24 @@ def check_soil(event_id: int):
         message.add(status)
 
     elif switches[key_a]: # Tilled
+        # NEW: Show a choice to the player
+        choices = ["Plant Potato", "Plant Corn", "Leave It"]
+
+        def choice_callback(index: int):
+            has_seeds = True # Assume true for now
+            if has_seeds and JRPG.objects:
+                message.add("You planted a {} seed.".format(choices[index]))
+                JRPG.objects.self_switches.set(key_b, True)
+                # Grow for 20 seconds
+                JRPG.objects.growth_manager.plant_seed(map_id, event_id, 20)
+            else:
+                message.add("The soil is ready for seeds.")
+                
+        # The result will be stored in Variable #10. the 2nd element is cancel
+        message.start_choice(choices, 2, choice_callback, var_id=10) 
+        # Tell the interpreter running this plugin command to PAUSE
+        JRPG.objects.map.interpreter.wait_for_message()
         # Placeholder for checking if player has seeds
-        has_seeds = True # Assume true for now
-        if has_seeds:
-            message.add("You planted a potato seed.")
-            JRPG.objects.self_switches.set(key_b, True)
-            # Grow for 20 seconds
-            JRPG.objects.growth_manager.plant_seed(map_id, event_id, 20)
-        else:
-            message.add("The soil is ready for seeds.")
             
     else: # Untilled
         message.add("You tilled the soil.")

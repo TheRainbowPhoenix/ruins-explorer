@@ -124,7 +124,18 @@ events = {
                 "through": True,
                 "list": [
                     {"code": 101}, {"code": 401, "parameters": ["PAGE 2: Tilled Soil"]},
-                    {"code": 356, "parameters": ["check_soil(4)"]}
+                    {"code": 356, "parameters": ["check_soil(4)"]},
+                    {"code": 111, "parameters": [1, 10, 0, 1, 0]},
+                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["You planted a potato seed."]},
+                        {"code": 123, "indent": 1, "parameters": ["B", 0]}, # Turn Self Switch 'B' ON
+                        {"code": 356, "indent": 1, "parameters": ["start_growth(4, 'potato', 20)"]}, # New plugin command
+                    {"code": 412}, # End If
+                    # If Variable #10 == 2 (Corn)...
+                    {"code": 111, "parameters": [1, 10, 0, 2, 0]},
+                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["You planted a corn seed."]},
+                        {"code": 123, "indent": 1, "parameters": ["B", 0]},
+                        {"code": 356, "indent": 1, "parameters": ["start_growth(4, 'corn', 45)"]},
+                    {"code": 412}, # End If
                 ]
             },
             { # PAGE 3: Growing
@@ -171,6 +182,56 @@ events = {
                     {"code": 411}, # Else...
                         {"code": 101,"indent":1}, {"code": 401,"indent":1, "parameters": ["The soil is ready for planting."]},
                     {"code": 412} # End If
+                ]
+            }
+        ]
+    },
+    (7, 9): { # Event ID 4: A Farm Plot
+        "id": 5, "name": "FarmPlot", "x": 8, "y": 9,
+        "pages": [
+            { # PAGE 1: Untilled Soil (Default Page)
+                "conditions": {},
+                "graphic": {"tileId": 40}, # Normal soil graphic
+                "list": [
+                    {"code": 101, "parameters": []}, 
+                    {"code": 401, "parameters": ["What will you plant?"]},
+                    {"code": 102, "parameters": [["Potato", "Corn", "Cancel"], 2, 10]}, # Show Choices, store result in Var 10
+
+                    {"code": 101, "indent": 0}, {"code": 401, "indent": 0, "parameters": ["What will you plant (2)?"]},
+                    
+                    {"code": 402, "indent": 0, "parameters": [0]}, # When [Potato]
+                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["When Potato."]},
+                        # {"code": 356, "indent": 1, "parameters": ["start_growth(4, 'potato', 20)"]},
+                    {"code": 412, "indent": 0}, # End When
+                    
+                    {"code": 402, "indent": 0, "parameters": [1]}, # When [Corn]
+                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["When Corn."]},
+                        # {"code": 356, "indent": 1, "parameters": ["start_growth(4, 'potato', 20)"]},
+                    {"code": 412, "indent": 0}, # End When
+
+                    {"code": 402, "indent": 0, "parameters": [2]}, # When [**]
+                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["No choice was made."]},
+                        # {"code": 356, "indent": 1, "parameters": ["start_growth(4, 'corn', 45)"]},
+                    {"code": 412, "indent": 0}, # End When
+
+                    {"code": 101, "parameters":["",0,0,2]},
+                    {"code": 401, "parameters": ["Choice ID: \\V[10]"]},
+
+                    {"code": 111, "indent": 0, "parameters": [1, 10, 0, 1, 0]}, # If Var 10 == 1 (Potato was chosen)
+                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["It's potato."]},
+                        {"code": 123, "indent": 1, "parameters": ["B", 0]},
+                    {"code": 412}, # End If
+
+                    {"code": 111, "indent": 0, "parameters": [1, 10, 0, 2, 0]}, # If Var 10 == 2 (Corn was chosen)
+                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["It's corn."]},
+                        {"code": 123, "indent": 1, "parameters": ["B", 0]},
+                    {"code": 412}, # End If
+
+                    {"code": 111, "indent": 0, "parameters": [1, 10, 0, 3, 0]}, # If Var 10 == 3 (Cancel)
+                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["Nothing for today, heh ?"]},
+                        {"code": 123, "indent": 1, "parameters": ["B", 0]},
+                    {"code": 412}, # End If
+                    {"code": 0}
                 ]
             }
         ]

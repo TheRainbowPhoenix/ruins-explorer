@@ -19,6 +19,11 @@ class WindowSelectable(WindowBase):
 
     def activate(self): self.active = True
     def deactivate(self): self.active = False
+    
+    def _set_index(self, value: int):
+        """Internal index setter to avoid potential recursion in subclasses."""
+        if self._index != value:
+            self._index = value
 
     @property
     def index(self) -> int:
@@ -35,7 +40,7 @@ class WindowSelectable(WindowBase):
 
     def call_handler(self, symbol: str, *args):
         """Calls the handler associated with a symbol if it exists."""
-        if symbol in self._handlers:
+        if symbol in self._handlers and self._handlers.get(symbol):
             self._handlers[symbol](*args)
     
     # Input handling will be specific to each subclass

@@ -49,6 +49,7 @@ class GameInterpreter:
         self._running = False
         self._branch.clear()
         self._wait_mode = ""
+        self._indent = 0
 
     def update(self):
         """Updates the interpreter. Called once per frame."""
@@ -95,6 +96,11 @@ class GameInterpreter:
 
         return waiting
 
+    def wait_for_message(self):
+        """Tells the interpreter to pause until the current message/input is closed."""
+        self._wait_mode = "message"
+
+
     def execute_command(self, command: Dict) -> bool:
         """Executes a single command and returns True if execution can continue."""
         code = command.get("code", 0)
@@ -102,10 +108,16 @@ class GameInterpreter:
         params = command.get("parameters", [])
 
         # Check if we are inside a skipped conditional branch
-        if self._branch.get(indent, True) is False and code not in [111, 411, 412]:
-            return True # Skip command
+        if indent in self._branch and self._branch[indent] is False:
+            return True
+        
+        # if self._branch.get(indent, True) is False and code not in [111, 411, 412]:
+        #     return True # Skip command
+
+        self._indent = indent
 
         if code == 101:   self.command_101(params); return False # Show Text
+        elif code == 102: self.command_102(params); return True # Show Choices
         elif code == 103: self.command_103(params); return True # Input Number
         elif code == 111: self.command_111(params, indent); return True # If
         elif code == 121: self.command_121(params); return True # Control Switches
@@ -115,8 +127,10 @@ class GameInterpreter:
         elif code == 201: self.command_201(params); return False # Transfer Player
         elif code == 303: self.command_303(params); return True # Input Name
         elif code == 356: self.command_356(params); return True # Plugin Command
+        elif code == 402: self.command_402(params); return True # When [Choice]
+        elif code == 403: self.command_403(); return True # When [Cancel]
         elif code == 411: self.command_411(indent); return True # Else
-        elif code == 412: return True # End If
+        elif code == 412: self.command_412(indent); return True # End If
         elif code == 501: self.command_501(params); return True # Set tile
         
         return True # Continue to next command immediately
@@ -158,21 +172,36 @@ class GameInterpreter:
             # text_lines.append(self._list[self._index]["parameters"][0])
             JRPG.objects.message.add(self._list[self._index]["parameters"][0])
         
-        # try:
-        #     next_event_code = self._list[self._index]["code"]
-        #     if next_event_code == 102: # Show Choices
-        #         self._index += 1
-        #         pass
-        #     elif next_event_code == 103: # Input Number
-        #         self._index += 1
-        #         pass
-        #     elif next_event_code == 104: # Select Item
-        #         self._index += 1
-        #         pass
-        # except:
-        #     pass
+        try:
+            next_event_code = self._list[self._index]["code"]
+            if next_event_code == 102: # Show Choices
+                self._index += 1
+                pass
+            elif next_event_code == 103: # Input Number
+                self._index += 1
+                pass
+            elif next_event_code == 104: # Select Item
+                self._index += 1
+                pass
+        except:
+            pass
 
-        self._wait_mode = "message"
+        self.wait_for_message()
+    
+    def command_102(self, params: List[Any]):
+        """Show Choices"""
+        if JRPG.objects:
+            choices = params[0]
+            # Cancel Type: -1=Branch, -2=Disallow, 0-5=Choice Index
+            cancel_type = params[1] if len(params) > 1 else -2
+            var_id = params[2] if len(params) > 2 else None
+            
+            # The callback will store the player's choice in the branch map
+            def choice_callback(choice_index):
+                self._branch[self._indent] = choice_index
+
+            JRPG.objects.message.start_choice(choices, cancel_type, choice_callback, var_id)
+            self.wait_for_message()
 
     def command_103(self, params: List[Any]):
         """Input Number"""
@@ -180,7 +209,7 @@ class GameInterpreter:
             var_id, digits = params[0], params[1]
             JRPG.objects.message.start_number_input(var_id, digits)
             
-            self._wait_mode = "message"
+            self.wait_for_message()
 
 
     def command_111(self, params: List[Any], indent: int):
@@ -204,25 +233,36 @@ class GameInterpreter:
                 elif op == 4: result = (val1 < val2)
                 elif op == 5: result = (val1 != val2)
                 
+        if result:
             self._branch[indent] = result
-        if not result:
+        else:
             self.skip_branch()
+        return True
 
     def command_411(self, indent: int):
         """Else"""
         # If the previous IF was true, then this ELSE block should be skipped.
         if self._branch.get(indent, False) is True:
             self.skip_branch()
+
+    def command_412(self, indent: int):
+        """End If / End When"""
+        if indent in self._branch:
+            self._branch[indent] = True
+            del self._branch[indent]
     
     def skip_branch(self):
         """Skips commands until the indentation level decreases."""
         if self._list:
-            start_indent = self._list[self._index].get("indent", 0)
-            while self._index + 1 < len(self._list):
-                next_command = self._list[self._index + 1]
-                if next_command.get("indent", 0) <= start_indent:
-                    break
+            while (self._index + 1 < len(self._list) and self._list[self._index + 1].get("indent", 0) > self._indent):
                 self._index += 1
+                    
+            # start_indent = self._list[self._index].get("indent", 0)
+            # while self._index + 1 < len(self._list):
+            #     next_command = self._list[self._index + 1]
+            #     if next_command.get("indent", 0) <= start_indent:
+            #         break
+            #     self._index += 1            
 
     def command_121(self, params: List[Any]):
         """Control Switches"""
@@ -300,14 +340,28 @@ class GameInterpreter:
     def command_303(self, params: List[Any]):
         """Name Input Processing"""
         if JRPG.objects and not JRPG.objects.message.is_busy():
-            actor_id, max_chars = params[0], params[1]
+            actor_id, max_chars = params[0], params[1] # TODO: save it to a global variable, not an actor name. Or add a first bit flag to determine where to save it
             JRPG.objects.message.start_name_input(actor_id, max_chars)
-            self._wait_mode = "message"
+            self.wait_for_message()
     
     def command_356(self, params: List[Any]):
         """Plugin Command"""
         if JRPG.objects and JRPG.objects.plugin_manager and len(params) > 0:
             JRPG.objects.plugin_manager.execute(params[0])
+
+    def command_402(self, params: List[Any]):
+        """Handler for 'When [Choice]'"""
+        choice_index = params[0]
+        # If the result stored by the callback doesn't match this branch, skip it.
+        if self._branch.get(self._indent) != choice_index:
+            self.skip_branch()
+    
+    def command_403(self):
+        """Handler for 'When [Cancel]'"""
+        # If the result stored by the callback is not the cancel index, skip it.
+        # RPG Maker uses a negative number for the cancel branch.
+        if (self._branch.get(self._indent) or 0) >= 0:
+            self.skip_branch()
 
     def command_501(self, params: List[Any]):
         """Change Event Graphic. Params: [event_id, tile_id_or_variable_id, is_variable]"""

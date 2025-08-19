@@ -24,12 +24,17 @@ class GameMessage:
 
         self._name_input_actor_id: Optional[int] = None
         self._name_input_max_chars = 0
+
+        self._choices: list[str] = []
+        self._choice_cancel_type = 0
+        self._choice_callback = None
+        self._choice_variable_id: Optional[int] = None
     
     def add(self, text: str):
         self._texts.append(text)
         
     def is_busy(self) -> bool:
-        return self.is_text() or self.is_number_input() or self.is_name_input()
+        return self.is_text() or self.is_number_input() or self.is_name_input() or self.is_choice()
     
     def is_text(self) -> bool:
         return len(self._texts) > 0
@@ -39,6 +44,9 @@ class GameMessage:
     
     def is_name_input(self):
         return self._name_input_actor_id is not None
+
+    def is_choice(self) -> bool:
+        return len(self._choices) > 0
     
     def start_number_input(self, var_id: int, digits: int):
         self._number_input_variable_id = var_id
@@ -47,6 +55,28 @@ class GameMessage:
     def start_name_input(self, actor_id, max_chars):
         self._name_input_actor_id = actor_id
         self._name_input_max_chars = max_chars
+
+    def start_choice(self, choices: list[str], cancel_type: int, callback = None, var_id: Optional[int]=None):
+        self._choice_variable_id = var_id
+        self._choice_cancel_type = cancel_type
+        self._choices = choices
+        self._choice_callback = callback
+    
+    @property
+    def choices(self) -> list[str]:
+        return self._choices
+
+    @property
+    def choice_cancel_type(self):
+        return self._choice_cancel_type
+
+    @property
+    def choice_variable_id(self) -> Optional[int]:
+        return self._choice_variable_id
+
+    @property
+    def choice_callback(self):
+        return self._choice_callback
 
     @property
     def number_input_variable_id(self) -> Optional[int]:

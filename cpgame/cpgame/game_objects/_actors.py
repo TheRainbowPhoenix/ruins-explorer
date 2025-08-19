@@ -7,6 +7,7 @@ try:
 except:
     pass
 
+from cpgame.engine.logger import log
 from cpgame.systems.jrpg import JRPG
 from cpgame.game_objects.actor import GameActor
 
@@ -43,7 +44,7 @@ class GameActors:
                 
                 # If there's saved state for this actor, apply it
                 if actor_id in self._saved_states:
-                    print("Applying saved state to", actor_id)
+                    log("Applying saved state to", actor_id)
                     actor.from_dict(self._saved_states[actor_id])
 
                 # Cache the new instance and return it

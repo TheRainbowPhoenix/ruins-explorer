@@ -17,6 +17,24 @@ class WindowBase:
         self.height = height
         self.visible = True
         self.padding = 8
+        self.create_contents()
+
+    @property
+    def contents_width(self) -> int:
+        """Calculates the drawable width inside the window padding."""
+        return self.width - self.padding * 2
+
+    @property
+    def contents_height(self) -> int:
+        """Calculates the drawable height inside the window padding."""
+        return self.height - self.padding * 2
+
+    def create_contents(self):
+        """
+        Create the contents bitmap. This method is called after resizing
+        and serves as a hook for subclasses to prepare their layout.
+        """
+        pass
 
     def _draw_skin(self):
         """Draws the default white window with a black border."""

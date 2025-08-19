@@ -11,11 +11,14 @@ from cpgame.engine.systems import Camera
 from cpgame.game_objects.actor import GameActor
 
 from cpgame.game_windows.window_base import WindowBase
+from cpgame.game_windows.window_selectable import WindowSelectable
 from cpgame.game_windows.window_hud import WindowHUD
 from cpgame.game_windows.window_message import WindowMessage
 from cpgame.game_windows.window_number_input import WindowNumberInput
 from cpgame.game_windows.window_name_edit import WindowNameEdit
 from cpgame.game_windows.window_name_input import WindowNameInput
+from cpgame.game_windows.window_choice_list import WindowChoiceList
+
 
 
 from cpgame.engine.logger import log
@@ -100,11 +103,16 @@ class JRPGScene(Scene):
         self.name_input_window.set_handler('ok', self.on_name_input_confirm)
         self.name_input_window.set_handler('cancel', self.on_name_input_cancel)
 
+        self.choice_window = WindowChoiceList(self.message_window)
+        self.choice_window.set_handler('ok', self.on_choice_confirm)
+        self.choice_window.set_handler('cancel', self.on_choice_cancel)
+
         self._windows = [
             self.hud_window,
             self.message_window,
             self.number_input_window,
-            self.name_edit_window, self.name_input_window
+            self.name_edit_window, self.name_input_window,
+            self.choice_window
         ]
         
         # map_asset = self.assets.maps["jrpg_village"]
@@ -166,6 +174,8 @@ class JRPGScene(Scene):
             if JRPG.objects.message.is_name_input():
                 self.start_name_input()
                 return None
+            if JRPG.objects.message.is_choice():
+                self.start_choice(); return None
             
 
         # --- Exploring State Logic ---
@@ -319,6 +329,23 @@ class JRPGScene(Scene):
         self.name_input_window.start(self.name_edit_window)
         self.name_edit_window.start(actor, msg.name_input_max_chars)
         self._active_window = self.name_input_window
+    
+    def start_choice(self):
+        """Activates the choice window."""
+        if not JRPG.objects:
+            return
+        
+        msg = JRPG.objects.message
+        self.choice_window.start(msg.choices, msg.choice_cancel_type, self.on_choice_made)
+        self._active_window = self.choice_window
+
+    def on_choice_made(self, index: int):
+        if JRPG.objects: 
+            msg = JRPG.objects.message
+            if msg.choice_callback:
+                msg.choice_callback(index)
+        
+        self._end_modal_input(self.choice_window)
 
     def on_name_input_confirm(self, name: str):
         if not JRPG.objects:
@@ -347,11 +374,39 @@ class JRPGScene(Scene):
             JRPG.objects.message.clear()
         self.full_redraw_needed = True
 
+    def on_choice_confirm(self, index: int):
+        if not JRPG.objects:
+            return
+        msg = JRPG.objects.message
+        # Store the 1-based index in the designated variable
+        if msg.choice_variable_id is not None:
+            JRPG.objects.variables[msg.choice_variable_id] = index + 1
+        self._end_modal_input(self.choice_window)
+
+    def on_choice_cancel(self):
+        if not JRPG.objects:
+            return
+        
+        msg = JRPG.objects.message
+        # Store the cancel value (0)
+        if msg.choice_variable_id is not None:
+            JRPG.objects.variables[msg.choice_variable_id] = 0
+        self._end_modal_input(self.choice_window)
+
     def on_name_input_cancel(self):
         """Callback for when the user cancels number input."""
         self.name_edit_window.visible = False
         self.name_input_window.visible = False
         self.name_input_window.deactivate()
+        self._active_window = None
+        if JRPG.objects:
+            JRPG.objects.message.clear()
+        self.full_redraw_needed = True
+    
+    def _end_modal_input(self, window: WindowSelectable):
+        """Generic helper to close any modal window."""
+        window.visible = False
+        window.deactivate()
         self._active_window = None
         if JRPG.objects:
             JRPG.objects.message.clear()
