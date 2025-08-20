@@ -78,7 +78,14 @@ class JRPGScene(Scene):
         self.dialog_pages: List[str] = []
         self.dialog_index: int = 0
 
-    
+    def resume(self):
+        """
+        Called when returning to this scene (e.g., from the shop).
+        Flags the scene for a full redraw to clear any artifacts from the
+        previous scene and ensures the HUD is up-to-date.
+        """
+        log("JRPGScene: Resuming...")
+        self.full_redraw_needed = True
         
     def create(self):
         """

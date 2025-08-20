@@ -235,5 +235,19 @@ events = {
                 ]
             }
         ]
+    },
+    (1,1): { # Event ID 5: Shopkeeper
+        "id": 5, "name": "Shopkeeper", "x": 1, "y": 1,
+        "pages": [{
+            "graphic": {"tileId": 57},
+            "list": [
+                {"code": 101}, {"code": 401, "parameters": ["Welcome! Care to browse my wares?"]},
+                # Shop command. Params: [item_type, item_id, price_type, price, purchase_only]
+                # price_type 0 = standard, 1 = override
+                {"code": 302, "parameters": [0, 5, 0, 0, False]}, # Item 5 (Potato Seed)
+                {"code": 605, "parameters": [0, 6, 1, 150, 0]}, # Item 6 (Corn Seed), price override 150G
+                {"code": 605, "parameters": [1, 2, 0, 0, 0]},   # Weapon 2 (Axe)
+            ]
+        }]
     }
 }

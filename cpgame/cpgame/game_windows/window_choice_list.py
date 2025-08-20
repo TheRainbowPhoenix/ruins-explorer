@@ -77,8 +77,8 @@ class WindowChoiceList(WindowSelectable):
         if not input_manager: return
         last_index = self.index
         
-        if input_manager.up: self.index = (self.index - 1 + self.item_max()) % self.item_max()
-        if input_manager.down: self.index = (self.index + 1) % self.item_max()
+        if input_manager.up: self.index = (self.index - 1 + self.item_max) % self.item_max
+        if input_manager.down: self.index = (self.index + 1) % self.item_max
         
         if self.index != last_index: self.refresh()
             
@@ -96,6 +96,7 @@ class WindowChoiceList(WindowSelectable):
             cursor_y = self.y + self.padding + self.index * 24
             drect_border(self.x + 4, cursor_y - 2, self.x + self.width - 4, cursor_y + 20, C_NONE, 1, C_BLUE)
 
+    @property
     def item_max(self) -> int:
         return len(self._choices)
 

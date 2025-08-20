@@ -8,6 +8,7 @@ try:
     from cpgame.modules.datamanager import DataManager
     from cpgame.game_objects.party import GameParty
     from cpgame.modules.game_objects import GameObjects
+    from cpgame.engine.game import Game
 except:
     pass
 
@@ -20,14 +21,16 @@ class JRPG:
     # Class-level attributes to hold the system instances
     data: Optional['DataManager'] = None
     objects: Optional['GameObjects'] = None
+    game: Optional['Game'] = None
     # Add other systems here as needed (e.g., system, timer)
 
     @classmethod
-    def setup(cls, data_manager, game_objects):
+    def setup(cls, data_manager, game_objects, game):
         """Initializes the JRPG system with core objects."""
         # print("JRPG System: Setting up services.")
         cls.data = data_manager
         cls.objects = game_objects
+        cls.game = game
 
     @classmethod
     def clear(cls):
@@ -35,6 +38,10 @@ class JRPG:
         # print("JRPG System: Clearing services.")
         cls.data = None
         cls.objects = None
+        cls.game = None
+        del cls.game
+        del cls.objects
+        del cls.data
     
     # Helpers
     @classmethod

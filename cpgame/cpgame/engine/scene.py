@@ -25,6 +25,13 @@ class Scene:
         """Called once when the scene is started."""
         pass
 
+    def resume(self):
+        """
+        NEW: Called when a scene becomes active again after a scene on top of it
+        is popped (e.g., returning from a menu or shop).
+        """
+        pass
+
     def update(self, dt: float) -> Optional[str]:
         """
         Called every logic frame. 'dt' is the fixed timestep.

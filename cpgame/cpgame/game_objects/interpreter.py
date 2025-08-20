@@ -86,6 +86,13 @@ class GameInterpreter:
         if self._wait_mode == "message":
             # Wait as long as any message window (text, number input, etc.) is busy.
             waiting = JRPG.objects.message.is_busy()
+            
+        elif self._wait_mode == "scene_pop":
+            # TODO: The wait ends when the current scene is NO LONGER a shop scene.
+            # This is a bit of a hack; a better system might use callbacks.
+            from cpgame.game_scenes.shop_scene import SceneShop
+            if JRPG.game:
+                waiting = isinstance(JRPG.game.scenes[-1], SceneShop)
         
         # Add other wait modes:
         # elif self._wait_mode == "transfer":
@@ -125,6 +132,7 @@ class GameInterpreter:
         elif code == 123: self.command_123(params); return True # Control Self Switch
         elif code == 124: self.command_124(params); return True # Control Timer
         elif code == 201: self.command_201(params); return False # Transfer Player
+        elif code == 302: self.command_302(params); return True # Shop
         elif code == 303: self.command_303(params); return True # Input Name
         elif code == 356: self.command_356(params); return True # Plugin Command
         elif code == 402: self.command_402(params); return True # When [Choice]
@@ -336,6 +344,27 @@ class GameInterpreter:
         
         if JRPG.objects and JRPG.objects.player:
             JRPG.objects.player.reserve_transfer(map_id, x, y)
+
+    def command_302(self, params: List[Any]):
+        """Shop Processing"""
+        from cpgame.game_scenes.shop_scene import SceneShop
+        
+        if not self._list:
+            return
+        
+        goods = [params]
+        # Look ahead for additional goods (code 605)
+        while self._index + 1 < len(self._list) and self._list[self._index + 1]["code"] == 605:
+            self._index += 1
+            goods.append(self._list[self._index]["parameters"])
+        
+        purchase_only = params[4]
+        
+        # Tell the game to switch to the Shop Scene
+        log("Open Shop scene...")
+        if JRPG.game:
+            JRPG.game.push_scene(SceneShop, goods=goods, purchase_only=purchase_only)
+            self._wait_mode = "scene_pop" # A new mode to wait for the scene to be popped
 
     def command_303(self, params: List[Any]):
         """Name Input Processing"""

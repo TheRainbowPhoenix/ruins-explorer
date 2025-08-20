@@ -29,6 +29,19 @@ class WindowBase:
         """Calculates the drawable height inside the window padding."""
         return self.height - self.padding * 2
 
+    @property
+    def standard_padding(self) -> int:
+        """Calculates the drawable height inside the window padding."""
+        return self.padding or 12
+
+    @property
+    def line_height(self) -> int:
+        """Calculates the drawable height inside the window padding."""
+        return 24
+
+    def activate(self): self.active = True
+    def deactivate(self): self.active = False
+
     def create_contents(self):
         """
         Create the contents bitmap. This method is called after resizing
@@ -54,4 +67,11 @@ class WindowBase:
     def handle_input(self, input_manager: Optional[InputManager]): pass
 
     def handle_touch(self, x, y): pass
+
+    def fitting_height(self, line_number):
+        return line_number * self.line_height + self.standard_padding * 2
+    
+    def update_padding(self):
+        self.padding = self.standard_padding
+    
     

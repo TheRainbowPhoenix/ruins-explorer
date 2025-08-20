@@ -18,7 +18,7 @@ class JRPG_BootScene(Scene):
         # Create instances of all JRPG-specific "global" objects
         data_manager = DataManager()
         # Temp fix to use DataManager in GameObjects
-        JRPG.setup(data_manager=data_manager, game_objects=None)
+        JRPG.setup(data_manager=data_manager, game_objects=None, game=None)
 
         # party = GameParty()
         game_objects = GameObjects()
@@ -26,7 +26,7 @@ class JRPG_BootScene(Scene):
         self.game.session_data['data'] = data_manager
         self.game.session_data['objects'] = game_objects
 
-        JRPG.setup(data_manager=data_manager, game_objects=game_objects)
+        JRPG.setup(data_manager=data_manager, game_objects=game_objects, game=self.game)
 
         # Set up a new game state within the game objects manager
         game_objects.setup_new_game()

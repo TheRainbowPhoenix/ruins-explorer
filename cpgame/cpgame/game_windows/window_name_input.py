@@ -33,10 +33,19 @@ class WindowNameInput(WindowSelectable):
         self.index = 0
         self.visible = False
         self.active = False
-        self.col_max = 10
-        self.row_max = 9
         self._cell_width = self.width // self.col_max
         self._cell_height = self.height // self.row_max
+
+
+    @property
+    def col_max(self) -> int:
+        """Number of columns in grid layout."""
+        return 10
+    
+    @property
+    def row_max(self) -> int:
+        """Number of columns in grid layout."""
+        return 9
 
     def start(self, edit_window):
         self._edit_window = edit_window
