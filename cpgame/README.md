@@ -28,18 +28,23 @@
 
 ## TODO
 
-extra+ : ADD LOGGER (to print on desktop, but not on device) 
+Prio: test shop, see what needs to be done (mabe add GameItem class ? Check why shop is empty)
+Make the command to open scenes (Battle, mini-games) generic for re-use
+Add the menu with actors list
+Add drawng methods to draw actor faces from dialogs
 
-1. Finish the GameMap, make it load map from files
-2. Roll out various Game* classes
+1. Finish the GameMap, make it load map from files -- OKish, tiles have to be dynamic
+2. Roll out various Game* classes -- In progress
 3. Modules Vocab (for text templates) + SceneManager + BattleManager
-4. Windows support (basic, polyfill)
+4. Windows support (basic, polyfill) -- In progress
 5. Scenes Battle + Scene Map
 6. Add UI windows (like RPG Maker) and test the data
 7. All Scenes ported
 8. Add save / load support
 9. Finish Windows support
-10. Plugins support
+10. Plugins support -- In progress
+11. Settings menu + rebind keys
+12. Landing screens with how-to guide (explain numpad moves) 
 
 How to save binary files ? does repr works ? 
 Make an on-device fxconv to serialize and deserialize on the fly
