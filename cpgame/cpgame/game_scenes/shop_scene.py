@@ -1,228 +1,226 @@
 # cpgame/game_scenes/shop_scene.py
 from gint import *
+from cpgame.game_scenes._scenes_base import SceneBase
 from cpgame.systems.jrpg import JRPG
 from cpgame.engine.logger import log
-from cpgame.game_scenes._scenes_base import SceneMenuBase
 
-# Import all the necessary window classes
-from cpgame.game_windows.window_base import WindowBase
-from cpgame.game_windows.window_gold import WindowGold
-from cpgame.game_windows.window_shop_command import WindowShopCommand
-from cpgame.game_windows.window_shop_buy import WindowShopBuy
-from cpgame.game_windows.window_shop_sell import WindowShopSell
-from cpgame.game_windows.window_shop_number import WindowShopNumber
-from cpgame.game_windows.window_shop_status import WindowShopStatus
-from cpgame.game_windows.window_item_category import WindowItemCategory
-from cpgame.game_windows.window_help import WindowHelp
+# --- Layout Constants ---
+TOP_BAR_H = 30
+GOLD_BAR_H = 30
+LIST_Y = TOP_BAR_H + GOLD_BAR_H
+INFO_PANEL_H = 80
 
-class SceneShop(SceneMenuBase): # 
+C_YELLOW = 0b00000_111111_11111
+
+class SceneShop(SceneBase):
+    """
+    A lightweight, state-driven shop scene designed for low-memory environments.
+    It manages all its UI states internally without separate window objects.
+    """
     def __init__(self, game, goods, purchase_only):
         super().__init__(game)
         self._goods = goods
         self._purchase_only = purchase_only
-        self._active_window = None
-        self._item = None # The currently selected item
+        
+        # --- State Machine ---
+        self._state = "COMMAND"  # COMMAND, BUY, SELL, QUANTITY
+        self._active_list = []
+        
+        # --- UI State ---
+        self._command_index = 0
+        self._item_index = 0
+        self._top_item_index = 0 # For scrolling
+        self._quantity = 1
+        
+        self._list_height = DHEIGHT - LIST_Y - INFO_PANEL_H
+        self._items_per_page = self._list_height // 24 # 24 pixels per item
 
     def create(self):
-        """Creates and lays out all windows for the shop."""
-        self.create_help_window()
-        self.create_gold_window()
-        self.create_command_window()
-        self.create_dummy_window() # Background for lists
-        self.create_buy_window()
-        self.create_status_window()
-        self.create_number_window()
-        self.create_category_window()
-        self.create_sell_window()
-        
-        # Assemble window list for easy updates/drawing
-        self._windows = [
-            self.help_window, self.gold_window, self.command_window, self.dummy_window,
-            self.buy_window, self.sell_window, self.status_window, self.number_window,
-            self.category_window
-        ]
-        
-        self._active_window = self.command_window
-        self.command_window.activate()
-        for window in self._windows:
-            window.activate()
+        log("ShopScene: Created.")
+        self._prepare_buy_list()
 
     def update(self, dt):
-        super().update(dt) # This calls self.input.update() and updates the active window
-        
-        # First, poll the input state for this frame
         self.input.update()
-
-
-        # Update all windows
-        for window in self._windows:
-            window.update()
         
-        # if self.input.shift or self.input.exit: # Allow exiting with SHIFT key
-        #     self.pop_scene()
+        # Route input based on the current state
+        if self._state == "COMMAND":
+            self.update_command_selection()
+        elif self._state in ("BUY", "SELL"):
+            self.update_item_selection()
+        elif self._state == "QUANTITY":
+            self.update_quantity_selection()
+            
+    def draw(self, frame_time_ms):
+        dclear(C_WHITE)
+        self.draw_top_bar()
+        self.draw_gold_bar()
+        self.draw_item_list()
+        self.draw_info_panel()
+
+        if self._state == "QUANTITY":
+            self.draw_quantity_box()
+
+    # --- State Update Methods ---
+
+    def update_command_selection(self):
+        if self.input.left: self._command_index = max(0, self._command_index - 1)
+        if self.input.right: self._command_index = min(2, self._command_index + 1)
         
-        # --- INPUT & LOGIC PHASE ---
-        if self._active_window:
-            # If a modal window is active, it gets all input
-            self._active_window.handle_input(self.input) # update ? handle_input ?
-            # Add touch handling placeholder
-            # touch = get_touch_event() 
-            # if touch: self._active_window.handle_touch(touch.x, touch.y)
+        if self.input.interact:
+            if self._command_index == 0: # Buy
+                self._state = "BUY"
+                self._prepare_buy_list()
+            elif self._command_index == 1 and not self._purchase_only: # Sell
+                self._state = "SELL"
+                self._prepare_sell_list()
+            elif self._command_index == 2 or (self._command_index == 1 and self._purchase_only): # Exit
+                if JRPG.game:
+                    self.draw_loading_screen()
+                    from cpgame.game_scenes.scene_map import SceneMap
+                    JRPG.game.change_scene(SceneMap)
 
-            return None
+    def update_item_selection(self):
+        if self.input.up: self._item_index = max(0, self._item_index - 1)
+        if self.input.down: self._item_index = min(len(self._active_list) - 1, self._item_index + 1)
 
-        return None
+        # Page scrolling
+        if self.input.shift and self.input.up: # Page Up
+            self._item_index = max(0, self._item_index - self._items_per_page)
+        if self.input.shift and self.input.down: # Page Down
+            self._item_index = min(len(self._active_list) - 1, self._item_index + self._items_per_page)
+            
+        # Ensure cursor is visible
+        if self._item_index < self._top_item_index:
+            self._top_item_index = self._item_index
+        if self._item_index >= self._top_item_index + self._items_per_page:
+            self._top_item_index = self._item_index - self._items_per_page + 1
 
-    # --- Window Creation Methods ---
+        if self.input.interact and self._active_list:
+            self._state = "QUANTITY"
+            self._quantity = 1
+        elif self.input.exit:
+            self._state = "COMMAND"
+            self._item_index = 0
+            self._top_item_index = 0
 
-    def create_help_window(self):
-        self.help_window = WindowHelp()
-
-    def create_gold_window(self):
-        self.gold_window = WindowGold(DWIDTH - 160, self.help_window.height)
-
-    def create_command_window(self):
-        width = DWIDTH - self.gold_window.width
-        self.command_window = WindowShopCommand(0, self.help_window.height, width, self._purchase_only)
-        self.command_window.set_handler('buy', self.command_buy)
-        self.command_window.set_handler('sell', self.command_sell)
-        self.command_window.set_handler('cancel', self.pop_scene)
-
-    def create_dummy_window(self):
-        y = self.command_window.y + self.command_window.height
-        h = DHEIGHT - y
-        self.dummy_window = WindowBase(0, y, DWIDTH, h)
-
-    def create_buy_window(self):
-        y = self.dummy_window.y
-        h = self.dummy_window.height
-        self.buy_window = WindowShopBuy(0, y, DWIDTH // 2 + 20, h, self._goods)
-        self.buy_window.visible = False
-        self.buy_window.set_handler('ok', self.on_buy_ok)
-        self.buy_window.set_handler('cancel', self.on_buy_cancel)
-    
-    def create_status_window(self):
-        x = self.buy_window.width
-        y = self.dummy_window.y
-        w = DWIDTH - x
-        h = self.dummy_window.height
-        self.status_window = WindowShopStatus(x, y, w, h)
-        # Link windows
-        # self.buy_window.status_window = self.status_window
-
-    def create_number_window(self):
-        # This window is centered, so x,y are less important here
-        self.number_window = WindowShopNumber(0, 0, 300, 80)
-        self.number_window.set_handler('ok', self.on_number_ok)
-        self.number_window.set_handler('cancel', self.on_number_cancel)
-
-    def create_category_window(self):
-        y = self.dummy_window.y
-        self.category_window = WindowItemCategory(0, y, DWIDTH, 40)
-        self.category_window.visible = False
-        self.category_window.set_handler('ok', self.on_category_ok)
-        self.category_window.set_handler('cancel', self.on_category_cancel)
-
-    def create_sell_window(self):
-        y = self.category_window.y + self.category_window.height
-        h = DHEIGHT - y
-        self.sell_window = WindowShopSell(0, y, DWIDTH, h)
-        self.sell_window.visible = False
-        self.category_window.set_item_window(self.sell_window) # Link windows
-        self.sell_window.set_handler('ok', self.on_sell_ok)
-        self.sell_window.set_handler('cancel', self.on_sell_cancel)
-
-    # --- Command Handlers ---
-
-    def pop_scene(self): self.game.pop_scene()
-
-    def command_buy(self):
-        self.command_window.deactivate()
-        self.dummy_window.visible = False
-        self.buy_window.set_money(JRPG.objects.party.gold if JRPG.objects else 1)
-        self.buy_window.visible = True
-        self.status_window.visible = True
-        self._active_window = self.buy_window
-        self.buy_window.activate()
-
-    def command_sell(self):
-        self.command_window.deactivate()
-        self.dummy_window.visible = False
-        self.category_window.visible = True
-        self._active_window = self.category_window
-        self.category_window.activate()
-
-    def on_buy_cancel(self):
-        self._active_window = self.command_window
-        self.buy_window.deactivate()
-        self.buy_window.visible = False
-        self.status_window.visible = False
-        self.dummy_window.visible = True
-        self.command_window.activate()
+    def update_quantity_selection(self):
+        max_qty = self._get_max_quantity()
         
-    def on_category_ok(self):
-        self._active_window = self.sell_window
-        self.category_window.deactivate()
-        self.sell_window.visible = True
-        self.sell_window.activate()
+        if self.input.up: self._quantity = min(self._quantity + 1, max_qty)
+        if self.input.down: self._quantity = max(self._quantity - 1, 1)
+        if self.input.right: self._quantity = min(self._quantity + 10, max_qty)
+        if self.input.left: self._quantity = max(self._quantity - 10, 1)
 
-    def on_category_cancel(self):
-        self._active_window = self.command_window
-        self.category_window.deactivate()
-        self.category_window.visible = False
-        self.dummy_window.visible = True
-        self.command_window.activate()
+        if self.input.interact:
+            self._execute_transaction()
+            self._state = "BUY" if self._state == "BUY" else "SELL" # Go back to list
+            self._prepare_buy_list() if self._state == "BUY" else self._prepare_sell_list()
+        elif self.input.exit:
+            self._state = "BUY" if self._state == "BUY" else "SELL"
 
-    def on_buy_ok(self):
-        self._item = self.buy_window.item()
-        self.buy_window.deactivate()
-        self.buy_window.visible = False
-        self.status_window.visible = False
+    # --- Drawing Methods ---
+
+    def draw_top_bar(self):
+        drect(0, 0, DWIDTH - 1, TOP_BAR_H - 1, C_LIGHT)
+        commands = ["Buy", "Sell", "Exit"]
+        if self._purchase_only: commands[1] = "---"
         
-        price = self.buy_window.get_price(self._item)
-        max_buy = (JRPG.objects.party.gold if JRPG.objects else 1) // price if price > 0 else 99
-        self.number_window.start(self._item, max_buy, price)
-        self._active_window = self.number_window
+        for i, cmd in enumerate(commands):
+            x = (DWIDTH // 3) * i
+            color = C_BLACK
+            if self._state == "COMMAND" and i == self._command_index:
+                drect(x, 0, x + (DWIDTH // 3) -1, TOP_BAR_H - 1, C_YELLOW)
+                color = C_BLUE
+            dtext_opt(x + (DWIDTH // 6), TOP_BAR_H // 2, color, C_NONE, DTEXT_CENTER, DTEXT_MIDDLE, cmd, -1)
 
-    def on_sell_ok(self):
-        self._item = self.sell_window.item()
-        self.category_window.deactivate()
-        self.sell_window.deactivate()
-        self.sell_window.visible = False
-
-        if self._item and JRPG.objects:
-            price = self._item.price // 2 # Sell price is half
-            max_sell = JRPG.objects.party.item_number(self._item)
-            self.number_window.start(self._item, max_sell, price)
-            self._active_window = self.number_window
-
-    def on_sell_cancel(self):
-        self._active_window = self.category_window
-        self.sell_window.deactivate()
-        self.sell_window.visible = False
-        self.category_window.activate()
-
-    def on_number_ok(self, number):
-        # Check if we are buying or selling
+    def draw_gold_bar(self):
+        y = TOP_BAR_H
+        drect(0, y, DWIDTH - 1, y + GOLD_BAR_H - 1, C_DARK)
         if JRPG.objects:
-            if self.command_window.current_symbol() == 'buy':
-                JRPG.objects.party.lose_gold(self.buy_window.get_price(self._item) * number)
-                if self._item: JRPG.objects.party.gain_item(self._item, number)
-            else: # Selling
-                JRPG.objects.party.gain_item(self._item, -number) # a.k.a. lose_item
-                if self._item: JRPG.objects.party.gain_gold((self._item.price // 2) * number)
+            gold_text = "Gold: {} G".format(JRPG.objects.party.gold)
+            dtext_opt(DWIDTH - 10, y + GOLD_BAR_H // 2, C_WHITE, C_NONE, DTEXT_RIGHT, DTEXT_MIDDLE, gold_text, -1)
 
-        self.gold_window.refresh()
-        self.end_number_input()
+    def draw_item_list(self):
+        if self._state not in ("BUY", "SELL"): return
         
-    def on_number_cancel(self):
-        self.end_number_input()
+        for i in range(self._items_per_page):
+            index = self._top_item_index + i
+            if index >= len(self._active_list): break
+            
+            item = self._active_list[index]
+            y = LIST_Y + i * 24
+            
+            if index == self._item_index:
+                drect(0, y, DWIDTH - 1, y + 23, C_YELLOW)
+
+            dtext(10, y + 4, C_BLACK, item.name)
+            
+            price_text = str(item.price // 2 if self._state == 'SELL' else item.price) + " G"
+            dtext_opt(DWIDTH - 10, y + 12, C_BLACK, C_NONE, DTEXT_RIGHT, DTEXT_MIDDLE, price_text, -1)
+
+    def draw_info_panel(self):
+        y = DHEIGHT - INFO_PANEL_H
+        drect(0, y, DWIDTH - 1, DHEIGHT - 1, C_LIGHT)
+        drect_border(0, y, DWIDTH - 1, DHEIGHT - 1, C_NONE, 1, C_BLACK)
         
-    def end_number_input(self):
-        self.number_window.visible = False
-        self.number_window.deactivate()
-        # Return to the previous screen (buy or sell)
-        if self.command_window.current_symbol() == 'buy':
-            self.command_buy() # Reactivate buy screen
-        else:
-            self.on_category_ok() # Reactivate sell screen
+        if self._state in ("BUY", "SELL") and self._active_list:
+            item = self._active_list[self._item_index]
+            dtext(10, y + 8, C_BLACK, item.description)
+
+    def draw_quantity_box(self):
+        w, h = 200, 100
+        x = (DWIDTH - w) // 2
+        y = (DHEIGHT - h) // 2
+        drect(x, y, x + w - 1, y + h - 1, C_WHITE)
+        drect_border(x, y, x + w - 1, y + h - 1, C_NONE, 1, C_BLACK)
+
+        item = self._active_list[self._item_index]
+        dtext_opt(x + w//2, y + 10, C_BLACK, C_NONE, DTEXT_CENTER, DTEXT_TOP, item.name, -1)
+        dtext_opt(x + w//2, y + 40, C_BLACK, C_NONE, DTEXT_CENTER, DTEXT_TOP, "Quantity: {}".format(self._quantity), -1)
+
+    # --- Logic Helpers ---
+
+    def _prepare_buy_list(self):
+        self._active_list = []
+        if not JRPG.data:
+            return
+
+        for item_type, item_id, price_type, price_override, purchase_only in self._goods:
+            proxy = [JRPG.data.items, JRPG.data.weapons, JRPG.data.armors][item_type]
+            with proxy.load(item_id) as item_data:
+                if item_data:
+                    # Store price directly on a temporary attribute for convenience
+                    item_data.shop_price = price_override if price_override > 0 else item_data.get('price', 0)
+                    self._active_list.append(item_data)
+        self._item_index = self._top_item_index = 0
+
+    def _prepare_sell_list(self):
+        if not JRPG.objects:
+            return
+        self._active_list = [item for item in JRPG.objects.party.all_items() if item and item.get('price', 0) > 0]
+        self._item_index = self._top_item_index = 0
+
+    def _get_max_quantity(self) -> int:
+        if not JRPG.objects:
+            return 0
+        
+        item = self._active_list[self._item_index]
+        if self._state == 'BUY':
+            price = item.shop_price
+            return JRPG.objects.party.gold // price if price > 0 else 99
+        else: # SELL
+            return JRPG.objects.party.item_number(item)
+            
+    def _execute_transaction(self):
+        if not JRPG.objects:
+            return
+
+        item = self._active_list[self._item_index]
+        if self._state == 'BUY':
+            price = item.shop_price
+            JRPG.objects.party.lose_gold(price * self._quantity)
+            JRPG.objects.party.gain_item(item, self._quantity)
+        else: # SELL
+            price = item.price // 2
+            JRPG.objects.party.gain_gold(price * self._quantity)
+            JRPG.objects.party.gain_item(item, -self._quantity)

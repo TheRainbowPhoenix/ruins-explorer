@@ -6,6 +6,8 @@ from cpgame.game_assets import templar_data
 from cpgame.game_assets import jrpg_data
 from cpgame.game_assets.fanta_tiles import image as fanta_tileset_img # Your raw JRPG tileset image
 
+from cpgame.engine.profiler import MemoryProfiler
+
 try:
     from typing import Optional, List, Dict
 except:
@@ -33,24 +35,28 @@ class AssetManager:
         if self.is_loaded: return
         # print("AssetManager: Loading all assets...")
 
-        # TODO: use PAK if successful, and make it a PAK loader
-        # TODO: else, use the class loader with cleanup
+        with MemoryProfiler("AM:all"):
 
-        # --- Load Templar Assets ---
-        for name, data in templar_data.sprites.items(): # type: ignore
-            self.animations[name] = [AnimationFrame(*frame) for frame in data]
-        for name, data in templar_data.bounce.items(): # type: ignore
-            self.animations[name or "default"] = [AnimationFrame(*frame) for frame in data]
-        self.tilesets["templar"] = Tilemap(*templar_data.tileset) # type: ignore
+            # TODO: use PAK if successful, and make it a PAK loader
+            # TODO: else, use the class loader with cleanup
 
-        # --- Load JRPG Assets ---
-        # TODO: remove this later !!
-        self.tilesets["jrpg"] = Tilemap(fanta_tileset_img, [], jrpg_data.solid_tiles) # type: ignore
-        self.maps["jrpg_village"] = {
-            "layout": jrpg_data.map_layout, # type: ignore
-            "objects": jrpg_data.map_objects, # type: ignore
-            "signs": jrpg_data.map_signs # type: ignore
-        }
+            with MemoryProfiler("AM_Templar"):
+                # --- Load Templar Assets ---
+                for name, data in templar_data.sprites.items(): # type: ignore
+                    self.animations[name] = [AnimationFrame(*frame) for frame in data]
+                for name, data in templar_data.bounce.items(): # type: ignore
+                    self.animations[name or "default"] = [AnimationFrame(*frame) for frame in data]
+                self.tilesets["templar"] = Tilemap(*templar_data.tileset) # type: ignore
+
+            # --- Load JRPG Assets ---
+            with MemoryProfiler("AM_JRPG"):
+                # TODO: remove this later !!
+                self.tilesets["jrpg"] = Tilemap(fanta_tileset_img, [], jrpg_data.solid_tiles) # type: ignore
+                self.maps["jrpg_village"] = {
+                    "layout": jrpg_data.map_layout, # type: ignore
+                    "objects": jrpg_data.map_objects, # type: ignore
+                    "signs": jrpg_data.map_signs # type: ignore
+                }
         
         self.is_loaded = True
         # print("AssetManager: Load complete.")

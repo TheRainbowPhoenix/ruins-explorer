@@ -139,10 +139,10 @@ class ModuleProxy:
     It loads the module's HEADER on creation and provides methods to load
     individual objects from it on demand, with cleanup.
     """
-    def __init__(self, data_category: str, module_path: str = "cpgame.game_data."):
+    def __init__(self, data_category: str, module_path: str = "cpgame.game_data.", name_id = None):
         self.category = data_category
         self.module_path = module_path + self.category
-        self.name_id = self.category.upper() + "_" # HACK: to avoid the "id" int. Should be removed later.
+        self.name_id = self.category.upper() if not name_id else name_id#+ "_" # HACK: to avoid the "id" int. Should be removed later.
         self._module = None
         self._header = None
         self._load_header()
@@ -297,9 +297,9 @@ class DataManager:
         self.actors        = ModuleProxy("actors")
         self.classes       = ModuleProxy("classes")
         self.skills        = ModuleProxy("skills")
-        self.items         = ModuleProxy("items")
-        self.weapons       = ModuleProxy("weapons")
-        self.armors        = ModuleProxy("armors")
+        self.items         = ModuleProxy("items", name_id="ITEM")
+        self.weapons       = ModuleProxy("weapons", name_id="WEAPON")
+        self.armors        = ModuleProxy("armors", name_id="ARMOR")
         self.enemies       = ModuleProxy("enemies")
         self.troops        = ModuleProxy("troops")
         self.states        = ModuleProxy("states")

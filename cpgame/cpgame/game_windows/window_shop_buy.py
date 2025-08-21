@@ -10,6 +10,8 @@ class WindowShopBuy(WindowItemList):
         self._data = []
         self._price = {}
         self._money = 0
+        self._help_window = None
+        self.status_window = None
         super().__init__(x, y, width, height)
 
     def set_money(self, money: int):
@@ -25,7 +27,7 @@ class WindowShopBuy(WindowItemList):
         self._data = []
         self._price = {}
         for goods_item in self._goods:
-            item_type, item_id, _, price_override = goods_item
+            item_type, item_id, price_type, price_override, purchase_only = goods_item
             
             data_proxy = None
             if JRPG.data:
@@ -52,11 +54,21 @@ class WindowShopBuy(WindowItemList):
         if item:
             enabled = self.is_enabled(item)
             color = C_BLACK if enabled else C_DARK
+            rect = self.item_rect(index)
             
             # Draw item name
-            dtext(self.x + self.padding, self.y + self.padding + index * self.line_height, color, item.name)
+            dtext(rect.x + 4, rect.y, color, item.name)
+            # dtext(self.x + self.padding, self.y + self.padding + index * self.line_height, color, item.name)
             
             # Draw price
             price_text = str(self.get_price(item))
             text_width = len(price_text) * 8
             dtext(self.x + self.width - self.padding - text_width, self.y + self.padding + index * self.line_height, color, price_text)
+
+    
+    def update_help(self):
+        item = self.item()
+        if self.help_window:
+            self.help_window.set_text(item.description if item else "")
+        if self.status_window:
+            self.status_window.set_item(item)

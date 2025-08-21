@@ -3,6 +3,7 @@
 
 from cpgame.engine.scene import Scene
 from cpgame.game_scenes.jrpg_scene import JRPGScene
+from cpgame.game_scenes.scene_map import SceneMap
 from cpgame.modules.datamanager import DataManager
 from cpgame.modules.game_objects import GameObjects
 from cpgame.systems.jrpg import JRPG
@@ -34,7 +35,10 @@ class JRPG_BootScene(Scene):
         
         
         # Immediately transition to the actual first scene of the JRPG
-        self.game.change_scene(JRPGScene)
+
+        if JRPG.game:
+            JRPG.game.change_scene(SceneMap)
+        # self.game.change_scene(SceneMap) # JRPGScene
 
     def update(self, dt: float):
         # This scene does nothing in update, as it transitions instantly.

@@ -363,7 +363,7 @@ class GameInterpreter:
         # Tell the game to switch to the Shop Scene
         log("Open Shop scene...")
         if JRPG.game:
-            JRPG.game.push_scene(SceneShop, goods=goods, purchase_only=purchase_only)
+            JRPG.game.change_scene(SceneShop, goods=goods, purchase_only=purchase_only)
             self._wait_mode = "scene_pop" # A new mode to wait for the scene to be popped
 
     def command_303(self, params: List[Any]):

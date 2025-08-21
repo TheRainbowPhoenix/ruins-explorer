@@ -27,15 +27,15 @@ class WindowHorzCommand(WindowCommand):
     @property
     def col_max(self) -> int:
         """Number of columns in grid layout."""
-        return 4
+        return 3
 
     def spacing(self) -> int:
         """Spacing between items."""
-        return 8
+        return 3
 
     def item_width(self) -> int:
         """Width of each command item."""
-        return 120  # Adjust based on font and expected text length
+        return 100  # Adjust based on font and expected text length
 
     def item_height(self) -> int:
         """Height of each item."""

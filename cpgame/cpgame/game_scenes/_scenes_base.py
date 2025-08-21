@@ -1,3 +1,5 @@
+from gint import dclear, dtext, dupdate, dsize, DWIDTH, DHEIGHT, C_BLACK, C_WHITE
+
 try:
     from typing import Optional, List, Set, Tuple,Dict, Any
 except:
@@ -7,6 +9,12 @@ from cpgame.engine.scene import Scene
 from cpgame.game_windows.window_base import WindowBase
 
 class SceneBase(Scene):
+    """A base class for all major scenes, providing a full lifecycle."""
+    def __init__(self, game, **kwargs):
+        super().__init__(game, **kwargs)
+        self._windows: List[WindowBase] = []
+        self._active_window: Optional[WindowBase] = None
+
 
     def create(self):
         """
@@ -14,7 +22,7 @@ class SceneBase(Scene):
         Responsible for loading assets and setting up initial state.
         """
         self._windows = []
-        self._active_window: Optional[WindowBase] = None
+        self._active_window = None
 
     def update(self, dt: float) -> Optional[str]:
         """
@@ -35,18 +43,33 @@ class SceneBase(Scene):
             # touch = get_touch_event() 
             # if touch: self._active_window.handle_touch(touch.x, touch.y)
 
-            return None
+            return "FOCUS"
+
+        # ...
 
         return None
-        
-
-
 
     def draw(self, frame_time_ms: int):
         # Draw all windows on top
         for window in self._windows:
             window.draw()
     
+
+    
+    def draw_loading_screen(self):
+        """Clears the screen and draws a centered 'Loading...' message."""
+        dclear(C_BLACK)
+        text = "Loading..."
+        
+        try:
+            w, h = dsize(text, None) # Use default font
+        except:
+            w, h = len(text) * 8, 16 # Fallback size
+            
+        x = (DWIDTH - w) // 2
+        y = (DHEIGHT - h) // 2
+        dtext(x, y, C_WHITE, text)
+        dupdate() # Force the screen to update immediately
 
 class SceneMenuBase(SceneBase):
     pass

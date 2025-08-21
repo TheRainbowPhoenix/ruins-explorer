@@ -417,6 +417,12 @@ class WindowSelectable(WindowBase):
     # Refresh
     # -------------------------------------------------------------------------
 
+    def draw(self):
+        """Draws the window skin. Subclasses should call super().draw() first."""
+        super().draw()
+        self.draw_all_items()
+        self.update_cursor()
+
     def refresh(self):
         """Refresh the window contents."""
         self.draw_all_items()

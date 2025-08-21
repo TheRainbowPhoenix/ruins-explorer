@@ -1,4 +1,5 @@
 # Contains helper systems like Input and Camera.
+import gc
 
 from gint import *
 
@@ -64,7 +65,13 @@ class InputManager:
         self.n6 = keypressed(KEY_6)
         self.n7 = keypressed(KEY_7)
         self.n8 = keypressed(KEY_8)
-        self.n9 = keypressed(KEY_9)  
+        self.n9 = keypressed(KEY_9) 
+
+        if keydown(KEY_EQUALS):
+            self._todo_debug_trace() 
+
+        if keydown(KEY_LEFTPAR):
+            self._todo_print_trace() 
 
     def is_repeat(self, code: str):
         if code == 'down':
@@ -99,6 +106,23 @@ class InputManager:
             return self.left
         
         return False
+
+    def _todo_debug_trace(self):
+        gc.collect()
+        free_mem = gc.mem_free()
+        alloc_mem = gc.mem_alloc()
+        txt = "{} + {}".format(alloc_mem,free_mem)
+        
+        drect(0,0,dsize(txt, None)[0], 12, C_WHITE)
+        dtext(0,1,C_BLUE, txt)
+
+
+    def _todo_print_trace(self):
+        gc.collect()
+        free_mem = gc.mem_free()
+        alloc_mem = gc.mem_alloc()
+        txt = "{}/{}".format(alloc_mem,free_mem)
+        print(txt)
 
 class Camera:
     """A basic camera that can be used by scenes."""

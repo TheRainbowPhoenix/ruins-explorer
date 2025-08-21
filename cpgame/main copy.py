@@ -1,6 +1,30 @@
 # main.py
 # The main entry point for the entire game. Clean and simple.
+import gc
+gc.collect()
+free_mem = gc.mem_free()
+alloc_mem = gc.mem_alloc()
+txt = "{} / {}".format(alloc_mem,free_mem)
+print(txt)
+
 from gint import dclear, dtext, dupdate, C_WHITE, C_BLACK, DWIDTH, DHEIGHT, image, dimage, dsize
+
+print("Before profiler")
+gc.collect()
+free_mem = gc.mem_free()
+alloc_mem = gc.mem_alloc()
+txt = "{} / {}".format(alloc_mem,free_mem)
+print(txt)
+
+
+from cpgame.engine.profiler import MemoryProfiler
+
+print("Before splash")
+gc.collect()
+free_mem = gc.mem_free()
+alloc_mem = gc.mem_alloc()
+txt = "{} / {}".format(alloc_mem,free_mem)
+print(txt)
 
 # Splash screen
 dclear(C_WHITE)
@@ -12,15 +36,38 @@ dupdate()
 del msg
 del sz
 
+print("After splash")
+gc.collect()
+free_mem = gc.mem_free()
+alloc_mem = gc.mem_alloc()
+txt = "{} / {}".format(alloc_mem,free_mem)
+print(txt)
+
 # Import data and load game
 
 import time
 from cpgame.engine.game import Game
 from cpgame.game_scenes.menu_scene import MenuScene
 
+print("After imports")
+gc.collect()
+free_mem = gc.mem_free()
+alloc_mem = gc.mem_alloc()
+txt = "{} / {}".format(alloc_mem,free_mem)
+print(txt)
+
+
 def main():
     """Initializes and runs the game, starting with the MenuScene."""
-    game = Game()
+    print("in main")
+    gc.collect()
+    free_mem = gc.mem_free()
+    alloc_mem = gc.mem_alloc()
+    txt = "{} / {}".format(alloc_mem,free_mem)
+    print(txt)
+
+    with MemoryProfiler("Game"):
+        game = Game()
     # try:
     game.start(MenuScene)
     # except Exception as e:

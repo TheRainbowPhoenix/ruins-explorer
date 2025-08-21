@@ -137,6 +137,10 @@ class GameParty(GameUnit):
     def __init__(self):
         super().__init__()
         self._gold = 0
+        self._items: Dict[int, int] = {}
+        self._weapons: Dict[int, int] = {}
+        self._armors: Dict[int, int] = {}
+
         self._steps = 0
         self._last_item = GameBaseItem()
         self._menu_actor_id = 0
@@ -148,6 +152,9 @@ class GameParty(GameUnit):
         self._items = {}
         self._weapons = {}
         self._armors = {}
+
+    @property
+    def gold(self) -> int: return self._gold
 
     def exists(self) -> bool:
         return len(self._actors) > 0 if self._actors else False
@@ -248,7 +255,7 @@ class GameParty(GameUnit):
     def setup_battle_test_items(self) -> None:
         if JRPG.data and JRPG.data.items:
             for name, item in JRPG.data.items.all().items():
-                if item and not item.name.empty():
+                if item and not item.get('name'):
                     self.gain_item(item, self.max_item_number(item))
 
     def highest_level(self) -> Optional[int]:

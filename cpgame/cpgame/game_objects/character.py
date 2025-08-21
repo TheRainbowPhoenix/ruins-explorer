@@ -99,3 +99,11 @@ class GamePlayer(GameCharacter):
 
     def refresh(self):
         pass # TODO
+
+    def perform_transfer(self):
+        """Updates the state in JRPG.objects for the transfer. The scene handles the rest."""
+        from cpgame.systems.jrpg import JRPG
+        if self.transfer_pending and JRPG.objects:
+            JRPG.objects.map.setup(self.new_map_id)
+            self.moveto(self.new_x, self.new_y)
+            self.clear_transfer_info()

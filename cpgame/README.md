@@ -49,3 +49,89 @@ Add drawng methods to draw actor faces from dialogs
 How to save binary files ? does repr works ? 
 Make an on-device fxconv to serialize and deserialize on the fly
 
+## Performance notes
+
+"empty" uses 736B + 294_624 free
+
+import gint  (+gc)= 768B so "import gint" = 32B 
+import * from gint = 2528B !!!
+
+before imports : 2752 B
+before splash: 4288 B
+after splash: 4384 B
+Splash ~1728B
+
+profiler class uses 1376 B (!) 
+
+
+Assets Manager @ Templar = 3616B
+Assets Manager @ JRPG = 224B
+
+Scene_MenuScene = 480B
+
+
+(old :)
+main menu uses 229_440 (of 295360)
+templar uses 230_690
+
+### General infos about memory usage
+empty class = 128 B
+10x inst of class = 256B
+10x lambda = 256B
+10x functions = 320B
+
+strings = bytes in size. 'abc' x10 = 96
+10x 2 items tuple = 96B
+10x empty list = 416B (!)
+10x dict = 256B
+
+
+
+### Rect tests
+(100x)
+MinimalRect class + __slots__ = 5344 B
+namedtuple  3744 B
+tuple       3184 B
+Dict        5360 B
+
+
+
+## Gameplay notes
+
+Livestock:
+- Chicken (price 10)
+- Pigs
+- Turkeys
+- Cows
+- ??
+
+Road building:
+- Build roads (price 10, +1/m)
+- Fertilize soil (price 10, +1/m)
+
+Plants:
+- Potato (price 10)
+- Lettuce (price x)
+- Strawberries
+- wheat
+- corn
+- grapes
+- apples tree
+- orange tree
+- ?? +
+
+Extra:
+- Humidifier
+- bird house
+- scarecrow
+- pond
+- 
+
+Distribution:
+- ??
+- Small market (cost 400, +?/m)
+- Store front (cost ??, +?/m)
+- ??
+
+First you need to build a Fertilize soil (you can undo this but you loose money)
+Then you plant
