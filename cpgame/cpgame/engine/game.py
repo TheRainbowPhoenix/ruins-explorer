@@ -3,7 +3,7 @@
 
 import time
 import gc # Import garbage collector for cleanup
-from gint import *
+from gint import dupdate
 from cpgame.engine.scene import Scene
 from cpgame.engine.assets import AssetManager
 from cpgame.engine.profiler import MemoryProfiler

@@ -35,10 +35,7 @@ class JRPG_BootScene(Scene):
         
         
         # Immediately transition to the actual first scene of the JRPG
-
-        if JRPG.game:
-            JRPG.game.change_scene(SceneMap)
-        # self.game.change_scene(SceneMap) # JRPGScene
+        self.game.change_scene(SceneMap) # JRPGScene
 
     def update(self, dt: float):
         # This scene does nothing in update, as it transitions instantly.

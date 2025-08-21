@@ -1,7 +1,7 @@
 # Contains helper systems like Input and Camera.
 import gc
 
-from gint import *
+import gint
 
 class InputManager:
     """
@@ -38,50 +38,50 @@ class InputManager:
 
     def update(self):
         """Polls the hardware. This should be called once per logic update."""
-        cleareventflips()
-        clearevents()
+        gint.cleareventflips()
+        gint.clearevents()
         # Poll continuous state (`keydown`)
-        self.dx = keydown(KEY_RIGHT) - keydown(KEY_LEFT)
-        self.dy = keydown(KEY_DOWN) - keydown(KEY_UP)
+        self.dx = gint.keydown(gint.KEY_RIGHT) - gint.keydown(gint.KEY_LEFT)
+        self.dy = gint.keydown(gint.KEY_DOWN) - gint.keydown(gint.KEY_UP)
         
         # Poll one-shot press state (`keypressed`)
-        self.up = keypressed(KEY_UP)
-        self.down = keypressed(KEY_DOWN)
-        self.left = keypressed(KEY_LEFT)
-        self.right = keypressed(KEY_RIGHT)
-        self.interact = keypressed(KEY_EXE)
-        self.menu = keypressed(KEY_MENU)
-        self.exit = keypressed(KEY_EXIT)
-        self.shift = keypressed(KEY_SHIFT)
+        self.up = gint.keypressed(gint.KEY_UP)
+        self.down = gint.keypressed(gint.KEY_DOWN)
+        self.left = gint.keypressed(gint.KEY_LEFT)
+        self.right = gint.keypressed(gint.KEY_RIGHT)
+        self.interact = gint.keypressed(gint.KEY_EXE)
+        self.menu = gint.keypressed(gint.KEY_MENU)
+        self.exit = gint.keypressed(gint.KEY_EXIT)
+        self.shift = gint.keypressed(gint.KEY_SHIFT)
 
         # Numpad
-        self.nexp = keypressed(KEY_EXP)
-        self.n0 = keypressed(KEY_0)
-        self.n1 = keypressed(KEY_1)
-        self.n2 = keypressed(KEY_2)
-        self.n3 = keypressed(KEY_3)
-        self.n4 = keypressed(KEY_4)
-        self.n5 = keypressed(KEY_5)
-        self.n6 = keypressed(KEY_6)
-        self.n7 = keypressed(KEY_7)
-        self.n8 = keypressed(KEY_8)
-        self.n9 = keypressed(KEY_9) 
+        self.nexp = gint.keypressed(gint.KEY_EXP)
+        self.n0 = gint.keypressed(gint.KEY_0)
+        self.n1 = gint.keypressed(gint.KEY_1)
+        self.n2 = gint.keypressed(gint.KEY_2)
+        self.n3 = gint.keypressed(gint.KEY_3)
+        self.n4 = gint.keypressed(gint.KEY_4)
+        self.n5 = gint.keypressed(gint.KEY_5)
+        self.n6 = gint.keypressed(gint.KEY_6)
+        self.n7 = gint.keypressed(gint.KEY_7)
+        self.n8 = gint.keypressed(gint.KEY_8)
+        self.n9 = gint.keypressed(gint.KEY_9) 
 
-        if keydown(KEY_EQUALS):
+        if gint.keydown(gint.KEY_EQUALS):
             self._todo_debug_trace() 
 
-        if keydown(KEY_LEFTPAR):
+        if gint.keydown(gint.KEY_LEFTPAR):
             self._todo_print_trace() 
 
     def is_repeat(self, code: str):
         if code == 'down':
-            return keydown(KEY_DOWN) and not self.down
+            return gint.keydown(gint.KEY_DOWN) and not self.down
         if code == 'up':
-            return keydown(KEY_UP) and not self.up
+            return gint.keydown(gint.KEY_UP) and not self.up
         if code == 'right':
-            return keydown(KEY_RIGHT) and not self.right
+            return gint.keydown(gint.KEY_RIGHT) and not self.right
         if code == 'left':
-            return keydown(KEY_LEFT) and not self.left
+            return gint.keydown(gint.KEY_LEFT) and not self.left
         
         return False
 
@@ -113,8 +113,8 @@ class InputManager:
         alloc_mem = gc.mem_alloc()
         txt = "{} + {}".format(alloc_mem,free_mem)
         
-        drect(0,0,dsize(txt, None)[0], 12, C_WHITE)
-        dtext(0,1,C_BLUE, txt)
+        gint.drect(0,0,gint.dsize(txt, None)[0], 12, gint.C_WHITE)
+        gint.dtext(0,1,gint.C_BLUE, txt)
 
 
     def _todo_print_trace(self):
@@ -129,3 +129,4 @@ class Camera:
     def __init__(self, x: int = 0, y: int = 0):
         self.x = x
         self.y = y
+

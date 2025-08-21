@@ -51,6 +51,8 @@ Make an on-device fxconv to serialize and deserialize on the fly
 
 ## Performance notes
 
+1 file = 1 namespace. Try to reduce them as much as possible !!!
+
 "empty" uses 736B + 294_624 free
 
 import gint  (+gc)= 768B so "import gint" = 32B 

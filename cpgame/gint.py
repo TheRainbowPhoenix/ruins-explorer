@@ -1169,31 +1169,100 @@ if not hasattr(time, 'ticks_ms'):
     time.ticks_diff = ticks_diff
 
 # Polyfills for MicroPython-specific gc functions
+import gc
+import tracemalloc
+import sys
+import os
+_memory_tracker = {
+    'baseline': 0,
+    'initialized': False,
+    'simulated_total_memory': 300 * 1024,  # 300KB on embedded device
+}
+
+def _init_memory_tracker():
+    """Initialize tracemalloc if not already done"""
+    if not _memory_tracker['initialized']:
+        if not tracemalloc.is_tracing():
+            tracemalloc.start()
+        
+        # Set baseline after a garbage collection
+        gc.collect()
+        current, _ = tracemalloc.get_traced_memory()
+        _memory_tracker['baseline'] = current
+        _memory_tracker['initialized'] = True
+
+def _get_process_memory():
+    """Get current process memory usage as fallback"""
+    try:
+        import psutil
+        process = psutil.Process(os.getpid())
+        return process.memory_info().rss
+    except ImportError:
+        # Fallback to a rough estimate using sys.getsizeof on some objects
+        return len(str(sys.modules)) * 1000  # Very rough estimate
+
 if not hasattr(gc, 'mem_alloc'):
     def gc_mem_alloc() -> int:
-        """Polyfill for gc.mem_alloc. Not implementable in CPython, returns 0."""
-        print("Warning: gc.mem_alloc() is a MicroPython-specific function. Returning 0.")
-        return 0
+        """
+        Polyfill for gc.mem_alloc using tracemalloc.
+        Returns the current memory usage in bytes.
+        """
+        _init_memory_tracker()
+        
+        # Force garbage collection for more accurate reading
+        gc.collect()
+        
+        try:
+            if tracemalloc.is_tracing():
+                current, _ = tracemalloc.get_traced_memory()
+                # Return memory usage relative to baseline
+                allocated = current - _memory_tracker['baseline']
+                return max(0, allocated)  # Never return negative
+            else:
+                # Fallback to process memory if tracemalloc fails
+                return _get_process_memory() // 10  # Scale down for reasonable numbers
+        except Exception as e:
+            print(f"Warning: Error in gc.mem_alloc() polyfill: {e}")
+            return 0
+    
     gc.mem_alloc = gc_mem_alloc
 
 if not hasattr(gc, 'mem_free'):
     def gc_mem_free() -> int:
-        """Polyfill for gc.mem_free. Not implementable in CPython, returns a large number."""
-        print("Warning: gc.mem_free() is a MicroPython-specific function. Returning a dummy value.")
-        # Return a large number to avoid false "out of memory" errors in simulations
-        return 1024 * 1024
+        """
+        Polyfill for gc.mem_free using tracemalloc.
+        Returns estimated free memory based on simulated total memory.
+        """
+        _init_memory_tracker()
+        
+        try:
+            allocated = gc.mem_alloc()
+            total_memory = _memory_tracker['simulated_total_memory']
+            free_memory = total_memory - allocated
+            
+            # Ensure we don't return negative free memory
+            return max(1024, free_memory)  # Always leave at least 1KB "free"
+            
+        except Exception as e:
+            print(f"Warning: Error in gc.mem_free() polyfill: {e}")
+            return _memory_tracker['simulated_total_memory'] // 2  # Return half as fallback
+    
     gc.mem_free = gc_mem_free
 
 if not hasattr(gc, 'threshold'):
-    def gc_threshold(amount: Optional[int] = None) -> int:
-        """Polyfill for gc.threshold. Simulates getting/setting the threshold."""
-        current_thresholds = gc.get_threshold()
+    def gc_threshold(amount=None):
+        """
+        Polyfill for gc.threshold. In CPython, we can't directly control
+        the allocation threshold, so we just call gc.collect() if amount is small.
+        """
         if amount is not None:
-            print(f"Warning: gc.threshold() is a MicroPython-specific function. Setting a dummy value.")
-            # We can't really set it in the same way, but we can fake it.
-            # This doesn't actually do anything in CPython.
-            pass
-        return current_thresholds[0]
+            if amount < 1000:  # If threshold is small, collect more aggressively
+                gc.collect()
+            return amount
+        else:
+            # MicroPython default is typically around 1000 bytes
+            return 1000
+    
     gc.threshold = gc_threshold
 
 # Create a dummy micropython module since it doesn't exist in standard Python

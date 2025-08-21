@@ -10,10 +10,10 @@ def mem_used():
     return gc.mem_alloc()
 
 def timeit(func):
-    start = time.ticks_us()
+    start = time.monotonic()
     result = func()
-    end = time.ticks_us()
-    elapsed = time.ticks_diff(end, start)
+    end = time.monotonic()
+    elapsed = end - start
     return result, elapsed
 
 print("=== Advanced Memory & Speed Benchmark ===\n")
