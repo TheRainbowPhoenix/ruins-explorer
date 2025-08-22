@@ -804,7 +804,7 @@ class GameBattler(GameBattlerBase):
         if JRPG.data:    
             state = JRPG.data.states.get(state_id)
             if state:
-                return state.remove_by_restriction and self.restriction() > 0
+                return state.get("remove_by_restriction", False) and self.restriction() > 0
         return False
     
     def add_new_state(self, state_id: int):
@@ -825,7 +825,7 @@ class GameBattler(GameBattlerBase):
         """Processing performed when action restriction occurs."""
         self.clear_actions()
         for state in self.states_objects():
-            if state.remove_by_restriction:
+            if state.state.get("remove_by_restriction", False):
                 self.remove_state(state.id)
     
     def reset_state_counts(self, state_id: int):
@@ -833,9 +833,12 @@ class GameBattler(GameBattlerBase):
         if JRPG.data:    
             state = JRPG.data.states.get(state_id)
             if state:
-                variance = 1 + max(state.max_turns - state.min_turns, 0)
-                self.state_turns[state_id] = state.min_turns + random.randint(0, variance - 1) if variance > 0 else state.min_turns
-                self.state_steps[state_id] = state.steps_to_remove
+                max_turns = state.get("max_turns", 1)
+                min_turns = state.get("min_turns", 1)
+
+                variance = 1 + max(max_turns - min_turns, 0)
+                self.state_turns[state_id] = min_turns + random.randint(0, variance - 1) if variance > 0 else min_turns
+                self.state_steps[state_id] = state.get("steps_to_remove", 0)
     
     def remove_state(self, state_id: int):
         """Remove state."""
@@ -851,7 +854,7 @@ class GameBattler(GameBattlerBase):
     
     def die(self):
         """Knock out."""
-        self.hp = 0
+        self._hp = 0
         self.clearstates()
         self.clearbuffs()
 

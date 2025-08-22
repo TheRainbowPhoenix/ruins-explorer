@@ -284,5 +284,25 @@ events = {
                 {"code": 605, "parameters": [1, 2, 0, 0, 0]},   # Weapon 2 (Axe)
             ]
         }]
+    },
+    (0,8): { # Event ID 5: Shopkeeper
+        "id": 6, "name": "Slime", "x": 0, "y": 8,
+        "pages": [{
+            "graphic": {"tileId": 58}, # A slime graphic
+            "list": [
+                # Start battle with Enemy ID 1
+                {"code": 301, "parameters": [0, 1]}
+            ]
+        }]
+    },
+    (0,9): { # Event ID 5: Shopkeeper
+        "id": 7, "name": "COW", "x": 0, "y": 8,
+        "pages": [{
+            "graphic": {"tileId": 51}, # A slime graphic
+            "list": [
+                # Start battle with Enemy ID 1
+                {"code": 301, "parameters": [0, 5]}
+            ]
+        }]
     }
 }

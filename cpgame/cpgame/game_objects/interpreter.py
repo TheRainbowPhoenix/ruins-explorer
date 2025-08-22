@@ -132,6 +132,7 @@ class GameInterpreter:
         elif code == 123: self.command_123(params); return True # Control Self Switch
         elif code == 124: self.command_124(params); return True # Control Timer
         elif code == 201: self.command_201(params); return False # Transfer Player
+        elif code == 301: self.command_301(params); return True # Battle
         elif code == 302: self.command_302(params); return True # Shop
         elif code == 303: self.command_303(params); return True # Input Name
         elif code == 356: self.command_356(params); return True # Plugin Command
@@ -344,6 +345,20 @@ class GameInterpreter:
         
         if JRPG.objects and JRPG.objects.player:
             JRPG.objects.player.reserve_transfer(map_id, x, y)
+
+    def command_301(self, params: List[Any]):
+        """Battle Processing"""
+        from cpgame.game_scenes.scene_battle import SceneBattle
+        
+        # In a full game, params[0] would determine how to find the troop_id.
+        # For now, we'll assume direct designation.
+        enemy_id = params[1] # Using enemy ID directly instead of troop ID for simplicity
+
+        if JRPG.game:
+            # We use call_scene to push the battle on top of the map
+            JRPG.game.call_scene(SceneBattle, enemy_id=enemy_id)
+            self._wait_mode = "scene_pop"
+
 
     def command_302(self, params: List[Any]):
         """Shop Processing"""
