@@ -17,10 +17,10 @@ class SceneShop(SceneBase):
     A lightweight, state-driven shop scene designed for low-memory environments.
     It manages all its UI states internally without separate window objects.
     """
-    def __init__(self, game, goods, purchase_only):
+    def __init__(self, game, **kwargs):
         super().__init__(game)
-        self._goods = goods
-        self._purchase_only = purchase_only
+        self._goods = kwargs.get('goods', [])
+        self._purchase_only = kwargs.get('purchase_only', False)
         
         # --- State Machine ---
         self._state = "COMMAND"  # COMMAND, BUY, SELL, QUANTITY
@@ -32,15 +32,20 @@ class SceneShop(SceneBase):
         self._top_item_index = 0 # For scrolling
         self._quantity = 1
         
-        self._list_height = DHEIGHT - LIST_Y - INFO_PANEL_H
-        self._items_per_page = self._list_height // 24 # 24 pixels per item
+        # Layout
+        self._top_bar_h = 30
+        self._gold_bar_h = 30
+        self._info_panel_h = 80
+        self._list_y = self._top_bar_h + self._gold_bar_h
+        self._list_height = DHEIGHT - self._list_y - self._info_panel_h
+        self._items_per_page = self._list_height // 24
 
     def create(self):
         log("ShopScene: Created.")
         self._prepare_buy_list()
 
     def update(self, dt):
-        self.input.update()
+        # self.input.update()
         
         # Route input based on the current state
         if self._state == "COMMAND":

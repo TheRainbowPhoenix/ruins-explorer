@@ -1,62 +1,63 @@
 # engine/asset.py
 # A central manager to load and process all game data.
 
-from cpgame.engine.animation import AnimationFrame
-from cpgame.game_assets import templar_data
-from cpgame.game_assets import jrpg_data
-from cpgame.game_assets.fanta_tiles import image as fanta_tileset_img # Your raw JRPG tileset image
+# from cpgame.engine.animation import AnimationFrame
+# from cpgame.game_assets import templar_data
+# from cpgame.game_assets import jrpg_data
+# from cpgame.game_assets.fanta_tiles import image as fanta_tileset_img # Your raw JRPG tileset image
 
-from cpgame.engine.profiler import MemoryProfiler
+# from cpgame.engine.profiler import MemoryProfiler
+
+from cpgame.game_assets import fanta_tiles
 
 try:
-    from typing import Optional, List, Dict
+    from typing import Optional, Dict, Any, Set, List
 except:
     pass
 
 class Tilemap:
-    def __init__(self, img, tileboxes, solid_ids):
+    def __init__(self, img: Any, solid_ids: Set[int]):
         self.img = img
-        self.tileboxes = tileboxes
         self.solid = solid_ids
 
 class AssetManager:
-    """
-    A singleton class that loads all assets once at the start of the game.
-    This mimics Phaser's loader, but pre-loads everything for simplicity.
-    """
+    """An on-demand loader for game assets."""
     def __init__(self):
-        self.animations: Dict[str, List[AnimationFrame]] = {}
-        self.tilesets: Dict[str, Tilemap] = {} # tilemap
-        self.maps: Dict[str, Dict] = {} # TODO: do not use this
-        self.is_loaded = False
+        # self._cache: Dict[str, Any] = {}
+        self._loaded_modules: Dict[str, Any] = {}
 
-    def load_all(self):
-        """Processes all raw asset data into usable game objects."""
-        if self.is_loaded: return
-        # print("AssetManager: Loading all assets...")
+    def get_tileset(self, name: str) -> Optional[Tilemap]:
+        """Loads a tileset from its module, caches it, and returns it."""
+        # if name in self._cache:
+        #     return self._cache[name]
 
-        with MemoryProfiler("AM:all"):
-
-            # TODO: use PAK if successful, and make it a PAK loader
-            # TODO: else, use the class loader with cleanup
-
-            with MemoryProfiler("AM_Templar"):
-                # --- Load Templar Assets ---
-                for name, data in templar_data.sprites.items(): # type: ignore
-                    self.animations[name] = [AnimationFrame(*frame) for frame in data]
-                for name, data in templar_data.bounce.items(): # type: ignore
-                    self.animations[name or "default"] = [AnimationFrame(*frame) for frame in data]
-                self.tilesets["templar"] = Tilemap(*templar_data.tileset) # type: ignore
-
-            # --- Load JRPG Assets ---
-            with MemoryProfiler("AM_JRPG"):
-                # TODO: remove this later !!
-                self.tilesets["jrpg"] = Tilemap(fanta_tileset_img, [], jrpg_data.solid_tiles) # type: ignore
-                self.maps["jrpg_village"] = {
-                    "layout": jrpg_data.map_layout, # type: ignore
-                    "objects": jrpg_data.map_objects, # type: ignore
-                    "signs": jrpg_data.map_signs # type: ignore
-                }
+        from cpgame.engine.logger import log
+        log("AssetManager: Loading tileset '{}'...".format(name))
         
-        self.is_loaded = True
-        # print("AssetManager: Load complete.")
+        tileset = None
+        if name == "jrpg":
+            # Lazy import
+            from cpgame.game_assets import jrpg_data
+            tileset = Tilemap(fanta_tiles.image, jrpg_data.solid_tiles)
+            self._loaded_modules['fanta_tiles'] = fanta_tiles
+            self._loaded_modules['jrpg_data'] = jrpg_data
+        
+        # if tileset:
+        #     self._cache[name] = tileset
+        return tileset
+
+    def unload(self, name: str):
+        """Unloads a specific asset and its source module from memory."""
+        # if name in self._cache:
+        #     del self._cache[name]
+        
+        # This is a simplified cleanup; a real system would track dependencies.
+        if name == "jrpg":
+            from cpgame.modules.datamanager import _cleanup_module
+            if 'fanta_tiles' in self._loaded_modules:
+                _cleanup_module('cpgame.game_assets.fanta_tiles', self._loaded_modules.pop('fanta_tiles'))
+            if 'jrpg_data' in self._loaded_modules:
+                _cleanup_module('cpgame.game_assets.jrpg_data', self._loaded_modules.pop('jrpg_data'))
+        
+        import gc
+        gc.collect()

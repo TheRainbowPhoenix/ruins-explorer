@@ -1,10 +1,8 @@
 # engine/scene.py
 # Defines the core Scene class and the SceneManager.
 
-from cpgame.engine.systems import InputManager, Camera
-from cpgame.engine.assets import AssetManager
 try:
-    from typing import Optional, List
+    from typing import Optional, List, Dict, Any
     from cpgame.engine.game import Game
 except:
     pass
@@ -14,12 +12,11 @@ class Scene:
     The base class for all game states, inspired by Phaser.Scene.
     A Scene has a lifecycle: init -> create -> update/draw -> destroy.
     """
-    def __init__(self, game: 'Game'):
+    def __init__(self, game: 'Game', **kwargs):
         self.game = game
-        # Each scene gets its own instances of engine systems.
-        self.input = InputManager()
-        self.camera = Camera()
         self.assets = game.assets
+        self.input = game.input
+        self._kwargs = kwargs # Store arguments for the scene
 
     def create(self):
         """Called once when the scene is started."""

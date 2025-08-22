@@ -50,7 +50,8 @@ class SceneShop(SceneBase):
         self.command_window.activate()
 
     # --- Command Handlers ---
-    def pop_scene(self): self.game.pop_scene()
+    # def pop_scene(self):
+    #     self.game.pop_scene()
 
     def command_buy(self):
         self.command_window.deactivate()

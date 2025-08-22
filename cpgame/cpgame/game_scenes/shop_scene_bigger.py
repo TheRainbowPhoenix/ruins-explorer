@@ -51,7 +51,7 @@ class SceneShop(SceneMenuBase): #
         super().update(dt) # This calls self.input.update() and updates the active window
         
         # First, poll the input state for this frame
-        self.input.update()
+        # self.input.update()
 
 
         # Update all windows

@@ -165,7 +165,7 @@ class TemplarScene(Scene):
         """Handles all game logic and input for one fixed-step update."""
         assert self.player and self.room and self.dirty_tiles is not None
 
-        self.input.update() # Polls gint for the latest input state
+        # self.input.update() # Polls gint for the latest input state
 
         if self.input.exit:
             from cpgame.game_scenes.menu_scene import MenuScene

@@ -143,7 +143,7 @@ class JRPGScene(Scene):
         Main logic update, called every fixed timestep.
         """
         # First, poll the input state for this frame
-        self.input.update()
+        # self.input.update()
 
         # --- State Machine ---
         if JRPG.objects:

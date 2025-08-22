@@ -7,19 +7,19 @@ except:
     pass
 
 from cpgame.systems.jrpg import JRPG
-from cpgame.engine.scene import Scene
+# from cpgame.engine.scene import Scene
 from cpgame.engine.systems import Camera
-from cpgame.game_objects.actor import GameActor
+# from cpgame.game_objects.actor import GameActor
 from cpgame.game_scenes._scenes_base import SceneBase
 
-from cpgame.game_windows.window_base import WindowBase
-from cpgame.game_windows.window_selectable import WindowSelectable
+# from cpgame.game_windows.window_base import WindowBase
+# from cpgame.game_windows.window_selectable import WindowSelectable
 from cpgame.game_windows.window_hud import WindowHUD
 from cpgame.game_windows.window_message import WindowMessage
 from cpgame.game_windows.window_number_input import WindowNumberInput
-from cpgame.game_windows.window_name_edit import WindowNameEdit
-from cpgame.game_windows.window_name_input import WindowNameInput
-from cpgame.game_windows.window_choice_list import WindowChoiceList
+# from cpgame.game_windows.window_name_edit import WindowNameEdit
+# from cpgame.game_windows.window_name_input import WindowNameInput
+# from cpgame.game_windows.window_choice_list import WindowChoiceList
 
 
 from cpgame.engine.logger import log
@@ -41,8 +41,9 @@ class SceneMap(SceneBase):
         self.move_cooldown = 0.0
         
         # Rendering
+        self.camera = Camera()
         self.hud_window = WindowHUD()
-        self.message_window = WindowMessage()
+        # self.message_window = WindowMessage()
         self._map_render_offset_y = self.hud_window.height
         self.cam_block_x, self.cam_block_y = -1, -1
         self.screen_tiles_x = DWIDTH // TILE_SIZE
@@ -52,49 +53,54 @@ class SceneMap(SceneBase):
         self.dirty_tiles: Set[Tuple[int, int]] = set()
         self.full_redraw_needed = True
     
-    
-    def resume(self):
-        """
-        Called when returning to this scene (e.g., from the shop).
-        Flags the scene for a full redraw to clear any artifacts from the
-        previous scene and ensures the HUD is up-to-date.
-        """
-        log("SceneMap: Resuming...")
-        self.full_redraw_needed = True
-    
 
     def create(self):
         log("SceneMap: Creating...")
-        self.tileset = self.assets.tilesets.get(self.map.tileset_id)
-        
+        # Load assets required for this scene
+        self.tileset = self.assets.get_tileset('jrpg')
+        if not self.tileset:
+            raise Exception("Failed to load 'jrpg' tileset.")
+
+        # Create the windows managed by this scene
         self.message_window = WindowMessage()
         self.number_input_window = WindowNumberInput(
             on_confirm=self.on_number_input_confirm,
             on_cancel=self.on_number_input_cancel
         )
-        self.name_edit_window = WindowNameEdit(JRPG.objects.actors[1] if JRPG.objects else None, 8) # Placeholder
-        self.name_input_window = WindowNameInput(self.name_edit_window)
-        self.name_input_window.set_handler('ok', self.on_name_input_confirm)
-        self.name_input_window.set_handler('cancel', self.on_name_input_cancel)
+        # self.name_edit_window = WindowNameEdit(JRPG.objects.actors[1] if JRPG.objects else None, 8) # Placeholder
+        # self.name_input_window = WindowNameInput(self.name_edit_window)
+        # self.name_input_window.set_handler('ok', self.on_name_input_confirm)
+        # self.name_input_window.set_handler('cancel', self.on_name_input_cancel)
 
-        self.choice_window = WindowChoiceList(self.message_window)
-        self.choice_window.set_handler('ok', self.on_choice_confirm)
-        self.choice_window.set_handler('cancel', self.on_choice_cancel)
+        # self.choice_window = WindowChoiceList(self.message_window)
+        # self.choice_window.set_handler('ok', self.on_choice_confirm)
+        # self.choice_window.set_handler('cancel', self.on_choice_cancel)
 
         self._windows = [
             self.hud_window,
             self.message_window,
             self.number_input_window,
-            self.name_edit_window, self.name_input_window,
-            self.choice_window
+            # self.name_edit_window, self.name_input_window,
+            # self.choice_window
         ]
         
         self._update_camera_block()
         self.full_redraw_needed = True
 
+    def resume(self):
+        """Called when returning from a child scene (like a menu or shop)."""
+        log("SceneMap: Resuming...")
+        self.full_redraw_needed = True
+
+    def destroy(self):
+        """Called when this scene is being replaced. Unloads assets."""
+        log("SceneMap: Destroying...")
+        self.assets.unload('jrpg')
+        self._windows.clear()
+
     def update(self, dt: float):
         # First, poll the input state for this frame
-        self.input.update()
+        # self.input.update()
         
         # --- State Machine ---
         if JRPG.objects:
@@ -220,7 +226,7 @@ class SceneMap(SceneBase):
         
         msg = JRPG.objects.message
         var_id = msg.number_input_variable_id
-        if var_id:
+        if var_id is not None:
             initial_value = JRPG.objects.variables.value(var_id)
         
             self.number_input_window.start(initial_value, msg.number_input_digits_max)
@@ -255,9 +261,21 @@ class SceneMap(SceneBase):
         actor = JRPG.objects.actors[msg.name_input_actor_id]
         if not actor: msg.clear(); return
 
+        from cpgame.game_windows.window_name_edit import WindowNameEdit
+        from cpgame.game_windows.window_name_input import WindowNameInput
+        self.name_edit_window = WindowNameEdit(JRPG.objects.actors[1] if JRPG.objects else None, 8) # Placeholder
+        self.name_input_window = WindowNameInput(self.name_edit_window)
+        self.name_input_window.set_handler('ok', self.on_name_input_confirm)
+        self.name_input_window.set_handler('cancel', self.on_name_input_cancel)
+
+        # TODO: remove them from _windows when done 
+        self._windows.append(self.name_edit_window)
+        self._windows.append(self.name_input_window)
+
+
         # self.name_edit_window = WindowNameEdit(actor, msg.name_input_max_chars)
         # self.name_input_window = WindowNameInput(self.name_edit_window)
-        self.name_input_window.set_handler('ok', self.on_name_input_confirm)
+        # self.name_input_window.set_handler('ok', self.on_name_input_confirm)
         # We don't have a cancel button on keyboard, but touch could trigger it
         
         self.name_edit_window.visible = True
@@ -273,6 +291,11 @@ class SceneMap(SceneBase):
             return
         
         msg = JRPG.objects.message
+        from cpgame.game_windows.window_choice_list import WindowChoiceList
+        self.choice_window = WindowChoiceList(self.message_window)
+        self.choice_window.set_handler('ok', self.on_choice_confirm)
+        self.choice_window.set_handler('cancel', self.on_choice_cancel)
+        self._windows.append(self.choice_window)
         self.choice_window.start(msg.choices, msg.choice_cancel_type, self.on_choice_made)
         self._active_window = self.choice_window
 
@@ -298,6 +321,18 @@ class SceneMap(SceneBase):
         self.name_edit_window.visible = False
         self.name_input_window.visible = False
         self.name_input_window.deactivate()
+
+        if self.name_edit_window in self._windows:
+            self._windows.remove(self.name_edit_window)
+        if self.name_input_window in self._windows:
+            self._windows.remove(self.name_input_window)
+        
+        del self.name_edit_window 
+        del self.name_input_window
+
+        self.name_edit_window = None
+        self.name_input_window = None
+
         self._active_window = None
         msg.clear()
         self.full_redraw_needed = True
@@ -335,13 +370,25 @@ class SceneMap(SceneBase):
         self.name_edit_window.visible = False
         self.name_input_window.visible = False
         self.name_input_window.deactivate()
+
+        if self.name_edit_window in self._windows:
+            self._windows.remove(self.name_edit_window)
+        if self.name_input_window in self._windows:
+            self._windows.remove(self.name_input_window)
+        
+        del self.name_edit_window 
+        del self.name_input_window
+        
+        self.name_edit_window = None
+        self.name_input_window = None
+        
         self._active_window = None
         if JRPG.objects:
             JRPG.objects.message.clear()
         self.full_redraw_needed = True
     
-    def _end_modal_input(self, window: WindowSelectable):
-        """Generic helper to close any modal window."""
+    def _end_modal_input(self, window):
+        """Generic helper to close any modal window.""" 
         window.visible = False
         window.deactivate()
         self._active_window = None

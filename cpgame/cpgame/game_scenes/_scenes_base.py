@@ -29,7 +29,7 @@ class SceneBase(Scene):
         Main logic update, called every fixed timestep.
         """
         # First, poll the input state for this frame
-        self.input.update()
+        # self.input.update()
 
         # Update all windows
         for window in self._windows:

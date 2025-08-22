@@ -86,7 +86,7 @@ class SceneBattle(SceneBase):
         self._state = "PLAYER_TURN"
 
     def update(self, dt):
-        self.input.update()
+        # self.input.update()
         
         if self._state == "PLAYER_TURN":
             self.update_player_command_selection()

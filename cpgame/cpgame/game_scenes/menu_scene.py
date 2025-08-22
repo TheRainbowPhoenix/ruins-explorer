@@ -18,7 +18,7 @@ class MenuScene(Scene):
     def update(self, dt: float) -> None:
         """Update is called once per logic frame."""
         # Get a snapshot of the input for this frame.
-        self.input.update()
+        # self.input.update()
 
         # Use the new one-shot `up` and `down` properties for snappy menu navigation.
         if self.input.up:
