@@ -246,6 +246,41 @@ events = {
                 # price_type 0 = standard, 1 = override
                 {"code": 302, "parameters": [0, 5, 0, 0, False]}, # Item 5 (Potato Seed)
                 {"code": 605, "parameters": [0, 6, 1, 150, 0]}, # Item 6 (Corn Seed), price override 150G
+                {"code": 605, "parameters": [0, 6, 1, 0, 0]}, # Item 6 (Corn Seed), price override 150G
+                {"code": 605, "parameters": [0, 7, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 8, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 9, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 10, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 11, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 12, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 13, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 14, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 15, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 16, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 17, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 18, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 19, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 20, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 21, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 22, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 23, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 24, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 25, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 26, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 27, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 28, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 29, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 30, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 31, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 32, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 33, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 34, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 35, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 36, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 37, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 38, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 39, 20, 0, 0]},
+                {"code": 605, "parameters": [0, 40, 20, 0, 0]},
                 {"code": 605, "parameters": [1, 2, 0, 0, 0]},   # Weapon 2 (Axe)
             ]
         }]

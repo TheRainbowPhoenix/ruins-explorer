@@ -47,7 +47,7 @@ class SceneShop(SceneBase):
             self.update_command_selection()
         elif self._state in ("BUY", "SELL"):
             self.update_item_selection()
-        elif self._state == "QUANTITY":
+        elif self._state in ("QUANTITY_BUY", "QUANTITY_SELL"):
             self.update_quantity_selection()
             
     def draw(self, frame_time_ms):
@@ -57,7 +57,7 @@ class SceneShop(SceneBase):
         self.draw_item_list()
         self.draw_info_panel()
 
-        if self._state == "QUANTITY":
+        if self._state in ("QUANTITY_BUY", "QUANTITY_SELL"):
             self.draw_quantity_box()
 
     # --- State Update Methods ---
@@ -66,7 +66,7 @@ class SceneShop(SceneBase):
         if self.input.left: self._command_index = max(0, self._command_index - 1)
         if self.input.right: self._command_index = min(2, self._command_index + 1)
         
-        if self.input.interact:
+        if self.input.is_trigger('confirm'):
             if self._command_index == 0: # Buy
                 self._state = "BUY"
                 self._prepare_buy_list()
@@ -80,13 +80,19 @@ class SceneShop(SceneBase):
                     JRPG.game.change_scene(SceneMap)
 
     def update_item_selection(self):
+        if not self._active_list:
+            if self.input.is_trigger('cancel'):
+                self._state = "COMMAND"
+            return
+
+        last_index = self._item_index
         if self.input.up: self._item_index = max(0, self._item_index - 1)
         if self.input.down: self._item_index = min(len(self._active_list) - 1, self._item_index + 1)
 
         # Page scrolling
-        if self.input.shift and self.input.up: # Page Up
+        if self.input.is_trigger('page_up'): # Page Up
             self._item_index = max(0, self._item_index - self._items_per_page)
-        if self.input.shift and self.input.down: # Page Down
+        if self.input.is_trigger('page_down'): # Page Down
             self._item_index = min(len(self._active_list) - 1, self._item_index + self._items_per_page)
             
         # Ensure cursor is visible
@@ -95,10 +101,14 @@ class SceneShop(SceneBase):
         if self._item_index >= self._top_item_index + self._items_per_page:
             self._top_item_index = self._item_index - self._items_per_page + 1
 
-        if self.input.interact and self._active_list:
-            self._state = "QUANTITY"
-            self._quantity = 1
-        elif self.input.exit:
+        if self.input.is_trigger('confirm'):
+            item = self._active_list[self._item_index]
+            can_afford = self._state == 'SELL' or (JRPG.objects and JRPG.objects.party.gold >= item.shop_price)
+            if can_afford:
+                self._state = "QUANTITY_BUY" if self._state == "BUY" else "QUANTITY_SELL"
+                self._quantity = 1
+        
+        elif self.input.is_trigger('cancel'):
             self._state = "COMMAND"
             self._item_index = 0
             self._top_item_index = 0
@@ -108,15 +118,21 @@ class SceneShop(SceneBase):
         
         if self.input.up: self._quantity = min(self._quantity + 1, max_qty)
         if self.input.down: self._quantity = max(self._quantity - 1, 1)
-        if self.input.right: self._quantity = min(self._quantity + 10, max_qty)
-        if self.input.left: self._quantity = max(self._quantity - 10, 1)
 
-        if self.input.interact:
+        if self.input.is_trigger('page_up'): # Page Up
+            self._quantity = min(self._quantity + 10, max_qty)
+        if self.input.is_trigger('page_down'): # Page Down
+            self._quantity = max(self._quantity - 10, 1)
+
+        if self.input.right: self._quantity = min(99, max_qty)
+        if self.input.left: self._quantity = max_qty
+
+        if self.input.is_trigger('confirm'):
             self._execute_transaction()
-            self._state = "BUY" if self._state == "BUY" else "SELL" # Go back to list
+            self._state = "BUY" if self._state == "QUANTITY_BUY" else "SELL" # Go back to list
             self._prepare_buy_list() if self._state == "BUY" else self._prepare_sell_list()
-        elif self.input.exit:
-            self._state = "BUY" if self._state == "BUY" else "SELL"
+        elif self.input.is_trigger('cancel'):
+            self._state = "BUY" if self._state == "QUANTITY_BUY" else "SELL"
 
     # --- Drawing Methods ---
 
@@ -152,11 +168,27 @@ class SceneShop(SceneBase):
             
             if index == self._item_index:
                 drect(0, y, DWIDTH - 1, y + 23, C_YELLOW)
-
-            dtext(10, y + 4, C_BLACK, item.name)
             
-            price_text = str(item.price // 2 if self._state == 'SELL' else item.price) + " G"
-            dtext_opt(DWIDTH - 10, y + 12, C_BLACK, C_NONE, DTEXT_RIGHT, DTEXT_MIDDLE, price_text, -1)
+            can_afford = True
+            price = 0
+            name = item.name
+            if self._state == 'BUY':
+                price = item.shop_price
+                can_afford = (JRPG.objects and JRPG.objects.party.gold >= price)
+            else: # SELL
+                price = int(item.price * 0.8)
+                quantity = JRPG.objects.party.item_number(item) if JRPG.objects else ""
+
+                name += " ({})".format(quantity) # TODO: add inventory item quantity here
+
+            # NEW: Set color based on affordability
+            item_color = C_BLACK if can_afford else C_DARK
+            price_color = C_BLACK if can_afford else C_DARK
+            
+            dtext(10, y + 4, item_color, name)
+            
+            price_text = str(price) + " G"
+            dtext_opt(DWIDTH - 10, y + 12, price_color, C_NONE, DTEXT_RIGHT, DTEXT_MIDDLE, price_text, -1)
 
     def draw_info_panel(self):
         y = DHEIGHT - INFO_PANEL_H
@@ -202,13 +234,14 @@ class SceneShop(SceneBase):
 
     def _get_max_quantity(self) -> int:
         if not JRPG.objects:
-            return 0
+            return 1
         
         item = self._active_list[self._item_index]
-        if self._state == 'BUY':
+        if self._state == 'QUANTITY_BUY':
             price = item.shop_price
-            return JRPG.objects.party.gold // price if price > 0 else 99
-        else: # SELL
+            # If price is 0, they can take 99. Otherwise, calculate based on gold.
+            return min(JRPG.objects.party.gold // price if price > 0 else 99, 99)
+        elif self._state == 'QUANTITY_SELL': # SELL
             return JRPG.objects.party.item_number(item)
             
     def _execute_transaction(self):
@@ -216,11 +249,11 @@ class SceneShop(SceneBase):
             return
 
         item = self._active_list[self._item_index]
-        if self._state == 'BUY':
+        if self._state == 'QUANTITY_BUY':
             price = item.shop_price
             JRPG.objects.party.lose_gold(price * self._quantity)
             JRPG.objects.party.gain_item(item, self._quantity)
-        else: # SELL
-            price = item.price // 2
+        elif self._state == "QUANTITY_SELL": # SELL
+            price = item.price * 0.8
             JRPG.objects.party.gain_gold(price * self._quantity)
             JRPG.objects.party.gain_item(item, -self._quantity)

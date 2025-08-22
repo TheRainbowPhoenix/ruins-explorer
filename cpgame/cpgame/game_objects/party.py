@@ -136,7 +136,7 @@ class GameParty(GameUnit):
 
     def __init__(self):
         super().__init__()
-        self._gold = 0
+        self._gold = 1000
         self._items: Dict[int, int] = {}
         self._weapons: Dict[int, int] = {}
         self._armors: Dict[int, int] = {}
@@ -152,9 +152,6 @@ class GameParty(GameUnit):
         self._items = {}
         self._weapons = {}
         self._armors = {}
-
-    @property
-    def gold(self) -> int: return self._gold
 
     def exists(self) -> bool:
         return len(self._actors) > 0 if self._actors else False
@@ -324,7 +321,7 @@ class GameParty(GameUnit):
     #--------------------------------------------------------------------------
     def gain_item(self, item: Any, amount: int, include_equip: bool = False) -> None:
         container = self.item_container(item.__name__)
-        if not container:
+        if container is None:
             return
         last_number = self.item_number(item)
         new_number = last_number + amount
