@@ -167,7 +167,7 @@ class GameAction:
     """
     Represents a single action (attack, skill, item) to be taken by a battler.
     """
-    def __init__(self, subject, forcing = False):
+    def __init__(self, subject):
         self.subject = subject
         self.clear()
 

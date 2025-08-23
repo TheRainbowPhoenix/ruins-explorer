@@ -21,6 +21,9 @@ class GameActors:
         self._instances: Dict[str, 'GameActor'] = {}
         self._saved_states: Dict[str, Dict] = {}
 
+    def get(self, actor_id: int):
+        return self.__getitem__(actor_id)
+
     def __getitem__(self, actor_id: int) -> Optional['GameActor']:
         """
         Provides access to an actor instance, creating it if it doesn't exist.

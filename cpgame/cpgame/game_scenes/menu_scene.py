@@ -2,7 +2,7 @@
 # The initial scene that lets the player choose a game.
 from gint import *
 from cpgame.engine.scene import Scene
-from cpgame.game_scenes.templar_scene import TemplarScene
+# from cpgame.game_scenes.templar_scene import TemplarScene
 # MODIFIED: Import the boot scene instead of the main JRPG scene
 from cpgame.game_scenes.jrpg_boot_scene import JRPG_BootScene
 
@@ -11,7 +11,7 @@ C_YELLOW = 0b00000_111111_11111
 class MenuScene(Scene):
     def __init__(self, game):
         super().__init__(game)
-        self.options = ["Play Platformer (Templar)", "Play Top-Down (JRPG)", "Exit"]
+        self.options = ["Play Game", "Exit"]
         self.selected_index = 0
         self.redraw_needed = True
 
@@ -32,10 +32,10 @@ class MenuScene(Scene):
         # Check for the interact button press to make a selection.
         if self.input.interact:
             if self.selected_index == 0:
-                self.game.change_scene(TemplarScene)
-            elif self.selected_index == 1:
+            #     self.game.change_scene(TemplarScene)
+            # elif self.selected_index == 1:
                 self.game.change_scene(JRPG_BootScene)
-            elif self.selected_index == 2:
+            elif self.selected_index == 1:
                 self.game.running = False # Signal the game to exit
         
         # Also allow exiting with the EXIT key.
@@ -49,7 +49,7 @@ class MenuScene(Scene):
             return
             
         dclear(C_RGB(2, 5, 10))
-        dtext_opt(DWIDTH//2, 50, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, "CPGAME ENGINE DEMO", -1)
+        dtext_opt(DWIDTH//2, 50, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, ">Touch Grass", -1)
         
         for i, option in enumerate(self.options):
             color = C_YELLOW if i == self.selected_index else C_WHITE

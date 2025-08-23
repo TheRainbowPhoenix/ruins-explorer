@@ -68,6 +68,7 @@ class WindowShopStatus(WindowBase):
 
         current_param = '-'
         new_param = '-'
+        change = 0
 
         if self._actor:
             current_item = None

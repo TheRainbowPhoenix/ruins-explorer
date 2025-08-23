@@ -180,9 +180,8 @@ class ModuleProxy:
                 return [DataObject(item) if isinstance(item, dict) else item for item in data]
             return data
             
-        except (ImportError, AttributeError) as e:
+        except (ImportError, AttributeError):
             raise ImportError("DataManager Error: Failed to load '{}' from {}".format(object_name, self.module_path))
-            return None
     
     def _resolve_name(self, object_id: int):
         """ HACK: To convert int ID to strings to be imported from data """

@@ -27,7 +27,7 @@ class Game:
         self.frame_cap_ms: int = 53
 
         # Generic container for game-mode-specific systems.
-        self.session_data: Dict[str, Any] = {}
+        # self.session_data: Dict[str, Any] = {}
 
     def start(self, initial_scene_class):
         """Initializes assets and starts the game with the first scene."""
@@ -134,5 +134,5 @@ class Game:
         from cpgame.systems.jrpg import JRPG
         print("Clearing game session data...")
         JRPG.clear()
-        self.session_data.clear()
+        # self.session_data.clear()
         gc.collect()

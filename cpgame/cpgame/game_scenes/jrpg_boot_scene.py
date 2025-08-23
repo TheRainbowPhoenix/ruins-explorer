@@ -24,8 +24,8 @@ class JRPG_BootScene(Scene):
         # party = GameParty()
         game_objects = GameObjects()
         # Store these instances in the generic session container
-        self.game.session_data['data'] = data_manager
-        self.game.session_data['objects'] = game_objects
+        # self.game.session_data['data'] = data_manager
+        # self.game.session_data['objects'] = game_objects
 
         JRPG.setup(data_manager=data_manager, game_objects=game_objects, game=self.game)
 

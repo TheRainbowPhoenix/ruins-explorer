@@ -1,6 +1,8 @@
 # main.py
 # The main entry point for the entire game. Clean and simple.
 import gint
+from micropython import opt_level
+opt_level(3)
 # from gint import gint.dclear, gint.dtext, gint.dupdate, gint.C_WHITE, gint.C_BLACK, gint.DWIDTH, gint.DHEIGHT, gint.image, gint.dimage, gint.dsize
 
 # Splash screen
@@ -39,4 +41,9 @@ def main():
     #     time.sleep(10)
 
 
-main()
+# main()
+
+if __name__ == '__main__':
+    main()
+else:
+    main()

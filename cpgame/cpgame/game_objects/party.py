@@ -153,9 +153,6 @@ class GameParty(GameUnit):
         self._weapons = {}
         self._armors = {}
 
-    @property
-    def gold(self) -> int: return self._gold
-
     def exists(self) -> bool:
         return len(self._actors) > 0 if self._actors else False
 

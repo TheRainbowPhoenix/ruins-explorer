@@ -436,8 +436,6 @@ class JRPGScene(Scene):
         if dx == 0 and dy == 0:
             return
 
-        next_x, next_y = self.player.x + dx, self.player.y + dy
-
         if dx != 0:
             next_x, next_y = self.player.x + dx, self.player.y
             if self.tileset and self.map.is_passable(next_x, next_y, self.tileset):

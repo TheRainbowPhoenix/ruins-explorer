@@ -1,15 +1,26 @@
 # cpgame/game_windows/window_name_input.py
-from gint import *
-from cpgame.game_windows.window_selectable import WindowSelectable
+import gint
+# from cpgame.game_windows.window_selectable import WindowSelectable
 
 try:
-    from typing import Optional
+    from typing import Optional, Callable, Any, Dict
     from cpgame.engine.systems import InputManager
+    from .window_name_edit import WindowNameEdit
 except:
     pass
 
-class WindowNameInput(WindowSelectable):
-    """The virtual keyboard for name input."""
+from micropython import const
+_WIDTH = const(320)
+_HEIGHT = const(150)
+_COLS = const(10)
+_ROWS = const(9)
+
+class WindowNameInput:
+    """
+    The virtual keyboard for name input. This is a flat class with no
+    complex inheritance to minimize memory overhead.
+    """
+    # Character layout for the virtual keyboard
     LATIN1 = [
         'A','B','C','D','E',  'F','G','H','I','J',
         'a','b','c','d','e',  'f','g','h','i','j',
@@ -17,40 +28,49 @@ class WindowNameInput(WindowSelectable):
         'P','Q','R','S','T',  'p','q','r','s','t',
         'U','V','W','X','Y',  'u','v','w','x','y',
         'Z','0','1','2','3',  'z','4','5','6','7',
-        ' ',' ',' ',' ',' ',  ' ',' ',' ',' ',' ',
-        '!','@','#','$','%',  '^','&','*','(',')',
-        '-','_','=','+',' ',  ' ','Bksp', ' ','OK',' '
+        ' ','-','_','[',']',  '!','@','#','$','%',
+        '^','&','*','(',')',  '=','+','/','~',';',
+        'Bksp',' ',' ',' ',' ',  ' ',' ', ' ',' ','OK'
     ]
     
-    def __init__(self, edit_window):
-        width = 320
-        height = 150
-        x = (DWIDTH - width) // 2
-        y = edit_window.y + edit_window.height + 4
-        super().__init__(x, y, width, height)
-
-        self._edit_window = edit_window
-        self.index = 0
+    def __init__(self):
+        # --- State Properties ---
         self.visible = False
         self.active = False
-        self._cell_width = self.width // self.col_max
-        self._cell_height = self.height // self.row_max
-
-
-    @property
-    def col_max(self) -> int:
-        """Number of columns in grid layout."""
-        return 10
-    
-    @property
-    def row_max(self) -> int:
-        """Number of columns in grid layout."""
-        return 9
-
-    def start(self, edit_window):
-        self._edit_window = edit_window
+        self._edit_window: Optional['WindowNameEdit'] = None
+        self._handlers: Dict[str, Callable] = {}
         self.index = 0
         
+        # --- Layout (calculated once) ---
+        # The keyboard is positioned relative to where the edit window will be.
+        # Edit window Y is (DHEIGHT - 60 - 154) // 2
+        edit_window_bottom_y = ((gint.DHEIGHT - 60 - 154) // 2) + 60
+        self.x = (gint.DWIDTH - _WIDTH) // 2
+        self.y = edit_window_bottom_y + 4
+        self.width = _WIDTH
+        self.height = _HEIGHT
+        
+        self._cell_width = self.width // _COLS
+        self._cell_height = self.height // _ROWS
+        
+    def destroy(self):
+        """Prepares the object for garbage collection by breaking references."""
+        self.visible = False
+        self.active = False
+        self._edit_window = None
+        self._handlers.clear()
+
+        del self._edit_window
+        del self._handlers
+
+    def set_handler(self, symbol: str, method: Callable):
+        """Assigns a callback method for 'ok' or 'cancel' events."""
+        self._handlers[symbol] = method
+
+    def start(self, edit_window: 'WindowNameEdit'):
+        """Initializes the keyboard for a new editing session."""
+        self._edit_window = edit_window
+        self.index = 0
         self.visible = True
         self.active = True
 
@@ -61,53 +81,71 @@ class WindowNameInput(WindowSelectable):
         if not input_manager: return
         if not self.active: return
         
-        # Cursor movement
+        last_index = self.index
+        
         if input_manager.down:
-            self.index = (self.index + self.col_max) % (self.col_max * self.row_max)
+            self.index = (self.index + _COLS) % (_COLS * _ROWS)
         if input_manager.up:
-            self.index = (self.index - self.col_max + (self.col_max * self.row_max)) % (self.col_max * self.row_max)
+            self.index = (self.index - _COLS + (_COLS * _ROWS)) % (_COLS * _ROWS)
         if input_manager.right:
-            self.index = (self.index + 1) % (self.col_max * self.row_max)
+            self.index = (self.index + 1) % (_COLS * _ROWS)
         if input_manager.left:
-            self.index = (self.index - 1 + (self.col_max * self.row_max)) % (self.col_max * self.row_max)
+            self.index = (self.index - 1 + (_COLS * _ROWS)) % (_COLS * _ROWS)
 
         if input_manager.interact:
             self._process_ok()
-        if input_manager.exit:
+        if input_manager.is_trigger('cancel'):
             self._process_backspace() # Let's use EXIT for backspace
 
-    def handle_touch(self, touch_x, touch_y):
+    def handle_touch(self, touch_x: int, touch_y: int):
+        """Processes a touch event on the virtual keyboard."""
         if not self.active or not self.visible: return
         
         # Check if touch is inside the window
         if self.x <= touch_x < self.x + self.width and self.y <= touch_y < self.y + self.height:
             col = (touch_x - self.x) // self._cell_width
             row = (touch_y - self.y) // self._cell_height
-            self.index = row * self.col_max + col
+            self.index = row * _COLS + col
             self._process_ok()
 
     def _process_ok(self):
-        char = self.character()
+        """Handles the action for the currently selected key."""
+        char = self.LATIN1[self.index]
         if char == 'OK':
-            self.call_handler('ok', self._edit_window.name)
+            if self._edit_window and 'ok' in self._handlers:
+                self._handlers['ok'](self._edit_window.name)
         elif char == 'Bksp':
             self._process_backspace()
-        else:
-            self._edit_window.add(char)
+        elif char != ' ': # Ignore empty buttons
+            if self._edit_window:
+                self._edit_window.add(char)
             
     def _process_backspace(self):
-        self._edit_window.back()
+        if self._edit_window:
+            self._edit_window.back()
+
+    def update(self):
+        """This window's state is entirely driven by external input."""
+        pass
 
     def draw(self):
+        """Draws the virtual keyboard, its characters, and the cursor."""
         if not self.visible: return
-        super().draw()
+
+        # Draw window skin
+        gint.drect(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, gint.C_WHITE)
+        gint.drect_border(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, gint.C_NONE, 1, gint.C_BLACK)
         
+        # Draw all characters on the keyboard
         for i, char in enumerate(self.LATIN1):
-            x = self.x + (i % self.col_max) * self._cell_width + 8
-            y = self.y + (i // self.col_max) * self._cell_height
-            dtext(x, y, C_BLACK, char)
+            if char != ' ':
+                col = i % _COLS
+                row = i // _COLS
+                char_x = self.x + col * self._cell_width + 8
+                char_y = self.y + row * self._cell_height + 2
+                gint.dtext(char_x, char_y, gint.C_BLACK, char)
             
-        # Draw cursor
-        cursor_x = self.x + (self.index % self.col_max) * self._cell_width
-        cursor_y = self.y + (self.index // self.col_max) * self._cell_height
-        drect_border(cursor_x, cursor_y, cursor_x + self._cell_width, cursor_y + self._cell_height, C_NONE, 1, C_BLUE)
+        # Draw the selection cursor
+        cursor_x = self.x + (self.index % _COLS) * self._cell_width
+        cursor_y = self.y + (self.index // _COLS) * self._cell_height
+        gint.drect_border(cursor_x, cursor_y, cursor_x + self._cell_width - 1, cursor_y + self._cell_height - 1, gint.C_NONE, 2, gint.C_BLUE)

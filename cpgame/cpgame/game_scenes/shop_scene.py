@@ -90,7 +90,6 @@ class SceneShop(SceneBase):
                 self._state = "COMMAND"
             return
 
-        last_index = self._item_index
         if self.input.up: self._item_index = max(0, self._item_index - 1)
         if self.input.down: self._item_index = min(len(self._active_list) - 1, self._item_index + 1)
 
@@ -175,7 +174,6 @@ class SceneShop(SceneBase):
                 drect(0, y, DWIDTH - 1, y + 23, C_YELLOW)
             
             can_afford = True
-            price = 0
             name = item.name
             if self._state == 'BUY':
                 price = item.shop_price

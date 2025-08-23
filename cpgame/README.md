@@ -28,6 +28,10 @@
 
 ## TODO
 
+REAL PRIO: 
+- Test the GameMap with many dialogs, ensure they works. If not, make a better lifecycle or smth to be less dependant on the dialogs dependency hell. 
+
+
 Prio: test shop, see what needs to be done (mabe add GameItem class ? Check why shop is empty)
 Make the command to open scenes (Battle, mini-games) generic for re-use
 Add the menu with actors list

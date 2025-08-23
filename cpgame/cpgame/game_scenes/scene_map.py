@@ -1,5 +1,7 @@
 # cpgame/game_scenes/scene_map.py
 import gc
+import sys
+import time
 from gint import *
 try:
     from typing import Optional, List, Set, Tuple,Dict, Any
@@ -27,6 +29,96 @@ from cpgame.engine.text_parser import parse_text_codes
 
 TILE_SIZE = 20
 MOVE_DELAY = 0.15
+
+
+class WindowProxy:
+    """Context manager for on-demand window loading and cleanup."""
+    def __init__(self, module_path, class_name, *args, **kwargs):
+        self.module_path = module_path
+        self.class_name = class_name
+        self.args = args
+        self.kwargs = kwargs
+        self.instance = None
+        self.module = None
+
+    def __enter__(self):
+        # Import module dynamically
+        try:
+            self.module = __import__(self.module_path, None, None, (self.class_name,))
+            window_class = getattr(self.module, self.class_name)
+            # Create instance with both args and kwargs
+            self.instance = window_class(*self.args, **self.kwargs)
+            return self.instance
+        except Exception as e:
+            log(f"WindowProxy error: {e}")
+            raise
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.instance:
+            if hasattr(self.instance, 'destroy'):
+                self.instance.destroy()
+            del self.instance
+
+        if self.module:
+            # Clean up module attributes
+            module_name = self.module_path
+            if hasattr(self.module, '__dict__'):
+                attrs = list(self.module.__dict__.keys())
+                for attr in attrs:
+                    if not attr.startswith('__'):
+                        try:
+                            delattr(self.module, attr)
+                        except:
+                            pass
+
+            # Remove from sys.modules
+            if module_name in sys.modules:
+                try:
+                    sys.modules.pop(module_name)
+                except:
+                    pass
+
+            del self.module
+
+        gc.collect()
+
+class OptimizedTileCache:
+    """Optimized tile rendering with batching."""
+    __slots__ = ('_batch_data', '_batch_count', '_last_tileset')
+
+    def __init__(self):
+        self._batch_data = bytearray(256)  # Pre-allocated buffer
+        self._batch_count = 0
+        self._last_tileset = None
+
+    def add_tile(self, screen_x, screen_y, tile_id):
+        """Add tile to batch render queue."""
+        if self._batch_count < 64:  # Max batch size
+            idx = self._batch_count * 4
+            self._batch_data[idx] = screen_x & 0xFF
+            self._batch_data[idx + 1] = screen_y & 0xFF
+            self._batch_data[idx + 2] = tile_id & 0xFF
+            self._batch_data[idx + 3] = (tile_id >> 8) & 0xFF
+            self._batch_count += 1
+            return True
+        return False
+
+    def flush(self, tileset):
+        """Render all batched tiles."""
+        if not self._batch_count or not tileset:
+            return
+
+        for i in range(self._batch_count):
+            idx = i * 4
+            screen_x = self._batch_data[idx]
+            screen_y = self._batch_data[idx + 1]
+            tile_id = self._batch_data[idx + 2] | (self._batch_data[idx + 3] << 8)
+
+            src_x = (tile_id & 15) << 5  # (tile_id % 16) * TILE_SIZE, optimized
+            src_y = (tile_id >> 4) << 5  # (tile_id // 16) * TILE_SIZE, optimized
+            dsubimage(screen_x, screen_y, tileset.img, src_x, src_y, TILE_SIZE, TILE_SIZE)
+
+        self._batch_count = 0
 
 class SceneMap(SceneBase):
     """This class performs the map screen processing."""
@@ -63,6 +155,7 @@ class SceneMap(SceneBase):
 
         # Create the windows managed by this scene
         self.message_window = WindowMessage()
+        self.hud_window._needs_redraw = True
         self.number_input_window = WindowNumberInput(
             on_confirm=self.on_number_input_confirm,
             on_cancel=self.on_number_input_cancel
@@ -97,6 +190,8 @@ class SceneMap(SceneBase):
         log("SceneMap: Destroying...")
         self.assets.unload('jrpg')
         self._windows.clear()
+        self.dirty_tiles.clear()
+        gc.collect()
 
     def update(self, dt: float):
         # First, poll the input state for this frame
@@ -140,10 +235,10 @@ class SceneMap(SceneBase):
                 self.start_number_input()
                 return None
             if JRPG.objects.message.is_name_input():
-                self.start_name_input()
+                self._handle_name_input()
                 return None
             if JRPG.objects.message.is_choice():
-                self.start_choice(); return None
+                self._handle_choice_input(); return None
 
         
         if JRPG.objects and JRPG.objects.message and JRPG.objects.message.is_busy():
@@ -151,15 +246,16 @@ class SceneMap(SceneBase):
             self._update_dialog()
             return None # Pause game logic while message is showing
 
+        # Update dirty tiles from map
         dirty_from_map = self.map.get_dirty_tiles()
-        if dirty_from_map: self.dirty_tiles.update(dirty_from_map)
+        if dirty_from_map:
+            self.dirty_tiles.update(dirty_from_map)
 
         # Update timers
         if self.move_cooldown > 0:
             self.move_cooldown -= dt
 
-        
-        # --- Normal Map Logic ---
+        # Normal map logic
         if not self.map.interpreter.is_running():
             # if self.move_cooldown > 0: self.move_cooldown -= dt
             self._handle_player_movement()
@@ -188,6 +284,8 @@ class SceneMap(SceneBase):
             self.player = JRPG.objects.player
             self.create() # Re-run create to sync tileset and camera
             return True
+        
+        self.hud_window._needs_redraw = True
         # Replace the current SceneMap with a new one
         # self.game.change_scene(SceneMap)
         return False
@@ -250,7 +348,7 @@ class SceneMap(SceneBase):
             JRPG.objects.message._number_input_variable_id = None
             self.full_redraw_needed = True
     
-    def start_name_input(self):
+    def _handle_name_input(self):
         if not JRPG.objects:
             return
         
@@ -259,45 +357,109 @@ class SceneMap(SceneBase):
             return
 
         actor = JRPG.objects.actors[msg.name_input_actor_id]
-        if not actor: msg.clear(); return
+        if not actor:
+            msg.clear()
+            return
 
-        from cpgame.game_windows.window_name_edit import WindowNameEdit
-        from cpgame.game_windows.window_name_input import WindowNameInput
-        self.name_edit_window = WindowNameEdit(JRPG.objects.actors[1] if JRPG.objects else None, 8) # Placeholder
-        self.name_input_window = WindowNameInput(self.name_edit_window)
-        self.name_input_window.set_handler('ok', self.on_name_input_confirm)
-        self.name_input_window.set_handler('cancel', self.on_name_input_cancel)
-
-        # TODO: remove them from _windows when done 
-        self._windows.append(self.name_edit_window)
-        self._windows.append(self.name_input_window)
-
-
-        # self.name_edit_window = WindowNameEdit(actor, msg.name_input_max_chars)
-        # self.name_input_window = WindowNameInput(self.name_edit_window)
-        # self.name_input_window.set_handler('ok', self.on_name_input_confirm)
-        # We don't have a cancel button on keyboard, but touch could trigger it
+        # Unload tileset temporarily to save memory
+        self.assets.unload('jrpg')
         
-        self.name_edit_window.visible = True
-        self.name_input_window.visible = True
-        self.name_input_window.activate()
-        self.name_input_window.start(self.name_edit_window)
-        self.name_edit_window.start(actor, msg.name_input_max_chars)
-        self._active_window = self.name_input_window
-    
-    def start_choice(self):
-        """Activates the choice window."""
+        # Use keyword arguments for proper instantiation
+        with WindowProxy('cpgame.game_windows.window_name_edit', 'WindowNameEdit') as name_edit_window:
+            with WindowProxy('cpgame.game_windows.window_name_input', 'WindowNameInput') as name_input_window:
+
+                name_input_window.set_handler('ok', lambda name: self._on_name_confirmed(actor, name))
+                name_input_window.set_handler('cancel', self._on_name_cancelled)
+
+                # name_edit_window.visible = True
+                # name_input_window.visible = True
+                # name_input_window.activate()
+                name_input_window.start(name_edit_window)
+                name_edit_window.start(actor, msg.name_input_max_chars)
+                self._active_window = name_input_window
+
+                # Handle input loop within context
+                while self._active_window == name_input_window:
+                    frame_start_time = time.ticks_ms()
+
+                    self.input.update()
+
+                    name_input_window.handle_input(self.input)
+                    name_input_window.update()
+                    name_edit_window.update()
+                    # render_start_time = time.ticks_ms()
+
+                    name_input_window.draw() # time.ticks_diff(time.ticks_ms(), render_start_time))
+                    name_edit_window.draw()
+                    dupdate()
+
+                    frame_time_ms = time.ticks_diff(time.ticks_ms(), frame_start_time)
+                    # if DEBUG_FRAME_TIME: print(f"Frame Time: {frame_time_ms}ms")
+                    if frame_time_ms < self.game.frame_cap_ms:
+                        time.sleep_ms(self.game.frame_cap_ms - frame_time_ms)
+
+
+        # Reload tileset
+        self.tileset = self.assets.get_tileset('jrpg')
+        self.full_redraw_needed = True
+
+    def _handle_choice_input(self):
+        """Handle choice input using WindowProxy."""
         if not JRPG.objects:
             return
         
         msg = JRPG.objects.message
-        from cpgame.game_windows.window_choice_list import WindowChoiceList
-        self.choice_window = WindowChoiceList(self.message_window)
-        self.choice_window.set_handler('ok', self.on_choice_confirm)
-        self.choice_window.set_handler('cancel', self.on_choice_cancel)
-        self._windows.append(self.choice_window)
-        self.choice_window.start(msg.choices, msg.choice_cancel_type, self.on_choice_made)
-        self._active_window = self.choice_window
+
+        # Temporarily unload tileset
+        self.assets.unload('jrpg')
+
+        with WindowProxy('cpgame.game_windows.window_choice_list', 'WindowChoiceList', self._windows[1]) as choice_window:  # message_window
+            choice_window.set_handler('ok', self._on_choice_confirmed)
+            choice_window.set_handler('cancel', self._on_choice_cancelled)
+            choice_window.start(msg.choices, msg.choice_cancel_type, self._on_choice_made)
+            self._active_window = choice_window
+
+            # Handle input loop within context
+            while self._active_window == choice_window:
+                choice_window.handle_input(self.input)
+                choice_window.update()
+
+        # Reload tileset
+        self.tileset = self.assets.get_tileset('jrpg')
+        self.full_redraw_needed = True
+
+    def _on_name_confirmed(self, actor, name):
+        actor.name = name
+        self._active_window = None
+        if JRPG.objects:
+            JRPG.objects.message.clear()
+
+    def _on_name_cancelled(self):
+        self._active_window = None
+        if JRPG.objects:
+            JRPG.objects.message.clear()
+
+    def _on_choice_confirmed(self, index):
+        if JRPG.objects and JRPG.objects.message.choice_variable_id is not None:
+            JRPG.objects.variables[JRPG.objects.message.choice_variable_id] = index + 1
+        self._end_modal_input()
+
+    def _on_choice_cancelled(self):
+        if JRPG.objects and JRPG.objects.message.choice_variable_id is not None:
+            JRPG.objects.variables[JRPG.objects.message.choice_variable_id] = 0
+        self._end_modal_input()
+
+    def _on_choice_made(self, index):
+        if JRPG.objects and JRPG.objects.message.choice_callback:
+            JRPG.objects.message.choice_callback(index)
+        self._end_modal_input()
+
+    def _end_modal_input(self):
+        self._active_window = None
+        if JRPG.objects:
+            JRPG.objects.message.clear()
+        self.full_redraw_needed = True
+
 
     def on_choice_made(self, index: int):
         if JRPG.objects: 
@@ -312,8 +474,10 @@ class SceneMap(SceneBase):
             return
         
         msg = JRPG.objects.message
-        if not msg.name_input_actor_id:
-            return
+        var_id = msg.number_input_variable_id
+        if var_id:
+            JRPG.objects.variables.set(var_id, number)
+            log("Update V[{}] to {}".format(var_id, number))
         
         actor = JRPG.objects.actors[msg.name_input_actor_id]
         if actor: actor.name = name
@@ -336,6 +500,8 @@ class SceneMap(SceneBase):
         self._active_window = None
         msg.clear()
         self.full_redraw_needed = True
+        # cleanup
+        gc.collect()
 
     def on_number_input_cancel(self):
         """Callback for when the user cancels number input."""
@@ -403,27 +569,25 @@ class SceneMap(SceneBase):
         if self.move_cooldown > 0:
             return
 
-        # Use dx/dy for direction, but only move one direction at a time
-        dx, dy = 0, 0
-        if self.input.dx > 0: dx = 1
-        elif self.input.dx < 0: dx = -1
-        elif self.input.dy > 0: dy = 1
-        elif self.input.dy < 0: dy = -1
+        dx = dy = 0
+        if self.input.dx > 0:
+            dx = 1
+        elif self.input.dx < 0:
+            dx = -1
+        elif self.input.dy > 0:
+            dy = 1
+        elif self.input.dy < 0:
+            dy = -1
         
         if dx == 0 and dy == 0:
             return
 
-        next_x, next_y = self.player.x + dx, self.player.y + dy
+        next_x = self.player.x + dx
+        next_y = self.player.y + dy
 
-        if dx != 0:
-            next_x, next_y = self.player.x + dx, self.player.y
-            if self.tileset and self.map.is_passable(next_x, next_y, self.tileset):
-                self._move_player_to(next_x, next_y)
-        elif dy != 0:
-            next_x, next_y = self.player.x, self.player.y + dy
-            if self.tileset and self.map.is_passable(next_x, next_y, self.tileset):
-                self._move_player_to(next_x, next_y)
-    
+        if self.tileset and self.map.is_passable(next_x, next_y, self.tileset):
+            self._move_player_to(next_x, next_y)
+
     def _move_player_to(self, next_x, next_y):
         """Updates player state and marks tiles for redraw."""
         old_pos = (self.player.x, self.player.y)
@@ -450,6 +614,7 @@ class SceneMap(SceneBase):
             event_here.start()
             return
 
+        # Check adjacent tiles
         for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
             adj_pos = (self.player.x + dx, self.player.y + dy)
             event_there = self.map.events.get(adj_pos)

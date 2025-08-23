@@ -21,7 +21,7 @@ class WindowChoiceList(WindowSelectable):
         self.visible = False
         self.active = False
 
-    def start(self, choices: list[str], cancel_type=0, callback=None):
+    def start(self, choices: List[str], cancel_type=0, callback=None):
         self._choices = choices
 
         def var_then_callback(code: Optional[int]=None):

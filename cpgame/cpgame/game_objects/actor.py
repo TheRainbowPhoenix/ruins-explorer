@@ -233,13 +233,13 @@ class GameBattlerBase:
         return []
     
     
-    def features(self, code: int) -> List[Any]:
+    def features(self) -> List[Any]:
         """Get feature object array (feature codes limited)."""
         # Would filter features by code in full implementation
         return []
     
     
-    def features_with_id(self, code: int, id: int) -> List[Any]:
+    def features_with_id(self) -> List[Any]:
         """Get feature object array (feature codes and data IDs limited)."""
         # Would filter features by code and id in full implementation
         return []
@@ -248,7 +248,7 @@ class GameBattlerBase:
     def features_pi(self, code: int, id: int) -> float:
         """Calculate complement of feature values."""
         result = 1.0
-        for ft in self.features_with_id(code, id):
+        for ft in self.features_with_id():
             result *= ft.value
         return result
     
@@ -256,7 +256,7 @@ class GameBattlerBase:
     def features_sum(self, code: int, id: int) -> float:
         """Calculate sum of feature values (specify data ID)."""
         result = 0.0
-        for ft in self.features_with_id(code, id):
+        for ft in self.features_with_id():
             result += ft.value
         return result
     
@@ -264,7 +264,7 @@ class GameBattlerBase:
     def features_sum_all(self, code: int) -> float:
         """Calculate sum of feature values (data ID unspecified)."""
         result = 0.0
-        for ft in self.features(code):
+        for ft in self.features():
             result += ft.value
         return result
     
@@ -272,7 +272,7 @@ class GameBattlerBase:
     def features_set(self, code: int) -> List[int]:
         """Calculate set sum of features."""
         result = []
-        for ft in self.features(code):
+        for ft in self.features():
             if ft.data_id not in result:
                 result.append(ft.data_id)
         return result
@@ -442,7 +442,7 @@ class GameBattlerBase:
     
     def special_flag(self, flag_id: int) -> bool:
         """Determine if special flag."""
-        for ft in self.features(self.FEATURE_SPECIAL_FLAG):
+        for ft in self.features():
             if ft.data_id == flag_id:
                 return True
         return False
@@ -456,7 +456,7 @@ class GameBattlerBase:
     
     def party_ability(self, ability_id: int) -> bool:
         """Determine party ability."""
-        for ft in self.features(self.FEATURE_PARTY_ABILITY):
+        for ft in self.features():
             if ft.data_id == ability_id:
                 return True
         return False
@@ -643,7 +643,7 @@ class GameBattlerBase:
         self.tp -= self.skill_tp_cost(skill)
     
     
-    def occasion_ok(self, item) -> bool:
+    def occasion_ok(self) -> bool:
         """Check when skill/item can be used."""
         # Would check battle/menu conditions in full implementation
         return True
@@ -651,7 +651,7 @@ class GameBattlerBase:
     
     def usable_item_conditions_met(self, item) -> bool:
         """Check common usability conditions for skill/item."""
-        return self.movable() and self.occasion_ok(item)
+        return self.movable() and self.occasion_ok()
     
     
     def skill_conditions_met(self, skill) -> bool:
@@ -669,13 +669,13 @@ class GameBattlerBase:
         return self.usable_item_conditions_met(item)
     
     
-    def usable(self, item) -> bool:
+    def usable(self) -> bool:
         """Determine skill/item usability."""
         # Would check item type in full implementation
         return False
     
     
-    def equippable(self, item) -> bool:
+    def equippable(self) -> bool:
         """Determine if equippable."""
         # Would check item type and equipment conditions in full implementation
         return False
@@ -1030,7 +1030,7 @@ class GameBattler(GameBattlerBase):
     def force_action(self, skill_id: int, target_index: int):
         """Force action."""
         self.clear_actions()
-        action = GameAction(self, True)
+        action = GameAction(self)
         action.set_skill(skill_id)
         
         if target_index == -2:
@@ -1152,7 +1152,7 @@ class GameBattler(GameBattlerBase):
             return 0.0
         return self.cnt  # Return counterattack rate
 
-    def item_mrf(self, user, item) -> float:
+    def item_mrf(self, item) -> float:
         """Calculate reflection rate of skill/item."""
         if item.magical:  # Return magic reflection if magic attack
             return self.mrf
@@ -1165,7 +1165,7 @@ class GameBattler(GameBattlerBase):
             rate *= user.hit
         return rate  # Return calculated hit rate
 
-    def item_eva(self, user, item) -> float:
+    def item_eva(self, item) -> float:
         """Calculate evasion rate for skill/item."""
         if item.physical:  # Return evasion if physical attack
             return self.eva
@@ -1189,7 +1189,7 @@ class GameBattler(GameBattlerBase):
         self.result.clear()
         self.result.used = self.item_test(user, item)
         self.result.missed = (self.result.used and random.random() >= self.item_hit(user, item))
-        self.result.evaded = (not self.result.missed and random.random() < self.item_eva(user, item))
+        self.result.evaded = (not self.result.missed and random.random() < self.item_eva(item))
         
         if self.result.hit:
             if not item.damage.none:

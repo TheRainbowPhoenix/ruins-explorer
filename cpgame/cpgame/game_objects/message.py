@@ -2,7 +2,7 @@
 # This class handles the state of the message window.
 
 try:
-    from typing import Optional
+    from typing import Optional, List
 except:
     pass
 
@@ -12,7 +12,7 @@ class GameMessage:
         self.clear()
 
     def clear(self):
-        self._texts: list[str] = []
+        self._texts: List[str] = []
         self.face_name = ""
         self.face_index = 0
         self.background = 0
@@ -25,7 +25,7 @@ class GameMessage:
         self._name_input_actor_id: Optional[int] = None
         self._name_input_max_chars = 0
 
-        self._choices: list[str] = []
+        self._choices: List[str] = []
         self._choice_cancel_type = 0
         self._choice_callback = None
         self._choice_variable_id: Optional[int] = None
@@ -56,14 +56,14 @@ class GameMessage:
         self._name_input_actor_id = actor_id
         self._name_input_max_chars = max_chars
 
-    def start_choice(self, choices: list[str], cancel_type: int, callback = None, var_id: Optional[int]=None):
+    def start_choice(self, choices: List[str], cancel_type: int, callback = None, var_id: Optional[int]=None):
         self._choice_variable_id = var_id
         self._choice_cancel_type = cancel_type
         self._choices = choices
         self._choice_callback = callback
     
     @property
-    def choices(self) -> list[str]:
+    def choices(self) -> List[str]:
         return self._choices
 
     @property
@@ -95,5 +95,5 @@ class GameMessage:
         return self._name_input_max_chars
 
     @property
-    def texts(self) -> list[str]:
+    def texts(self) -> List[str]:
         return self._texts
