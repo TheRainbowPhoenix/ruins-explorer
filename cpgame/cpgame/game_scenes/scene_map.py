@@ -316,6 +316,7 @@ class SceneMap(SceneBase):
             self.message_window.on_confirm(self.input)
             # After closing, the map might have changed (e.g., event page switched)
             self.full_redraw_needed = True 
+            self.hud_window._needs_redraw = True
     
     def start_number_input(self):
         """Activates the number input window."""
@@ -421,8 +422,21 @@ class SceneMap(SceneBase):
 
             # Handle input loop within context
             while self._active_window == choice_window:
+                frame_start_time = time.ticks_ms()
+
+                self.input.update()
+
                 choice_window.handle_input(self.input)
                 choice_window.update()
+                # render_start_time = time.ticks_ms()
+
+                choice_window.draw() # time.ticks_diff(time.ticks_ms(), render_start_time))
+                dupdate()
+
+                frame_time_ms = time.ticks_diff(time.ticks_ms(), frame_start_time)
+                # if DEBUG_FRAME_TIME: print(f"Frame Time: {frame_time_ms}ms")
+                if frame_time_ms < self.game.frame_cap_ms:
+                    time.sleep_ms(self.game.frame_cap_ms - frame_time_ms)
 
         # Reload tileset
         self.tileset = self.assets.get_tileset('jrpg')
@@ -553,14 +567,14 @@ class SceneMap(SceneBase):
             JRPG.objects.message.clear()
         self.full_redraw_needed = True
     
-    def _end_modal_input(self, window):
-        """Generic helper to close any modal window.""" 
-        window.visible = False
-        window.deactivate()
-        self._active_window = None
-        if JRPG.objects:
-            JRPG.objects.message.clear()
-        self.full_redraw_needed = True
+    # def _end_modal_input(self, window):
+    #     """Generic helper to close any modal window.""" 
+    #     window.visible = False
+    #     window.deactivate()
+    #     self._active_window = None
+    #     if JRPG.objects:
+    #         JRPG.objects.message.clear()
+    #     self.full_redraw_needed = True
     
     # --- Move helper ---
 

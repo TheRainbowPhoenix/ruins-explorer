@@ -2,6 +2,7 @@
 # The initial scene that lets the player choose a game.
 from gint import *
 from cpgame.engine.scene import Scene
+from cpgame.modules.datamanager import ClassProxy
 # from cpgame.game_scenes.templar_scene import TemplarScene
 # MODIFIED: Import the boot scene instead of the main JRPG scene
 from cpgame.game_scenes.jrpg_boot_scene import JRPG_BootScene
@@ -42,14 +43,31 @@ class MenuScene(Scene):
         if self.input.exit:
             self.game.running = False
 
+    def create(self):
+        # return super().create()
+
+        dclear(C_RGB(2, 7, 4))
+        
+        logo_x = (DWIDTH-192)//2
+        # drect(logo_x+1, 1, logo_x+190, 158, C_RGB(29, 31, 13))
+        with ClassProxy('cpgame.modules.pakloader', 'PakProxy') as pak_proxy:
+            pak_proxy.draw_from(logo_x, 0, 'faces.pak', 'logo', 192+logo_x)
+            pak_proxy.clear_cache()
+            print("LOAD")
+
+
+
     def draw(self, frame_time_ms: int):
         """Draw is called once per render frame."""
         # Only redraw the screen if something has changed.
         if not self.redraw_needed:
             return
-            
-        dclear(C_RGB(2, 5, 10))
-        dtext_opt(DWIDTH//2, 50, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, ">Touch Grass", -1)
+
+        # x = 96
+        # w = 128
+        drect(96, 160, 96+128, 224, C_RGB(2, 7, 4))
+        
+        # dtext_opt(DWIDTH//2, 50, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, ">Touch Grass", -1)
         
         for i, option in enumerate(self.options):
             color = C_YELLOW if i == self.selected_index else C_WHITE

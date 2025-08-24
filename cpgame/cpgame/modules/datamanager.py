@@ -264,6 +264,57 @@ class ModuleProxy:
         if self._module:
             _cleanup_module(self.module_path, self._module)
 
+class ClassProxy:
+    """Context manager for on-demand module/class loading and cleanup."""
+    def __init__(self, module_path, class_name, *args, **kwargs):
+        self.module_path = module_path
+        self.class_name = class_name
+        self.args = args
+        self.kwargs = kwargs
+        self.instance = None
+        self.module = None
+
+    def __enter__(self):
+        # Import module dynamically
+        try:
+            self.module = __import__(self.module_path, None, None, (self.class_name,))
+            target_class = getattr(self.module, self.class_name)
+            # Create instance with both args and kwargs
+            self.instance = target_class(*self.args, **self.kwargs)
+            return self.instance
+        except Exception as e:
+            print(f"ClassProxy error: {e}")
+            raise
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.instance:
+            if hasattr(self.instance, 'destroy'):
+                self.instance.destroy()
+            del self.instance
+
+        if self.module:
+            # Clean up module attributes
+            module_name = self.module_path
+            if hasattr(self.module, '__dict__'):
+                attrs = list(self.module.__dict__.keys())
+                for attr in attrs:
+                    if not attr.startswith('__'):
+                        try:
+                            delattr(self.module, attr)
+                        except:
+                            pass
+
+            # Remove from sys.modules
+            if module_name in sys.modules:
+                try:
+                    sys.modules.pop(module_name)
+                except:
+                    pass
+
+            del self.module
+
+        gc.collect()
+
 class MapProxy:
     """
     A proxy that lazy-loads ModuleProxy instances for individual maps on demand.

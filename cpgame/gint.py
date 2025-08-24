@@ -740,6 +740,11 @@ def pollevent() -> KeyEvent:
         return KeyEvent(KEYEV_DOWN, KEY_EXIT)
 
     elif event.type == KEYDOWN:
+    
+        # Capture Print Screen key to save VRAM
+        if event.key == pygame.K_PRINTSCREEN:  # <-- Add this block
+            pygame.image.save(vram, "screenshot.png")
+        
         gint_key = _key_mapping.get(event.key)
         if gint_key is not None:
             # Only report a DOWN event if it's a new press
