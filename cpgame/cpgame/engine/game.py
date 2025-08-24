@@ -8,6 +8,7 @@ from cpgame.engine.scene import Scene
 from cpgame.engine.assets import AssetManager
 from cpgame.engine.systems import InputManager
 from cpgame.engine.profiler import MemoryProfiler
+from cpgame.engine.logger import log
 
 try:
     from typing import Optional, List, Dict, Any
@@ -69,13 +70,13 @@ class Game:
             self.scenes.pop().destroy()
         
         gc.collect()
-        print("+CScene_{}".format(new_scene_class.__name__), gc.mem_free(), " B")
+        log("+CScene_{}".format(new_scene_class.__name__), gc.mem_free(), " B")
 
         new_scene = new_scene_class(self, **kwargs)
 
         self.scenes.append(new_scene)
         new_scene.create()
-        print("+CScene: ", gc.mem_free(), " B")
+        log("+CScene: ", gc.mem_free(), " B")
 
 
         # Ideally you'd done this :
@@ -132,7 +133,7 @@ class Game:
     
     def clear_session(self):
         from cpgame.systems.jrpg import JRPG
-        print("Clearing game session data...")
+        log("Clearing game session data...")
         JRPG.clear()
         # self.session_data.clear()
         gc.collect()

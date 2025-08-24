@@ -91,6 +91,9 @@ def test_pak_loader():
         # List entries in tiles.pak
         count = pak_proxy.list_entries('faces.pak', 'ylva_angry')
         print("Found {} profile entries".format(count))
+        gint.dupdate()
+        gint.dclear(gint.C_RGB(2, 7, 4))
+        gint.drect(0,0,gint.DWIDTH, gint.DHEIGHT, gint.C_RGB(7, 7, 4))
         
         # Draw profile entries
         if count > 0:

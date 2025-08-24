@@ -238,7 +238,8 @@ class SceneMap(SceneBase):
                 self._handle_name_input()
                 return None
             if JRPG.objects.message.is_choice():
-                self._handle_choice_input(); return None
+                self._handle_choice_input()
+                return None
 
         
         if JRPG.objects and JRPG.objects.message and JRPG.objects.message.is_busy():
@@ -348,6 +349,7 @@ class SceneMap(SceneBase):
             JRPG.objects.message.clear() # Clear the request
             JRPG.objects.message._number_input_variable_id = None
             self.full_redraw_needed = True
+            self.hud_window._needs_redraw = True
     
     def _handle_name_input(self):
         if not JRPG.objects:
@@ -403,6 +405,7 @@ class SceneMap(SceneBase):
         # Reload tileset
         self.tileset = self.assets.get_tileset('jrpg')
         self.full_redraw_needed = True
+        self.hud_window._needs_redraw = True
 
     def _handle_choice_input(self):
         """Handle choice input using WindowProxy."""
@@ -441,6 +444,7 @@ class SceneMap(SceneBase):
         # Reload tileset
         self.tileset = self.assets.get_tileset('jrpg')
         self.full_redraw_needed = True
+        self.hud_window._needs_redraw = True
 
     def _on_name_confirmed(self, actor, name):
         actor.name = name
@@ -473,6 +477,7 @@ class SceneMap(SceneBase):
         if JRPG.objects:
             JRPG.objects.message.clear()
         self.full_redraw_needed = True
+        self.hud_window._needs_redraw = True
 
 
     def on_choice_made(self, index: int):
@@ -514,6 +519,7 @@ class SceneMap(SceneBase):
         self._active_window = None
         msg.clear()
         self.full_redraw_needed = True
+        self.hud_window._needs_redraw = True
         # cleanup
         gc.collect()
 
@@ -525,6 +531,7 @@ class SceneMap(SceneBase):
         if JRPG.objects:
             JRPG.objects.message.clear()
         self.full_redraw_needed = True
+        self.hud_window._needs_redraw = True
 
     def on_choice_confirm(self, index: int):
         if not JRPG.objects:
@@ -566,6 +573,7 @@ class SceneMap(SceneBase):
         if JRPG.objects:
             JRPG.objects.message.clear()
         self.full_redraw_needed = True
+        self.hud_window._needs_redraw = True
     
     # def _end_modal_input(self, window):
     #     """Generic helper to close any modal window.""" 
@@ -616,6 +624,7 @@ class SceneMap(SceneBase):
         # Check if the camera needs to move to a new screen block
         if self._update_camera_block():
             self.full_redraw_needed = True
+            self.hud_window._needs_redraw = True
 
     def _handle_player_interaction(self):
         """Checks for interaction with objects or signs."""

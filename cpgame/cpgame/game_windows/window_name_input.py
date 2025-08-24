@@ -15,6 +15,14 @@ _HEIGHT = const(150)
 _COLS = const(10)
 _ROWS = const(9)
 
+# Custom window colors
+_BG_COLOR = gint.C_RGB(30, 26, 13)
+_BORDER_OUTER_COLOR = gint.C_RGB(18, 10, 2)
+_BORDER_INNER_COLOR = gint.C_RGB(29, 22, 8)
+_TEXT_COLOR = gint.C_RGB(5, 2, 0)
+_SELECT_COLOR = gint.C_RGB(25, 12, 5)
+
+
 class WindowNameInput:
     """
     The virtual keyboard for name input. This is a flat class with no
@@ -133,8 +141,9 @@ class WindowNameInput:
         if not self.visible: return
 
         # Draw window skin
-        gint.drect(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, gint.C_WHITE)
-        gint.drect_border(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, gint.C_NONE, 1, gint.C_BLACK)
+        gint.drect(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, _BG_COLOR)
+        gint.drect_border(self.x, self.y, self.x + self.width, self.y + self.height, gint.C_NONE, 1, _BORDER_OUTER_COLOR)
+        gint.drect_border(self.x+1, self.y+1, self.x + self.width - 1, self.y + self.height - 1, gint.C_NONE, 1, _BORDER_INNER_COLOR)
         
         # Draw all characters on the keyboard
         for i, char in enumerate(self.LATIN1):
@@ -143,9 +152,9 @@ class WindowNameInput:
                 row = i // _COLS
                 char_x = self.x + col * self._cell_width + 8
                 char_y = self.y + row * self._cell_height + 2
-                gint.dtext(char_x, char_y, gint.C_BLACK, char)
+                gint.dtext(char_x, char_y, _TEXT_COLOR, char)
             
         # Draw the selection cursor
         cursor_x = self.x + (self.index % _COLS) * self._cell_width
         cursor_y = self.y + (self.index // _COLS) * self._cell_height
-        gint.drect_border(cursor_x, cursor_y, cursor_x + self._cell_width - 1, cursor_y + self._cell_height - 1, gint.C_NONE, 2, gint.C_BLUE)
+        gint.drect_border(cursor_x, cursor_y, cursor_x + self._cell_width - 1, cursor_y + self._cell_height - 1, gint.C_NONE, 2, _SELECT_COLOR)

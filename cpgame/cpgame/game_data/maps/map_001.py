@@ -30,24 +30,25 @@ events = {
         "pages": [{ # Page 1: Default message
             "graphic": {"tileId": 55, "direction": 2},
             "list": [
-                {"code": 101, "parameters": []}, # Show Text
-                {"code": 401, "parameters": ["Arion: Greetings, traveler."]},
+                {"code": 101, "parameters": ["ylva_happy", 0, 0, 2]}, # Show Text
+                # {"code": 101, "parameters": []}, 
+                {"code": 401, "parameters": ["Greetings, traveler."]},
                 {"code": 401, "parameters": ["Have you seen the crystal?"]},
                 {"code": 401, "parameters": ["The crystal is over there."]},
                 # Set Variable #42 to the value 4
                 {"code": 401, "parameters": ["The secret answer was \\V[42]."]},
                 {"code": 122, "parameters": [42, 42, 0, 0, 42]}, 
                 # Show Text command
-                {"code": 101, "parameters": []},
+                {"code": 101, "parameters": ["ylva_shocked", 0, 0, 2]},
                 # Text lines with control codes
                 {"code": 401, "parameters": ["Ah, \\N[1]! Your HP is \\HP[1]."]},
                 {"code": 401, "parameters": ["The secret answer is now \\V[42]."]},
                 {"code": 401, "parameters": ["Please enter a new secret"]},
                 {"code": 103, "parameters": [42, 3]},
-                {"code": 101, "parameters": []}, # Show Text
+                {"code": 101, "parameters": ["ylva_ok", 0, 0, 2]}, # Show Text
                 {"code": 401, "parameters": ["The secret answer is now \\V[42]."]},
                 {"code": 303, "parameters": [1, 10]},
-                {"code": 101, "parameters": []}, # Show Text
+                {"code": 101, "parameters": ["ylva_angry", 0, 0, 2]}, # Show Text
                 {"code": 401, "parameters": ["The name is now \\N[1]."]}
             ]
         }, { # Page 2: Shows if Switch 25 is ON

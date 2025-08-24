@@ -1,5 +1,5 @@
 # cpgame/game_scenes/shop_scene.py
-from gint import *
+import gint
 from cpgame.game_scenes._scenes_base import SceneBase
 from cpgame.systems.jrpg import JRPG
 from cpgame.engine.logger import log
@@ -11,6 +11,15 @@ LIST_Y = TOP_BAR_H + GOLD_BAR_H
 INFO_PANEL_H = 80
 
 C_YELLOW = 0b00000_111111_11111
+
+_BG_COLOR = gint.C_RGB(30, 26, 13)
+_BORDER_OUTER_COLOR = gint.C_RGB(18, 10, 2)
+_BORDER_INNER_COLOR = gint.C_RGB(29, 22, 8)
+_TEXT_COLOR = gint.C_RGB(5, 2, 0)
+_TEXT_DISABLED_COLOR = gint.C_RGB(15, 13, 7) # A faded brown for disabled text
+_GOLD_TEXT_COLOR = gint.C_RGB(31, 31, 20)   # A bright yellow for gold
+_SELECT_COLOR = gint.C_RGB(25, 12, 5)
+_SELECT_BG_COLOR = gint.C_RGB(31, 28, 20) # A light parchment color for selection
 
 class SceneShop(SceneBase):
     """
@@ -37,7 +46,7 @@ class SceneShop(SceneBase):
         self._gold_bar_h = 30
         self._info_panel_h = 80
         self._list_y = self._top_bar_h + self._gold_bar_h
-        self._list_height = DHEIGHT - self._list_y - self._info_panel_h
+        self._list_height = gint.DHEIGHT - self._list_y - self._info_panel_h
         self._items_per_page = self._list_height // 24
 
     def create(self):
@@ -56,7 +65,7 @@ class SceneShop(SceneBase):
             self.update_quantity_selection()
             
     def draw(self, frame_time_ms):
-        dclear(C_WHITE)
+        gint.dclear(_BG_COLOR) # Use the main background color
         self.draw_top_bar()
         self.draw_gold_bar()
         self.draw_item_list()
@@ -141,24 +150,26 @@ class SceneShop(SceneBase):
     # --- Drawing Methods ---
 
     def draw_top_bar(self):
-        drect(0, 0, DWIDTH - 1, TOP_BAR_H - 1, C_LIGHT)
+        gint.drect(0, 0, gint.DWIDTH - 1, TOP_BAR_H - 1, _BG_COLOR)
+        gint.drect_border(0,0,gint.DWIDTH-1, TOP_BAR_H-1, gint.C_NONE, 1, _BORDER_OUTER_COLOR)
+        
         commands = ["Buy", "Sell", "Exit"]
         if self._purchase_only: commands[1] = "---"
         
         for i, cmd in enumerate(commands):
-            x = (DWIDTH // 3) * i
-            color = C_BLACK
+            x = (gint.DWIDTH // 3) * i
+            color = _TEXT_COLOR
             if self._state == "COMMAND" and i == self._command_index:
-                drect(x, 0, x + (DWIDTH // 3) -1, TOP_BAR_H - 1, C_YELLOW)
-                color = C_BLUE
-            dtext_opt(x + (DWIDTH // 6), TOP_BAR_H // 2, color, C_NONE, DTEXT_CENTER, DTEXT_MIDDLE, cmd, -1)
+                gint.drect(x, 0, x + (gint.DWIDTH // 3) -1, TOP_BAR_H - 1, _SELECT_BG_COLOR)
+                gint.drect_border(x,0,x+(gint.DWIDTH//3)-1, TOP_BAR_H-1, gint.C_NONE, 1, _SELECT_COLOR)
+            gint.dtext_opt(x + (gint.DWIDTH // 6), TOP_BAR_H // 2, color, gint.C_NONE, gint.DTEXT_CENTER, gint.DTEXT_MIDDLE, cmd, -1)
 
     def draw_gold_bar(self):
         y = TOP_BAR_H
-        drect(0, y, DWIDTH - 1, y + GOLD_BAR_H - 1, C_DARK)
+        gint.drect(0, y, gint.DWIDTH - 1, y + GOLD_BAR_H - 1, _BORDER_OUTER_COLOR)
         if JRPG.objects:
             gold_text = "Gold: {} G".format(JRPG.objects.party.gold)
-            dtext_opt(DWIDTH - 10, y + GOLD_BAR_H // 2, C_WHITE, C_NONE, DTEXT_RIGHT, DTEXT_MIDDLE, gold_text, -1)
+            gint.dtext_opt(gint.DWIDTH - 10, y + GOLD_BAR_H // 2, _GOLD_TEXT_COLOR, gint.C_NONE, gint.DTEXT_RIGHT, gint.DTEXT_MIDDLE, gold_text, -1)
 
     def draw_item_list(self):
         if self._state not in ("BUY", "SELL"): return
@@ -171,7 +182,8 @@ class SceneShop(SceneBase):
             y = LIST_Y + i * 24
             
             if index == self._item_index:
-                drect(0, y, DWIDTH - 1, y + 23, C_YELLOW)
+                gint.drect(0, y, gint.DWIDTH - 1, y + 23, _SELECT_BG_COLOR)
+                gint.drect_border(0,y,gint.DWIDTH-1, y+23, gint.C_NONE, 1, _SELECT_COLOR)
             
             can_afford = True
             name = item.name
@@ -185,33 +197,35 @@ class SceneShop(SceneBase):
                 name += " ({})".format(quantity) # TODO: add inventory item quantity here
 
             # NEW: Set color based on affordability
-            item_color = C_BLACK if can_afford else C_DARK
-            price_color = C_BLACK if can_afford else C_DARK
+            item_color = _TEXT_COLOR if can_afford else _TEXT_DISABLED_COLOR
+            price_color = _TEXT_COLOR if can_afford else _TEXT_DISABLED_COLOR
             
-            dtext(10, y + 4, item_color, name)
+            gint.dtext(10, y + 4, item_color, name)
             
             price_text = str(price) + " G"
-            dtext_opt(DWIDTH - 10, y + 12, price_color, C_NONE, DTEXT_RIGHT, DTEXT_MIDDLE, price_text, -1)
+            gint.dtext_opt(gint.DWIDTH - 10, y + 12, price_color, gint.C_NONE, gint.DTEXT_RIGHT, gint.DTEXT_MIDDLE, price_text, -1)
 
     def draw_info_panel(self):
-        y = DHEIGHT - INFO_PANEL_H
-        drect(0, y, DWIDTH - 1, DHEIGHT - 1, C_LIGHT)
-        drect_border(0, y, DWIDTH - 1, DHEIGHT - 1, C_NONE, 1, C_BLACK)
+        y = gint.DHEIGHT - INFO_PANEL_H
+        gint.drect(0, y, gint.DWIDTH - 1, gint.DHEIGHT - 1, _BG_COLOR)
+        gint.drect_border(0, y, gint.DWIDTH-1, gint.DHEIGHT-1, gint.C_NONE, 1, _BORDER_OUTER_COLOR)
+        gint.drect_border(1, y+1, gint.DWIDTH-2, gint.DHEIGHT-2, gint.C_NONE, 1, _BORDER_INNER_COLOR)
         
         if self._state in ("BUY", "SELL") and self._active_list:
             item = self._active_list[self._item_index]
-            dtext(10, y + 8, C_BLACK, item.description)
+            gint.dtext(10, y + 8, _TEXT_COLOR, item.description)
 
     def draw_quantity_box(self):
         w, h = 200, 100
-        x = (DWIDTH - w) // 2
-        y = (DHEIGHT - h) // 2
-        drect(x, y, x + w - 1, y + h - 1, C_WHITE)
-        drect_border(x, y, x + w - 1, y + h - 1, C_NONE, 1, C_BLACK)
+        x = (gint.DWIDTH - w) // 2
+        y = (gint.DHEIGHT - h) // 2
+        gint.drect(x, y, x + w - 1, y + h - 1, _BG_COLOR)
+        gint.drect_border(x, y, x + w - 1, y + h - 1, gint.C_NONE, 1, _BORDER_OUTER_COLOR)
+        gint.drect_border(x+1, y+1, x + w - 2, y + h - 2, gint.C_NONE, 1, _BORDER_INNER_COLOR)
 
         item = self._active_list[self._item_index]
-        dtext_opt(x + w//2, y + 10, C_BLACK, C_NONE, DTEXT_CENTER, DTEXT_TOP, item.name, -1)
-        dtext_opt(x + w//2, y + 40, C_BLACK, C_NONE, DTEXT_CENTER, DTEXT_TOP, "Quantity: {}".format(self._quantity), -1)
+        gint.dtext_opt(x + w//2, y + 10, _TEXT_COLOR, gint.C_NONE, gint.DTEXT_CENTER, gint.DTEXT_TOP, item.name, -1)
+        gint.dtext_opt(x + w//2, y + 40, _TEXT_COLOR, gint.C_NONE, gint.DTEXT_CENTER, gint.DTEXT_TOP, "Quantity: {}".format(self._quantity), -1)
 
     # --- Logic Helpers ---
 
@@ -246,6 +260,7 @@ class SceneShop(SceneBase):
             return min(JRPG.objects.party.gold // price if price > 0 else 99, 99)
         elif self._state == 'QUANTITY_SELL': # SELL
             return JRPG.objects.party.item_number(item)
+        return 0
             
     def _execute_transaction(self):
         if not JRPG.objects:

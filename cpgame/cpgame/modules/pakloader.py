@@ -211,10 +211,10 @@ class PakFile:
                     gc.collect()
             
             # Update display
-            try:
-                gint.dupdate()
-            except:
-                pass
+            # try:
+            #     gint.dupdate()
+            # except:
+            #     pass
                 
             return drawn_count
             
@@ -266,8 +266,8 @@ class PakFile:
             # List entries in sorted order
             sorted_names = sorted(self._entry_map.keys())
             
-            for i, name in enumerate(sorted_names):
-                print("  {}: {}".format(i, name))
+            # for i, name in enumerate(sorted_names):
+            #     print("  {}: {}".format(i, name))
                 
             return len(sorted_names)
             
@@ -334,8 +334,8 @@ class PakProxy:
                 return pak.draw_entries_by_prefix(x, y, name_prefix, max_width)
         except Exception as e:
             print("Error in draw_from: {}".format(e))
-            import traceback
-            traceback.print_exc()
+            # import traceback
+            # traceback.print_exc()
             return 0
 
     def draw_single(self, x, y, pak_name, entry_name):
@@ -352,10 +352,10 @@ class PakProxy:
         """List all entries in a PAK file, optionally filtered by prefix"""
         try:
             with self._get_pak(pak_name) as pak:
-                if prefix:
-                    print("Entries in {} matching '{}':".format(pak_name, prefix))
-                else:
-                    print("All entries in {}:".format(pak_name))
+                # if prefix:
+                #     print("Entries in {} matching '{}':".format(pak_name, prefix))
+                # else:
+                #     print("All entries in {}:".format(pak_name))
                 return pak.list_entries(prefix)
         except Exception as e:
             print("Error listing entries in {}: {}".format(pak_name, e))

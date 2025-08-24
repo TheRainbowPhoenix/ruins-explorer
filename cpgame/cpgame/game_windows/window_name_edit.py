@@ -12,6 +12,12 @@ _HEIGHT = const(60)
 _PADDING = const(8)
 _CHAR_WIDTH = const(14) # The pixel width allocated for each character.
 
+_BG_COLOR = gint.C_RGB(30, 26, 13)
+_BORDER_OUTER_COLOR = gint.C_RGB(18, 10, 2)
+_BORDER_INNER_COLOR = gint.C_RGB(29, 22, 8)
+_TEXT_COLOR = gint.C_RGB(5, 2, 0)
+_SELECT_COLOR = gint.C_RGB(25, 12, 5)
+
 
 class WindowNameEdit:
     """
@@ -77,8 +83,9 @@ class WindowNameEdit:
 
         # --- Part 1: Draw Window Skin ---
         # This draws the background box and border.
-        gint.drect(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, gint.C_WHITE)
-        gint.drect_border(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, gint.C_NONE, 1, gint.C_BLACK)
+        gint.drect(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, _BG_COLOR)
+        gint.drect_border(self.x, self.y, self.x + self.width , self.y + self.height, gint.C_NONE, 1, _BORDER_OUTER_COLOR)
+        gint.drect_border(self.x+1, self.y+1, self.x + self.width - 1, self.y + self.height - 1, gint.C_NONE, 1, _BORDER_INNER_COLOR)
 
         # --- Part 2: Draw Window Content ---
         
@@ -86,15 +93,15 @@ class WindowNameEdit:
         for i in range(self._max_char):
             ux = self.x + _PADDING + i * _CHAR_WIDTH
             uy = self.y + self.height - 12
-            gint.dline(ux, uy, ux + 12, uy, gint.C_BLACK)
+            gint.dline(ux, uy, ux + 12, uy, _BORDER_OUTER_COLOR)
 
         # Draw characters
         for i, char in enumerate(self._name):
-            gint.dtext(self.x + _PADDING + i * _CHAR_WIDTH, self.y + 8, gint.C_BLACK, char)
+            gint.dtext(self.x + _PADDING + i * _CHAR_WIDTH, self.y + 8, _TEXT_COLOR, char)
             
         # Draw cursor
         cursor_x = self.x + _PADDING + self._index * _CHAR_WIDTH
-        gint.drect_border(cursor_x - 1, self.y + 7, cursor_x + 12, self.y + 25, gint.C_NONE, 1, gint.C_BLUE)
+        gint.drect_border(cursor_x - 1, self.y + 7, cursor_x + 12, self.y + 25, gint.C_NONE, 1, _SELECT_COLOR)
     
     def destroy(self):
         """

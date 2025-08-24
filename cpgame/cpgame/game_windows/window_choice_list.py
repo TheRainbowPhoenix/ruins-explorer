@@ -4,7 +4,7 @@ from cpgame.systems.jrpg import JRPG
 from cpgame.game_windows.window_selectable import WindowSelectable
 
 try:
-    from typing import Optional
+    from typing import Optional, List
     from cpgame.engine.systems import InputManager
 except:
     pass

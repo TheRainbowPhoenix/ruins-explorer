@@ -1,7 +1,7 @@
 # cpgame/game_windows/window_hud.py
 # The Heads-Up Display for the map screen.
 
-from gint import *
+import gint
 # from cpgame.game_windows.window_base import WindowBase
 from cpgame.systems.jrpg import JRPG
 
@@ -16,6 +16,10 @@ from micropython import const
 _HUD_HEIGHT = const(28)
 _PADDING = const(8)
 
+_BG_COLOR = gint.C_RGB(30, 26, 13)
+_BORDER_OUTER_COLOR = gint.C_RGB(18, 10, 2)
+_BORDER_INNER_COLOR = gint.C_RGB(29, 22, 8)
+_TEXT_COLOR = gint.C_RGB(5, 2, 0)
 
 class WindowHUD:
     """
@@ -26,7 +30,7 @@ class WindowHUD:
         # All layout properties are fixed and can be defined directly.
         self.x = 0
         self.y = 0
-        self.width = DWIDTH
+        self.width = gint.DWIDTH
         self.height = _HUD_HEIGHT
         self.visible = True
         
@@ -66,25 +70,26 @@ class WindowHUD:
         if self._needs_redraw:
             # --- Draw Window Skin ---
             # This part draws the background box and border.
-            drect(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, C_WHITE)
-            drect_border(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, C_NONE, 1, C_BLACK)
+            gint.drect(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, _BG_COLOR)
+            gint.drect_border(self.x, self.y, self.x + self.width, self.y + self.height, gint.C_NONE, 1, _BORDER_OUTER_COLOR)
+            gint.drect_border(self.x+1, self.y+1, self.x + self.width - 1, self.y + self.height - 1, gint.C_NONE, 1, _BORDER_INNER_COLOR)
             
             # --- Draw Window Content ---
             if not JRPG.objects: return
 
             # Draw Score (Variable 1)
-            dtext(self.x + _PADDING, self.y + 4, C_BLACK, "Score: " + str(self._cached_score))
+            gint.dtext(self.x + _PADDING, self.y + 10, _TEXT_COLOR, "Score: " + str(self._cached_score))
 
             # Draw Gold
             gold_text = str(self._cached_gold) + " G"
             # In-place width calculation: len(text) * 8 (approx char width)
             gold_w = len(gold_text) * 8
-            dtext(self.x + self.width - _PADDING - gold_w, self.y + 4, C_BLACK, gold_text)
+            gint.dtext(self.x + self.width - _PADDING - gold_w, self.y + 10, _TEXT_COLOR, gold_text)
 
             # Draw Day
             day_text = "Day " + str(self._cached_day)
             day_w = len(day_text) * 8
-            dtext(self.x + (self.width - day_w) // 2, self.y + 4, C_BLACK, day_text)
+            gint.dtext(self.x + (self.width - day_w) // 2, self.y + 10, _TEXT_COLOR, day_text)
             
             self._needs_redraw = False
     

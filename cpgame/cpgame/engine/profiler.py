@@ -2,7 +2,7 @@
 # A lightweight memory profiling utility for debugging on constrained devices.
 
 import gc
-# from cpgame.engine.logger import log
+from cpgame.engine.logger import log
 
 # --- GLOBAL DEBUG FLAG ---
 # Set this to False for "release" builds to disable all profiling.
@@ -26,7 +26,7 @@ class MemoryProfiler:
         # Collect garbage before measuring to get a clean baseline
         gc.collect()
         self.start_mem = gc.mem_alloc()
-        print("+{} {}B".format(self.name, self.start_mem))
+        log("+{} {}B".format(self.name, self.start_mem))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if not DEBUG_MEMORY:
@@ -37,7 +37,7 @@ class MemoryProfiler:
         end_mem = gc.mem_alloc()
         delta = end_mem - self.start_mem
         
-        print("-{} {}B = {}B".format(self.name, end_mem, delta))
+        log("-{} {}B = {}B".format(self.name, end_mem, delta))
 
 def profile_memory(name: str):
     """Decorator version of the profiler (less flexible for our needs but good to have)."""
