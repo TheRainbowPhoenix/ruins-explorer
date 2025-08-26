@@ -21,7 +21,7 @@ from cpgame.game_objects.message import GameMessage
 # Plugins
 from cpgame.modules.plugin_manager import PluginManager
 from cpgame.modules.growth_manager import GrowthManager
-from cpgame.game_plugins import check_soil
+from cpgame.game_plugins import check_soil, check_field, start_growth
 
 class GameObjects:
     """
@@ -56,6 +56,8 @@ class GameObjects:
         from cpgame.systems.jrpg import JRPG
 
         self.plugin_manager.register("check_soil", check_soil)
+        self.plugin_manager.register("check_field", check_field)
+        self.plugin_manager.register("start_growth", start_growth)
 
         self.party.setup_starting_members()
 

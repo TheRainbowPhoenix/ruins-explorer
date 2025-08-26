@@ -3,6 +3,48 @@
 
 from cpgame.systems.jrpg import JRPG
 
+def start_growth(event_id: int, name: str, time: int):
+    # Grow for 20 seconds
+    if not JRPG.objects or not JRPG.objects.map or not JRPG.objects.growth_manager:
+        return
+    map_id = JRPG.objects.map._map_id
+
+    JRPG.objects.growth_manager.plant_seed(map_id, event_id, time)
+
+def check_field(event_id: int):
+    if not JRPG.objects or not JRPG.objects.map or not JRPG.objects.growth_manager:
+        return
+
+    map_id = JRPG.objects.map._map_id
+    key_a = (map_id, event_id, 'A') # Tilled
+    key_b = (map_id, event_id, 'B') # Planted
+    key_c = (map_id, event_id, 'C') # Waiting
+    key_d = (map_id, event_id, 'D') # Harvestable
+    
+    switches = JRPG.objects.self_switches
+    message = JRPG.objects.message
+    message.clear() # Always start with a fresh message
+
+    if switches[key_d]: # Harvestable
+        # Add item to party, reset plot
+        # TODO: JRPG.objects.party.gain_item(5, 1)
+        message.add("You harvested a ripe potato!")
+        JRPG.objects.self_switches.set(key_a, False)
+        JRPG.objects.self_switches.set(key_b, False)
+        JRPG.objects.self_switches.set(key_c, False)
+        JRPG.objects.self_switches.set(key_d, False)
+        JRPG.objects.growth_manager.harvest(map_id, event_id)
+
+    elif switches[key_c]: # Planted
+        status = JRPG.objects.growth_manager.get_status(map_id, event_id)
+        message.add("Silence ! Ca pousse...")
+        message.add(status)
+
+    for ev in JRPG.objects.map.events.values():
+        if ev.id == event_id:
+            ev.refresh()
+            break
+    
 def check_soil(event_id: int):
     """
     Plugin command to handle all interactions with a farm plot.

@@ -28,6 +28,9 @@
 
 ## TODO
 
+Fix the map003 interpreter conditions for variables not working (Ylva dialogs should change when global variables change, but they do not). Fix the event tiles not passable (bug ?)
+Choice manager "when" is also bugged (tilting soils). To be fixed.
+
 REAL PRIO: 
 - Test the GameMap with many dialogs, ensure they works. If not, make a better lifecycle or smth to be less dependant on the dialogs dependency hell. 
 
