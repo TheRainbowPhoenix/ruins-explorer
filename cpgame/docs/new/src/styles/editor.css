@@ -711,6 +711,8 @@ body {
     border-bottom: 1px solid var(--border-primary);
     cursor: pointer;
     transition: var(--transition);
+    display: flex;
+    align-items: flex-start;
 }
 
 .command-item:hover {
@@ -719,6 +721,22 @@ body {
 
 .command-item:last-child {
     border-bottom: none;
+}
+
+.indent-lines {
+    display: flex;
+    height: 100%;
+    flex-shrink: 0;
+}
+
+.indent-line {
+    width: 20px; /* Width of each indent level */
+    border-right: 1px solid var(--border-tertiary);
+    margin-right: 5px; /* Space between line and text */
+}
+
+.command-content {
+    flex-grow: 1;
 }
 
 .add-command {

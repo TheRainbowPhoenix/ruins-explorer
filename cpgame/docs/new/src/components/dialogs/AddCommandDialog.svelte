@@ -11,6 +11,8 @@
         ],
         "Flow Control": [
             { name: "If...", code: 111, params: [0, 1, 0] },
+            { name: "When [Choice]", code: 402, params: [0], indent: true },
+            { name: "When [Cancel]", code: 403, params: [], indent: true },
             { name: "Else", code: 411, params: [], indent: true },
             { name: "End If", code: 412, params: [], indent: true }
         ],
@@ -42,7 +44,7 @@
 <div class="dialog-overlay" on:click={() => dispatch('close')}>
     <div class="dialog dialog-large" on:click|stopPropagation>
         <div class="dialog-header">
-            <h3>Add Command</h3>
+            <span>Add Command</span>
             <button class="btn btn-secondary" on:click={() => dispatch('close')}>✕</button>
         </div>
         <div class="dialog-content" style="display: flex; gap: 16px; flex-wrap: wrap;">

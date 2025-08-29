@@ -84,16 +84,21 @@
             
             // Tooltip Logic
             let displayText = '';
-            if ($currentPanel === 'tiles') {
+            let visible = false;
+            /* if ($currentPanel === 'tiles') {
                 const tileId = $mapData[y * $mapWidth + x];
                 displayText = `ID: ${tileId}`;
-            } else if ($currentPanel === 'events') {
+            } else */
+            if ($currentPanel === 'events') {
                 const posKey = `${x},${y}`;
-                displayText = $events[posKey] ? $events[posKey].name : `(${x}, ${y})`;
+                if ($events[posKey]) {
+                    displayText = $events[posKey].name || `(${x}, ${y})`;
+                    visible = true;
+                }
             }
             
             tooltip.set({
-                visible: true,
+                visible,
                 content: displayText,
                 x: e.clientX + 15,
                 y: e.clientY
