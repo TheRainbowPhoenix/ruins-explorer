@@ -34,6 +34,7 @@
             124: [0, 60],
             201: [0, 1, 0, 0],
             301: [0, 1], 
+            303: [1, 8], 
             356: [''],
             401: [''],
             402: [0],
@@ -265,6 +266,16 @@
                     <label>Enemy ID</label>
                     <input type="number" class="form-input" bind:value={localCommand.parameters[1]}>
                 </div>
+            {:else if localCommand.code === 303}
+                <div class="form-group">
+                    <label>Actor ID</label>
+                    <input type="number" class="form-input" bind:value={localCommand.parameters[0]}>
+                </div>
+
+                <div class="form-group">
+                    <label>Max Characters</label>
+                    <input type="number" class="form-input" bind:value={localCommand.parameters[1]}>
+                </div>
             {:else if localCommand.code === 356}
                 <div class="form-group">
 					<label class="form-label">Plugin Command</label>
@@ -274,6 +285,11 @@
                 <div class="form-group">
 					<label class="form-label">Text</label>
                     <input type="text" class="form-input" bind:value={localCommand.parameters[0]}>
+                </div>
+            {:else if localCommand.code === 402}
+                 <div class="form-group">
+                    <label>Handle Choice #</label>
+                    <input type="number" class="form-input" min="1" step="1" on:input={(e) => localCommand.parameters[0] = e.target.value - 1} value={localCommand.parameters[0] + 1}>
                 </div>
             {:else if localCommand.code === 501}
                 <div class="form-group">

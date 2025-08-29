@@ -42,7 +42,7 @@
             case 303: return `Name Input: Actor ${p(0, 1)} (${p(1, 8)} chars)`;
             case 356: return `Plugin Command: ${p(0, '')}`;
             case 401: return `<span style="opacity:0.7; padding-left: 10px;">└ Text: ${p(0, '')}</span>`;
-            case 402: return `◆ When [${p(0, 'Choice')}]`;
+            case 402: return `◆ When [Choice #${p(0, 0) + 1}]`;
             case 403: return `◆ When [Cancel]`;
             case 411: return '◆ Else';
             case 412: return '◆ End If';
@@ -54,6 +54,7 @@
 
 <div class="command-list">
     {#each commands as command, index}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="command-item" on:dblclick={() => dispatch('edit', index)}>
             <div class="indent-lines">
                 {#each Array(command.indent || 0) as _}<span class="indent-line"></span>{/each}
@@ -61,8 +62,41 @@
             <div class="command-content">
                 {@html formatCommand(command)}
             </div>
-            <!-- <span style="display: inline-block; width: 20px; opacity: 0.5;">{@html '&nbsp;'.repeat(command.indent || 0)}</span> -->
         </div>
+
+        <!-- Logic to render "Add Command Here" placeholders -->
+        {@const currentIndent = command.indent || 0}
+        {@const nextIndent = commands[index + 1]?.indent ?? -1} 
+        {@const isBlockOpener = [111, 402, 403, 411].includes(command.code)}
+        {@const isLastItem = index === commands.length - 1}
+
+        <!-- Case 1: The very last command opens a block, so the block is empty -->
+        {#if isBlockOpener && nextIndent !== currentIndent + 1}
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div class="command-item-add" on:click={
+                () => dispatch('add-here', {
+                    index: index + 1,
+                    indent: currentIndent + 1
+                    })
+            }>
+                <div class="indent-lines">{#each Array(currentIndent + 1) as _}<span class="indent-line"></span>{/each}</div>
+                <div class="command-content-add">+</div>
+            </div>
+        {/if}
+        
+        <!-- Case 2: The next command has a lower indent, meaning one or more blocks are closing -->
+        {#if nextIndent < currentIndent}
+            {#each Array(currentIndent - Math.max(0, nextIndent)) as _, j}
+                {@const placeholderIndent = currentIndent - j}
+                <div class="command-item-add" on:click={() => dispatch('add-here', { index: index + 1, indent: placeholderIndent })}>
+                    <div class="indent-lines">{#each Array(placeholderIndent) as _}<span class="indent-line"></span>{/each}</div>
+                    <div class="command-content-add">+</div>
+                </div>
+            {/each}
+        {/if}
+            <!-- <span style="display: inline-block; width: 20px; opacity: 0.5;">{@html '&nbsp;'.repeat(command.indent || 0)}</span> -->
+        
     {:else}
         <div class="command-item-empty">No commands.</div>
     {/each}

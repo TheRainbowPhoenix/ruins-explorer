@@ -19,8 +19,10 @@
     let showAddCommand = false;
     let showConditionsEditor = false;
     let currentIndent = 0;
+    let copyStatus = '';
     
     $: conditionsSummary = formatConditions(localEvent.pages[currentPageIndex]?.conditions);
+    $: currentPage = localEvent.pages[currentPageIndex];
 
     onMount(() => {
         tileset.src = 'jrpg.png';
@@ -40,7 +42,7 @@
     }
     
     function addPage() {
-        localEvent.pages.push({ conditions: {}, graphic: { tileId: 0 }, list: [] });
+        localEvent.pages.push({ conditions: {}, graphic: { tileId: 0 }, list: [], through: false });
         currentPageIndex = localEvent.pages.length - 1;
         localEvent = localEvent; 
     }
@@ -72,28 +74,54 @@
         commandToEditIndex = null;
         localEvent = localEvent;
     }
+    function recalculateIndents() {
+        let indentLevel = 0;
+        const list = currentPage.list;
+        for (const command of list) {
+            // A command that closes a block is indented one level less than the block's content.
+            if ([403, 411, 412].includes(command.code)) {
+                indentLevel = Math.max(0, indentLevel - 1);
+            }
+            command.indent = indentLevel;
+            // A command that opens a block increases the indent for subsequent commands.
+            if ([111, 402, 403, 411].includes(command.code)) {
+                indentLevel++;
+            }
+        }
+        localEvent = localEvent; // Trigger reactivity
+    }
 
     
     function handleAddCommand(e) {
-        const { code, params, indent } = e.detail;
-        const commands = localEvent.pages[currentPageIndex].list;
-
-        if (indent) {
-            if ([402, 403, 411, 412].includes(code)) currentIndent = Math.max(0, currentIndent - 1);
-        }
-
-        const newCommand = { code, parameters: params, indent: currentIndent };
-        commands.push(newCommand);
-
-        if (code === 101) commands.push({ code: 401, parameters: [""], indent: currentIndent });
-        if ([111, 402, 403, 411].includes(code)) currentIndent++;
+        const { code, params } = e.detail.command;
+        const { index } = e.detail.extra;
         
-        localEvent = localEvent;
+        const commands = currentPage.list;
+        
+        // Indentation will be fixed by recalculateIndents, so we add with a temp indent of 0.
+        const primaryCommand = { code, parameters: params, indent: 0 };
+        commands.splice(index, 0, primaryCommand);
+
+        // --- Auto-add closing or related commands ---
+        if (code === 101) {
+            // Add the accompanying text line
+            commands.splice(index + 1, 0, { code: 401, parameters: [""], indent: 0 });
+        } else if ([111, 402, 403].includes(code)) {
+            // For If and When blocks, automatically add the "End If"
+            commands.splice(index + 1, 0, { code: 412, parameters: [], indent: 0 });
+        }
+        
+        
+        recalculateIndents();
+    }
+
+    function handleAddCommandHere(e) {
+        showAddCommand = { index: e.detail.index, indent: e.detail.indent };
     }
 
     function handleEditRequest(e) {
         const index = e.detail;
-        const command = localEvent.pages[currentPageIndex].list[index];
+        const command = currentPage.list[index];
         if (command.code === 101 || command.code === 401) {
             textBlockEditIndex = index;
         } else {
@@ -102,13 +130,43 @@
     }
     
     function formatConditions(conds) {
-        if (!conds) return "None";
+        if (!conds || Object.keys(conds).length === 0) return "None";
         const parts = [];
         if (conds.switch1Valid) parts.push(`S[${conds.switch1Id}] ON`);
         if (conds.switch2Valid) parts.push(`S[${conds.switch2Id}] ON`);
         if (conds.variableValid) parts.push(`V[${conds.variableId}] >= ${conds.variableValue}`);
         if (conds.selfSwitchValid) parts.push(`Self-S[${conds.selfSwitchCh}] ON`);
         return parts.length > 0 ? parts.join(', ') : "None";
+    }
+
+    async function copyPage() {
+        try {
+            const pageJson = JSON.stringify(currentPage);
+            await navigator.clipboard.writeText(pageJson);
+            copyStatus = 'Copied!';
+        } catch (err) {
+            copyStatus = 'Failed to copy!';
+        }
+        setTimeout(() => copyStatus = '', 2000);
+    }
+
+    async function pastePage() {
+        try {
+            const clipboardText = await navigator.clipboard.readText();
+            const newPageData = JSON.parse(clipboardText);
+            
+            // Basic validation
+            if (newPageData && typeof newPageData.graphic === 'object' && Array.isArray(newPageData.list)) {
+                localEvent.pages[currentPageIndex] = newPageData;
+                copyStatus = 'Pasted!';
+            } else {
+                throw new Error("Invalid page data in clipboard.");
+            }
+        } catch (err) {
+            copyStatus = 'Paste failed!';
+            console.error(err);
+        }
+         setTimeout(() => copyStatus = '', 2000);
     }
 
     function handleSaveTextBlock(e) {
@@ -131,19 +189,20 @@
         textBlockEditIndex = null;
     }
 
+    
+
     function handleDeleteCommand() {
-        const list = localEvent.pages[currentPageIndex].list;
+        const list = currentPage.list;
         const command = list[commandToEditIndex];
-        
-        if (command.code === 111) currentIndent = Math.max(0, currentIndent - 1);
         
         if (command.code === 101 && list[commandToEditIndex + 1]?.code === 401) {
              list.splice(commandToEditIndex, 2);
         } else {
              list.splice(commandToEditIndex, 1);
         }
+        
+        recalculateIndents();
         commandToEditIndex = null;
-        localEvent = localEvent;
     }
 
 </script>
@@ -163,7 +222,8 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Page</label>
-                    <div class="action-fields" style="display: flex; gap: 8px;">
+                    <div class="page-actions">
+                        {#if copyStatus}<div class="copy-feedback">{copyStatus}</div>{/if}
                         <select class="form-select" bind:value={currentPageIndex} style="flex:1;">
                         {#each localEvent.pages as _, i}
                             <option value={i}>Page {i + 1}</option>
@@ -171,6 +231,8 @@
                         </select>
                         <button class="btn btn-secondary" on:click={addPage}>+</button>
                         <button class="btn btn-danger" on:click={deletePage}>-</button>
+                        <!-- <button class="btn btn-secondary" on:click={copyPage}>Copy</button> -->
+                        <!-- <button class="btn btn-secondary" on:click={pastePage}>Paste</button> -->
                     </div>
                 </div>
                 <div class="form-group">
@@ -202,9 +264,10 @@
             <div class="dialog-column-right">
                 <div class="form-group">
                     <label class="form-label">Commands</label>
-                    <CommandList commands={localEvent.pages[currentPageIndex].list} on:edit={handleEditRequest}/>
+                    <CommandList commands={localEvent.pages[currentPageIndex].list} on:edit={handleEditRequest} on:add-here={handleAddCommandHere}/>
                 </div>
-                <button class="btn btn-primary" on:click={() => showAddCommand = true}>+ Add Command...</button>
+                <button class="btn btn-primary" style="min-height: 32px;" on:click={() => handleAddCommandHere({ detail: { index: localEvent.pages[currentPageIndex].list.length, indent: 0 }})}>+ Add Command...</button>
+                <div style="min-height: 24px;"></div>
             </div>
         </div>
         <div class="dialog-footer">
@@ -216,7 +279,7 @@
 {#if showAddCommand}
     <AddCommandDialog
         on:close={() => showAddCommand = false}
-        on:add={handleAddCommand}
+        on:add={(e) => handleAddCommand({ detail: { command: e.detail, extra:showAddCommand }})}
     />
 {/if}
 
