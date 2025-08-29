@@ -1,0 +1,85 @@
+<script>
+    import { onMount } from 'svelte';
+    import { currentTool, selectedTile, actions, tileSize } from '../../store.js';
+
+    let tileset = new Image();
+    let tilesetLoaded = false;
+
+    onMount(() => {
+        tileset.src = 'jrpg.png';
+        tileset.onload = () => {
+            tilesetLoaded = true;
+        };
+    });
+
+    function selectMode(mode) {
+        currentTool.set(mode);
+    }
+
+    function selectTile(tileId) {
+        selectedTile.set(tileId);
+    }
+
+    function fillMap() {
+        actions.fillMap($selectedTile);
+    }
+</script>
+
+<div class="form-group">
+    <label class="form-label">Drawing Mode</label>
+    <div class="mode-selector">
+        <div 
+            class="mode-btn" 
+            class:active={$currentTool === 'place'}
+            on:click={() => selectMode('place')}
+        >
+            Place
+        </div>
+        <div 
+            class="mode-btn" 
+            class:active={$currentTool === 'brush'}
+            on:click={() => selectMode('brush')}
+        >
+            Brush
+        </div>
+        <div 
+            class="mode-btn" 
+            class:active={$currentTool === 'area'}
+            on:click={() => selectMode('area')}
+        >
+            Area
+        </div>
+    </div>
+</div>
+
+<div class="form-group">
+    <label class="form-label">Selected Tile</label>
+    <div id="selected-tile-preview" style="width: 64px; height: 64px; border: 2px solid var(--border-primary); background: var(--bg-tertiary); image-rendering: pixelated;">
+        {#if tilesetLoaded}
+            <canvas width="64" height="64" style="width: 64px; height: 64px;"></canvas>
+        {/if}
+    </div>
+</div>
+
+<div class="form-group">
+    <label class="form-label">Tiles</label>
+    <div class="tile-palette">
+        {#if tilesetLoaded}
+            {#each Array(160) as _, i}
+                {@const tilesPerRow = Math.floor(tileset.width / $tileSize)}
+                {@const srcX = (i % tilesPerRow) * $tileSize}
+                {@const srcY = Math.floor(i / tilesPerRow) * $tileSize}
+                <div 
+                    class="tile-item" 
+                    class:selected={$selectedTile === i}
+                    style="background-image: url('{tileset.src}'); background-position: -{srcX * 2}px -{srcY * 2}px; background-size: {tileset.width * 2}px {tileset.height * 2}px;"
+                    on:click={() => selectTile(i)}
+                ></div>
+            {/each}
+        {/if}
+    </div>
+</div>
+
+<div class="form-group">
+    <button class="btn btn-primary" on:click={fillMap}>Fill Map</button>
+</div>
