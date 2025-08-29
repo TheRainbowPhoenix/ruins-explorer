@@ -219,6 +219,7 @@ events: dict = {
         "pages": [
             { # Cut grass
                 "graphic": {"tileId": 2},
+                "through": True,
                 "list": [
                     {"code": 122, "parameters": [5,5,1,0,1]}, # GVL_5 +=1
                     {"code": 101, "parameters": []},
@@ -230,6 +231,7 @@ events: dict = {
             { # (Condition: Self Switch 'A' is ON)
                 "conditions": {"selfSwitchCh": "A", "selfSwitchValid": True},
                 "graphic": { "tileId": 6 },
+                "through": True,
                 "list": [
                     {"code": 122, "parameters": [6,6,1,0,1]}, # GVL_6 +=1
                     {"code": 101, "parameters": []},
@@ -241,6 +243,7 @@ events: dict = {
             {
                 "conditions": {"selfSwitchCh": "B", "selfSwitchValid": True},
                 "graphic": {"tileId": 6},
+                "through": True,
                 "list": [
                     {"code": 101, "parameters": []},
                     {"code": 401, "parameters": ["Que faire avec cette terre ?"]},
@@ -277,6 +280,7 @@ events: dict = {
             {
                 "conditions": {"selfSwitchCh": "C", "selfSwitchValid": True},
                 "graphic": {"tileId": 100},
+                "through": True,
                 "list": [
                     # {"code": 101, "parameters": []},
                     # {"code": 401, "parameters": ["Silence ! Ca pousse..."]},
@@ -287,6 +291,7 @@ events: dict = {
             {
                 "conditions": {"selfSwitchCh": "D", "selfSwitchValid": True},
                 "graphic": {"tileId": 96},
+                "through": True,
                 "list": [
                     {"code": 101, "parameters": []},
                     {"code": 401, "parameters": ["Pret a la recolte !"]},
@@ -316,6 +321,7 @@ for i, (x, y) in enumerate([(7, 18), (7, 17), (4,15), (3,15), (4,14), (4,13), (3
         "pages": [
             { # Cut grass
                 "graphic": {"tileId": 2},
+                "through": True,
                 "list": [
                     {"code": 122, "parameters": [5,5,1,0,1]}, # GVL_5 +=1
                     {"code": 101, "parameters": []},
@@ -327,6 +333,7 @@ for i, (x, y) in enumerate([(7, 18), (7, 17), (4,15), (3,15), (4,14), (4,13), (3
             { # (Condition: Self Switch 'A' is ON)
                 "conditions": {"selfSwitchCh": "A", "selfSwitchValid": True},
                 "graphic": { "tileId": 6 },
+                "through": True,
                 "list": [
                     {"code": 122, "parameters": [6,6,1,0,1]}, # GVL_6 +=1
                     {"code": 101, "parameters": []},
@@ -338,6 +345,7 @@ for i, (x, y) in enumerate([(7, 18), (7, 17), (4,15), (3,15), (4,14), (4,13), (3
             {
                 "conditions": {"selfSwitchCh": "B", "selfSwitchValid": True},
                 "graphic": {"tileId": 6},
+                "through": True,
                 "list": [
                     {"code": 101, "parameters": []},
                     {"code": 401, "parameters": ["Que faire avec cette terre ?"]},
@@ -374,6 +382,7 @@ for i, (x, y) in enumerate([(7, 18), (7, 17), (4,15), (3,15), (4,14), (4,13), (3
             {
                 "conditions": {"selfSwitchCh": "C", "selfSwitchValid": True},
                 "graphic": {"tileId": 100},
+                "through": True,
                 "list": [
                     # {"code": 101, "parameters": []},
                     # {"code": 401, "parameters": ["Silence ! Ca pousse..."]},
@@ -384,6 +393,7 @@ for i, (x, y) in enumerate([(7, 18), (7, 17), (4,15), (3,15), (4,14), (4,13), (3
             {
                 "conditions": {"selfSwitchCh": "D", "selfSwitchValid": True},
                 "graphic": {"tileId": 96},
+                "through": True,
                 "list": [
                     {"code": 101, "parameters": []},
                     {"code": 401, "parameters": ["Pret a la recolte !"]},
