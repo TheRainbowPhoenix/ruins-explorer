@@ -83,7 +83,6 @@ events: dict = {
         }, { # PAGE 2: Tilled Soil - todo: variableValue=10 
             "conditions": {"variableId": 5, "variableValue": 1, "variableValid": True},
             "graphic": {"tileId": 97},
-            "through": True,
             "list": [
                 {"code": 101, "parameters": ["ylva_ok", 0, 0, 2]},
                 {"code": 401, "parameters": ["Bien. Ces herbes ne sont pas"]},
@@ -119,12 +118,11 @@ events: dict = {
         },{ # PAGE 3: Field plowed - todo: variableValue=5 
             "conditions": {"variableId": 6, "variableValue": 1, "variableValid": True},
             "graphic": {"tileId": 97},
-            "through": True,
             "list": [
                 {"code": 101, "parameters": ["ylva_ok", 0, 0, 2]},
-                {"code": 401, "parameters": ["Enfin ! On approche du moment palpitant."]},
-                {"code": 401, "parameters": ["Prends ces graines."]},
-                {"code": 401, "parameters": ["Plante-les."]},
+                {"code": 401, "parameters": ["Enfin ! On approche du moment"]},
+                {"code": 401, "parameters": [" palpitant. Prends ces graines et"]},
+                {"code": 401, "parameters": ["plante-les."]},
                 {"code": 401, "parameters": ["Avec grace, cette fois."]},
 
                 {"code": 101, "parameters": ["ylva_happy", 0, 0, 2]},
@@ -146,7 +144,6 @@ events: dict = {
         },{ # PAGE 4: Planted seeds - todo: variableValue=5 
             "conditions": {"variableId": 7, "variableValue": 1, "variableValid": True},
             "graphic": {"tileId": 97},
-            "through": True,
             "list": [
 
                 {"code": 101, "parameters": []}, 
@@ -173,7 +170,6 @@ events: dict = {
         },{ # PAGE 5: Harvest - todo: variableValue=5 
             "conditions": {"variableId": 8, "variableValue": 1, "variableValid": True},
             "graphic": {"tileId": 97},
-            "through": True,
             "list": [
 
                 {"code": 101, "parameters": []}, 
@@ -198,116 +194,15 @@ events: dict = {
                 {"code": 123, "parameters": ["B",0]} # Turn Self Switch 'B' ON
             ]
         },{
-                "conditions": {"selfSwitchCh": "B", "selfSwitchValid": True},
-                "graphic": {"tileId": 6},
-                "list": [
-                    {"code": 101, "parameters": ["ylva_ok", 0, 0, 2]},
-                    {"code": 401, "parameters": ["On y vas ?"]},
-                    {"code": 401, "parameters": ["Ou tu preferes rester"]},
-                    {"code": 401, "parameters": ["plante ici ? Hihi-"]},
-                ]
-            }
-        ]
-    }, 
-
-    # TODO: for loop to generate thoses
-    # Event at (x=7, y=18)
-    (7, 18): { # Event ID 2
-        "id": 2,
-        "name": "Grass1",
-        "x": 7, "y": 18,
-        "pages": [
-            { # Cut grass
-                "graphic": {"tileId": 2},
-                "through": True,
-                "list": [
-                    {"code": 122, "parameters": [5,5,1,0,1]}, # GVL_5 +=1
-                    {"code": 101, "parameters": []},
-                    {"code": 401, "parameters": ["Vous avez coupe l'herbe"]},
-                    {"code": 123, "parameters": ["A", 0]} # Turn Self Switch 'A' ON
-                ]
-            },
-            # Plow the field
-            { # (Condition: Self Switch 'A' is ON)
-                "conditions": {"selfSwitchCh": "A", "selfSwitchValid": True},
-                "graphic": { "tileId": 6 },
-                "through": True,
-                "list": [
-                    {"code": 122, "parameters": [6,6,1,0,1]}, # GVL_6 +=1
-                    {"code": 101, "parameters": []},
-                    {"code": 401, "parameters": ["La terre est retournee"]},
-                    {"code": 123, "parameters": ["B",0]} # Turn Self Switch 'B' ON
-                ]
-            },
-            # Plant seed
-            {
-                "conditions": {"selfSwitchCh": "B", "selfSwitchValid": True},
-                "graphic": {"tileId": 6},
-                "through": True,
-                "list": [
-                    {"code": 101, "parameters": []},
-                    {"code": 401, "parameters": ["Que faire avec cette terre ?"]},
-                    {"code": 102, "parameters": [["Patate", "Mais", "Ble", "Rien"], 3, 10]}, # Show Choices, store result in Var 10
-                
-                    {"code": 402, "indent": 0, "parameters": [0]}, # When [Potato]
-                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["Patate."]},
-                        {"code": 356, "indent": 1, "parameters": ["start_growth(2, 'potato', 20)"]},
-                        {"code": 122, "parameters": [7,7,1,0,1]}, # GVL_7 +=1
-                        {"code": 123, "parameters": ["C",0]}, # Turn Self Switch 'C' ON                
-                    {"code": 412, "indent": 0},
-                    
-                    {"code": 402, "indent": 0, "parameters": [1]}, # When [Potato]
-                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["Mais."]},
-                        {"code": 356, "indent": 1, "parameters": ["start_growth(2, 'mais', 35)"]},
-                        {"code": 122, "parameters": [7,7,1,0,1]}, # GVL_7 +=1
-                        {"code": 123, "parameters": ["C",0]}, # Turn Self Switch 'C' ON
-                    {"code": 412, "indent": 0}, # End When
-
-                    {"code": 402, "indent": 0, "parameters": [2]}, # When [Potato]
-                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["Ble."]},
-                        {"code": 356, "indent": 1, "parameters": ["start_growth(2, 'ble', 55)"]},
-                        {"code": 122, "parameters": [7,7,1,0,1]}, # GVL_7 +=1
-                        {"code": 123, "parameters": ["C",0]}, # Turn Self Switch 'C' ON
-                    {"code": 412, "indent": 0}, # End When
-
-                    {"code": 402, "indent": 0, "parameters": [3]}, # When [**]
-                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["Ne rien faire..."]},
-                        # {"code": 356, "indent": 1, "parameters": ["start_growth(4, 'corn', 45)"]},
-                    {"code": 412, "indent": 0}, # End When
-                ]
-            },
-            # Wait for harvest
-            {
-                "conditions": {"selfSwitchCh": "C", "selfSwitchValid": True},
-                "graphic": {"tileId": 100},
-                "through": True,
-                "list": [
-                    # {"code": 101, "parameters": []},
-                    # {"code": 401, "parameters": ["Silence ! Ca pousse..."]},
-                    {"code": 356, "parameters": ["check_field(2)"]}
-                ]
-            },
-            # Harvestable
-            {
-                "conditions": {"selfSwitchCh": "D", "selfSwitchValid": True},
-                "graphic": {"tileId": 96},
-                "through": True,
-                "list": [
-                    {"code": 101, "parameters": []},
-                    {"code": 401, "parameters": ["Pret a la recolte !"]},
-                    {"code": 102, "parameters": [["Recolter", "Attendre"], 1, 10]}, # Show Choices, store result in Var 10
-                
-                    {"code": 402, "indent": 0, "parameters": [0]}, # When [Recolter]
-                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["La recolte est bonne !"]},
-                        {"code": 356, "parameters": ["check_field(2)"]},
-                        {"code": 122, "parameters": [8,8,1,0,1]}, # GVL_8 +=1
-                    {"code": 412, "indent": 0},
-                    
-                    {"code": 402, "indent": 0, "parameters": [1]}, # When [Attendre]
-                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["La recolte attends."]},
-                    {"code": 412, "indent": 0}, # End When
-                ]
-            }
+            "conditions": {"selfSwitchCh": "B", "selfSwitchValid": True},
+            "graphic": {"tileId": 101},
+            "list": [
+                {"code": 101, "parameters": ["ylva_ok", 0, 0, 2]},
+                {"code": 401, "parameters": ["On y vas ?"]},
+                {"code": 401, "parameters": ["Ou tu preferes rester"]},
+                {"code": 401, "parameters": ["plante ici ? Hihi-"]},
+            ]
+        }
         ]
     }
 }
@@ -351,25 +246,25 @@ for i, (x, y) in enumerate([(7, 18), (7, 17), (4,15), (3,15), (4,14), (4,13), (3
                     {"code": 401, "parameters": ["Que faire avec cette terre ?"]},
                     {"code": 102, "parameters": [["Patate", "Mais", "Ble", "Rien"], 3, 10]}, # Show Choices, store result in Var 10
                 
-                    {"code": 402, "indent": 0, "parameters": [0]}, # When [Potato]
+                    {"code": 402, "indent": 0, "parameters": [0]}, # When [Patate]
                         {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["Patate."]},
                         {"code": 356, "indent": 1, "parameters": [f"start_growth({evt_id}, 'potato', 20)"]},
-                        {"code": 122, "parameters": [7,7,1,0,1]}, # GVL_7 +=1
-                        {"code": 123, "parameters": ["C",0]}, # Turn Self Switch 'C' ON                
+                        {"code": 122, "indent": 1, "parameters": [7,7,1,0,1]}, # GVL_7 +=1
+                        {"code": 123, "indent": 1, "parameters": ["C",0]}, # Turn Self Switch 'C' ON                
                     {"code": 412, "indent": 0},
                     
-                    {"code": 402, "indent": 0, "parameters": [1]}, # When [Potato]
+                    {"code": 402, "indent": 0, "parameters": [1]}, # When [Mais]
                         {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["Mais."]},
                         {"code": 356, "indent": 1, "parameters": [f"start_growth({evt_id}, 'mais', 35)"]},
-                        {"code": 122, "parameters": [7,7,1,0,1]}, # GVL_7 +=1
-                        {"code": 123, "parameters": ["C",0]}, # Turn Self Switch 'C' ON
+                        {"code": 122, "indent": 1, "parameters": [7,7,1,0,1]}, # GVL_7 +=1
+                        {"code": 123, "indent": 1, "parameters": ["C",0]}, # Turn Self Switch 'C' ON
                     {"code": 412, "indent": 0}, # End When
 
-                    {"code": 402, "indent": 0, "parameters": [2]}, # When [Potato]
+                    {"code": 402, "indent": 0, "parameters": [2]}, # When [Ble]
                         {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["Ble."]},
                         {"code": 356, "indent": 1, "parameters": [f"start_growth({evt_id}, 'ble', 55)"]},
-                        {"code": 122, "parameters": [7,7,1,0,1]}, # GVL_7 +=1
-                        {"code": 123, "parameters": ["C",0]}, # Turn Self Switch 'C' ON
+                        {"code": 122, "indent": 1, "parameters": [7,7,1,0,1]}, # GVL_7 +=1
+                        {"code": 123, "indent": 1, "parameters": ["C",0]}, # Turn Self Switch 'C' ON
                     {"code": 412, "indent": 0}, # End When
 
                     {"code": 402, "indent": 0, "parameters": [3]}, # When [**]
@@ -401,8 +296,8 @@ for i, (x, y) in enumerate([(7, 18), (7, 17), (4,15), (3,15), (4,14), (4,13), (3
                 
                     {"code": 402, "indent": 0, "parameters": [0]}, # When [Recolter]
                         {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["La recolte est bonne !"]},
-                        {"code": 356, "parameters": [f"check_field({evt_id})"]},
-                        {"code": 122, "parameters": [8,8,1,0,1]}, # GVL_8 +=1
+                        {"code": 356, "indent": 1, "parameters": [f"check_field({evt_id})"]},
+                        {"code": 122, "indent": 1, "parameters": [8,8,1,0,1]}, # GVL_8 +=1
                     {"code": 412, "indent": 0},
                     
                     {"code": 402, "indent": 0, "parameters": [1]}, # When [Attendre]

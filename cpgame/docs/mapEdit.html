@@ -40,6 +40,7 @@
             --activity-bar-width: 48px;
             --sidebar-width: 280px;
             --panel-padding: 20px;
+            --safe-margin: 96px;
             --border-radius-sm: 4px;
             --border-radius: 6px;
             --border-radius-lg: 8px;
@@ -209,6 +210,7 @@
             position: relative;
             display: flex;
             flex-direction: column;
+            overflow: auto;
         }
 
         /* Canvas Container */
@@ -217,8 +219,15 @@
             overflow: auto;
             background: var(--bg-tertiary);
             display: flex;
-            align-items: center;
-            justify-content: center;
+            align-items: flex-start;
+            justify-content: flex-start;
+            position: relative;
+        }
+
+        .canvas-wrapper {
+            padding: var(--safe-margin);
+            display: inline-block;
+            position: relative;
         }
 
         #tilemap-canvas {
@@ -227,6 +236,39 @@
             image-rendering: pixelated;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
+        }
+
+        /* Selection Overlay */
+        .selection-overlay {
+            position: absolute;
+            pointer-events: none;
+            z-index: 10;
+            top: var(--safe-margin);
+            left: var(--safe-margin);
+        }
+
+        .selection-rect {
+            position: absolute;
+            border: 2px solid #ff0000;
+            box-sizing: border-box;
+        }
+
+        .hover-rect {
+            position: absolute;
+            border: 1px solid #00ffff;
+            box-sizing: border-box;
+        }
+
+        .area-rect {
+            position: absolute;
+            border: 2px solid #00ff00;
+            box-sizing: border-box;
+        }
+
+        .cursor-rect {
+            position: absolute;
+            border: 1px solid #60a5fa;
+            box-sizing: border-box;
         }
 
         /* Panels */
@@ -688,6 +730,18 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--border-secondary);
         }
+
+        /* Tile ID Display */
+        .tile-id-display {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 100;
+        }
     </style>
 </head>
 <body>
@@ -752,7 +806,10 @@
         <!-- Main Content -->
         <div class="main-content">
             <div class="canvas-container">
-                <canvas id="tilemap-canvas" width="640" height="400"></canvas>
+                <div class="canvas-wrapper">
+                    <canvas id="tilemap-canvas" width="640" height="400"></canvas>
+                    <div class="selection-overlay" id="selection-overlay"></div>
+                </div>
             </div>
             <div class="status-bar">
                 <div class="status-item">Position: <span id="cursor-position">0, 0</span></div>
@@ -879,12 +936,16 @@
             selectedPosition: { x: 0, y: 0 },
             isDrawing: false,
             areaStart: null,
-            areaEnd: null
+            areaEnd: null,
+            hoveredTile: null,
+            lastHoveredTile: null,
+            lastSelectedPosition: { x: -1, y: -1 }
         };
 
         // Canvas and context
         const canvas = document.getElementById('tilemap-canvas');
         const ctx = canvas.getContext('2d');
+        const selectionOverlay = document.getElementById('selection-overlay');
 
         // Tileset image
         const tileset = new Image();
@@ -950,7 +1011,7 @@
                     state.isDrawing = true;
                     state.selectedPosition = { x, y };
                     document.getElementById('cursor-position').textContent = `${x}, ${y}`;
-                    renderMap(); // Re-render to show selection
+                    updateSelectionOverlay();
                     
                     if (state.currentTool === 'place') {
                         placeTile(x, y);
@@ -962,8 +1023,6 @@
                     // Handle event placement/editing
                     state.selectedPosition = { x, y };
                     document.getElementById('cursor-position').textContent = `${x}, ${y}`;
-                    // document.getElementById('selected-position-label').textContent = `${x}, ${y}`;
-                    renderMap(); // Re-render to show selection
                     
                     const posKey = `${x},${y}`;
                     if (state.events[posKey]) {
@@ -998,24 +1057,39 @@
             
             if (x >= 0 && x < state.mapWidth && y >= 0 && y < state.mapHeight) {
                 // Update cursor position display only for tiles mode
-                if (state.currentPanel === 'tiles') {
+                if (state.currentPanel === 'tiles' || state.currentPanel === 'events') {
                     document.getElementById('cursor-position').textContent = `${x}, ${y}`;
                     
-                    if (state.isDrawing) {
+                    if (state.isDrawing && state.currentPanel === 'tiles') {
                         if (state.currentTool === 'brush') {
                             state.selectedPosition = { x, y };
                             placeTile(x, y);
                         } else if (state.currentTool === 'area') {
                             state.areaEnd = { x, y };
-                            renderMap();
+                            updateSelectionOverlay();
                         }
                     } else {
                         // Update selection position for tiles
-                        state.selectedPosition = { x, y };
-                        renderMap(); // Re-render to show new selection
+                        state.hoveredTile = { x, y };
+                        
+                        // Only update overlay if the hovered tile or selected position changed
+                        if (state.lastHoveredTile?.x !== x || state.lastHoveredTile?.y !== y || 
+                            state.lastSelectedPosition.x !== state.selectedPosition.x || 
+                            state.lastSelectedPosition.y !== state.selectedPosition.y) {
+                            
+                            updateSelectionOverlay();
+                            state.lastHoveredTile = { x, y };
+                            state.lastSelectedPosition = { ...state.selectedPosition };
+                        }
                     }
                 }
             }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            state.hoveredTile = null;
+            state.lastHoveredTile = null;
+            updateSelectionOverlay();
         });
 
         canvas.addEventListener('mouseup', () => {
@@ -1030,12 +1104,13 @@
                     for (let x = startX; x <= endX; x++) {
                         const index = y * state.mapWidth + x;
                         state.mapData[index] = state.selectedTile;
+                        redrawTile(x, y);
                     }
                 }
                 
                 state.areaStart = null;
                 state.areaEnd = null;
-                renderMap();
+                updateSelectionOverlay();
                 updateExportData();
             }
             
@@ -1046,7 +1121,7 @@
         function placeTile(x, y) {
             const index = y * state.mapWidth + x;
             state.mapData[index] = state.selectedTile;
-            renderMap();
+            redrawTile(x, y);
             updateExportData();
         }
 
@@ -1088,7 +1163,7 @@
                     };
                     updateEventList();
                     updateExportData();
-                    renderMap(); // Re-render to show new event
+                    redrawTile(state.selectedPosition.x, state.selectedPosition.y);
                 }
             }
             
@@ -1107,7 +1182,7 @@
                     updateExportData();
                     document.getElementById('edit-event').disabled = true;
                     document.getElementById('remove-event').disabled = true;
-                    renderMap(); // Re-render to remove event indicator
+                    redrawTile(state.selectedPosition.x, state.selectedPosition.y);
                 }
             }
             
@@ -1255,8 +1330,6 @@
                     });
                 } else if (state.currentPanel === 'events') {
                     document.getElementById('cursor-position').textContent = `${state.selectedPosition.x}, ${state.selectedPosition.y}`;
-                    // document.getElementById('selected-position-label').textContent = 
-                    //     `${state.selectedPosition.x}, ${state.selectedPosition.y}`;
                     updateEventList();
                 } else if (state.currentPanel === 'export') {
                     updateExportData();
@@ -1271,6 +1344,7 @@
             canvas.height = newHeight;
             document.getElementById('zoom-level').textContent = `${state.zoomLevel}x`;
             renderMap();
+            updateSelectionOverlay();
         }
 
         function renderMap() {
@@ -1292,32 +1366,112 @@
                 drawEvent(x, y, event.pages[0].graphic.tileId);
             });
             
-            // Draw area selection
+            // Update selection overlay
+            updateSelectionOverlay();
+        }
+
+        // Redraw only a specific tile
+        function redrawTile(x, y) {
+            if (x < 0 || x >= state.mapWidth || y < 0 || y >= state.mapHeight) return;
+            
+            const tileId = state.mapData[y * state.mapWidth + x];
+            drawTile(x, y, tileId);
+            
+            // Redraw event if present
+            const posKey = `${x},${y}`;
+            if (state.events[posKey]) {
+                drawEvent(x, y, state.events[posKey].pages[0].graphic.tileId);
+            }
+        }
+
+        // Update the selection overlay (hover, selected, area)
+        function updateSelectionOverlay() {
+            // Clear previous overlay
+            selectionOverlay.innerHTML = '';
+            
+            // Add area selection if active
             if (state.areaStart && state.areaEnd) {
                 const startX = Math.min(state.areaStart.x, state.areaEnd.x);
                 const endX = Math.max(state.areaStart.x, state.areaEnd.x);
                 const startY = Math.min(state.areaStart.y, state.areaEnd.y);
                 const endY = Math.max(state.areaStart.y, state.areaEnd.y);
                 
-                ctx.strokeStyle = '#00ff00';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(
-                    startX * state.tileSize * state.zoomLevel,
-                    startY * state.tileSize * state.zoomLevel,
-                    (endX - startX + 1) * state.tileSize * state.zoomLevel,
-                    (endY - startY + 1) * state.tileSize * state.zoomLevel
-                );
+                const areaRect = document.createElement('div');
+                areaRect.className = 'area-rect';
+                areaRect.style.left = `${startX * state.tileSize * state.zoomLevel}px`;
+                areaRect.style.top = `${startY * state.tileSize * state.zoomLevel}px`;
+                areaRect.style.width = `${(endX - startX + 1) * state.tileSize * state.zoomLevel}px`;
+                areaRect.style.height = `${(endY - startY + 1) * state.tileSize * state.zoomLevel}px`;
+                selectionOverlay.appendChild(areaRect);
             }
             
-            // Highlight selected position
-            ctx.strokeStyle = '#ff0000';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(
-                state.selectedPosition.x * state.tileSize * state.zoomLevel,
-                state.selectedPosition.y * state.tileSize * state.zoomLevel,
-                state.tileSize * state.zoomLevel,
-                state.tileSize * state.zoomLevel
-            );
+            // Add selected position highlight
+            if (state.selectedPosition.x >= 0 && state.selectedPosition.y >= 0) {
+                const { x, y } = state.selectedPosition;
+                const selectedRect = document.createElement('div');
+                selectedRect.className = 'selection-rect';
+                selectedRect.style.left = `${x * state.tileSize * state.zoomLevel}px`;
+                selectedRect.style.top = `${y * state.tileSize * state.zoomLevel}px`;
+                selectedRect.style.width = `${state.tileSize * state.zoomLevel}px`;
+                selectedRect.style.height = `${state.tileSize * state.zoomLevel}px`;
+                selectionOverlay.appendChild(selectedRect);
+            }
+            
+            // Add hovered tile highlight
+            if (state.hoveredTile) {
+                const { x, y } = state.hoveredTile;
+                const hoverRect = document.createElement('div');
+                hoverRect.className = 'hover-rect';
+                hoverRect.style.left = `${x * state.tileSize * state.zoomLevel}px`;
+                hoverRect.style.top = `${y * state.tileSize * state.zoomLevel}px`;
+                hoverRect.style.width = `${state.tileSize * state.zoomLevel}px`;
+                hoverRect.style.height = `${state.tileSize * state.zoomLevel}px`;
+                selectionOverlay.appendChild(hoverRect);
+            }
+            
+            // Show tile ID or event name display
+            if ((state.currentPanel === 'tiles' && state.currentTool === 'place' && state.hoveredTile) ||
+                (state.currentPanel === 'events' && state.hoveredTile)) {
+                
+                const { x, y } = state.hoveredTile;
+                let displayText = '';
+                
+                if (state.currentPanel === 'tiles') {
+                    const tileId = state.mapData[y * state.mapWidth + x];
+                    displayText = `ID: ${tileId}`;
+                } else if (state.currentPanel === 'events') {
+                    const posKey = `${x},${y}`;
+                    if (state.events[posKey]) {
+                        displayText = state.events[posKey].name;
+                    } else {
+                        displayText = `(${x}, ${y})`;
+                    }
+                }
+                
+                // Create tile ID display element
+                let tileIdDisplay = document.getElementById('tile-id-display');
+                if (!tileIdDisplay) {
+                    tileIdDisplay = document.createElement('div');
+                    tileIdDisplay.id = 'tile-id-display';
+                    tileIdDisplay.className = 'tile-id-display';
+                    document.body.appendChild(tileIdDisplay);
+                }
+                
+                // Position the display near the cursor
+                const rect = canvas.getBoundingClientRect();
+                const displayX = rect.left + (x + 1) * state.tileSize * state.zoomLevel;
+                const displayY = rect.top + y * state.tileSize * state.zoomLevel;
+                
+                tileIdDisplay.textContent = displayText;
+                tileIdDisplay.style.left = `${displayX}px`;
+                tileIdDisplay.style.top = `${displayY - 20}px`;
+                tileIdDisplay.style.display = 'block';
+            } else {
+                const tileIdDisplay = document.getElementById('tile-id-display');
+                if (tileIdDisplay) {
+                    tileIdDisplay.style.display = 'none';
+                }
+            }
         }
 
         function drawTile(x, y, tileId) {
@@ -1447,12 +1601,12 @@
                     state.selectedPosition = { x, y };
                     state.selectedEvent = event;
                     document.getElementById('cursor-position').textContent = `${x}, ${y}`;
-                    // document.getElementById('selected-position-label').textContent = `${x}, ${y}`;
                     document.querySelectorAll('.event-item').forEach(item => item.classList.remove('active'));
                     eventItem.classList.add('active');
                     document.getElementById('edit-event').disabled = false;
                     document.getElementById('remove-event').disabled = false;
-                    renderMap(); // Re-render to show selection
+                    redrawTile(x, y);
+                    updateSelectionOverlay();
                 });
                 
                 eventList.appendChild(eventItem);
@@ -1566,7 +1720,7 @@
                 // Update UI
                 updateEventList();
                 updateExportData();
-                renderMap();
+                redrawTile(state.selectedEvent.x, state.selectedEvent.y);
                 
                 // Close dialog
                 document.body.removeChild(overlay);
@@ -2138,7 +2292,14 @@
                 exportStr += `        "id": ${event.id},\n`;
                 exportStr += `        "name": "${event.name}",\n`;
                 exportStr += `        "x": ${event.x}, "y": ${event.y},\n`;
-                exportStr += `        "pages": [${JSON.stringify(event.pages[0])}]\n`;
+                exportStr += `        "pages": [\n`;
+                event.pages.forEach((page, pageIndex) => {
+                    exportStr += `            ${JSON.stringify(page)}`;
+                    if (pageIndex < event.pages.length - 1) {
+                        exportStr += ',\n';
+                    }
+                });
+                exportStr += `\n        ]\n`;
                 exportStr += '    }';
                 if (index < eventKeys.length - 1) {
                     exportStr += ',\n';
