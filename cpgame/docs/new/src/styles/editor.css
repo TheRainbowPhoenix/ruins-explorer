@@ -572,6 +572,33 @@ body {
     gap: 8px;
 }
 
+.dialog.dialog-large {
+    width: 900px; /* Increased width for two columns */
+}
+
+.dialog-content-split {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.dialog-column-left {
+    width: 300px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dialog-column-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
 /* Page Editor */
 .page-editor {
     display: flex;

@@ -46,64 +46,61 @@ export const canvasSize = derived(
 // Actions
 export const actions = {
     resizeMap(newWidth, newHeight) {
-        mapWidth.update(oldWidth => {
-            mapHeight.update(oldHeight => {
-                mapData.update(oldData => {
-                    const newData = Array(newWidth * newHeight).fill(1);
-                    
-                    // Copy old data to new map (crop or expand)
-                    for (let y = 0; y < Math.min(oldHeight, newHeight); y++) {
-                        for (let x = 0; x < Math.min(oldWidth, newWidth); x++) {
-                            const oldIndex = y * oldWidth + x;
-                            const newIndex = y * newWidth + x;
-                            newData[newIndex] = oldData[oldIndex];
-                        }
-                    }
-                    return newData;
-                });
-                
-                // Update events (remove events that are now out of bounds)
-                events.update(oldEvents => {
-                    const newEvents = {};
-                    Object.keys(oldEvents).forEach(posKey => {
-                        const [x, y] = posKey.split(',').map(Number);
-                        if (x < newWidth && y < newHeight) {
-                            newEvents[posKey] = oldEvents[posKey];
-                        }
-                    });
-                    return newEvents;
-                });
-                
-                return newHeight;
+        const oldWidth = get(mapWidth);
+        const oldHeight = get(mapHeight);
+        const oldData = get(mapData);
+
+        const newData = Array(newWidth * newHeight).fill(0);
+        
+        // Copy old data to new map (crop or expand)
+        for (let y = 0; y < Math.min(oldHeight, newHeight); y++) {
+            for (let x = 0; x < Math.min(oldWidth, newWidth); x++) {
+                const oldIndex = y * oldWidth + x;
+                const newIndex = y * newWidth + x;
+                newData[newIndex] = oldData[oldIndex];
+            }
+        }
+        
+        mapWidth.set(newWidth);
+        mapHeight.set(newHeight);
+        mapData.set(newData);
+        
+        // Update events (remove events that are now out of bounds)
+        events.update(oldEvents => {
+            const newEvents = {};
+            Object.keys(oldEvents).forEach(posKey => {
+                const [x, y] = posKey.split(',').map(Number);
+                if (x < newWidth && y < newHeight) {
+                    newEvents[posKey] = oldEvents[posKey];
+                }
             });
-            return newWidth;
+            return newEvents;
         });
     },
 
     placeTile(x, y, tileId) {
         mapData.update(data => {
+            const width = get(mapWidth);
             const newData = [...data];
-            const index = y * 14 + x; // Will need to make this dynamic
-            newData[index] = tileId;
+            const index = y * width + x;
+            if (index >= 0 && index < newData.length) {
+                newData[index] = tileId;
+            }
             return newData;
         });
     },
 
     fillMap(tileId) {
-        mapData.update(() => {
-            let width = 0;
-            let height = 0;
-            mapWidth.subscribe(w => width = w)();
-            mapHeight.subscribe(h => height = h)();
-            return Array(width * height).fill(tileId);
-        });
+        const width = get(mapWidth);
+        const height = get(mapHeight);
+        mapData.set(Array(width * height).fill(tileId));
     },
 
     addEvent(x, y) {
         events.update(currentEvents => {
             const posKey = `${x},${y}`;
             if (!currentEvents[posKey]) {
-                currentEvents[posKey] = {
+                const newEvent = {
                     id: Object.keys(currentEvents).length + 1,
                     name: `Event ${Object.keys(currentEvents).length + 1}`,
                     x: x,
@@ -113,9 +110,23 @@ export const actions = {
                         list: []
                     }]
                 };
+                currentEvents[posKey] = newEvent;
+                selectedEvent.set(newEvent);
             }
             return currentEvents;
         });
+    },
+    
+    updateEvent(eventData) {
+        events.update(currentEvents => {
+            const posKey = `${eventData.x},${eventData.y}`;
+            currentEvents[posKey] = eventData;
+            return currentEvents;
+        });
+        const currentSelected = get(selectedEvent);
+        if (currentSelected && currentSelected.id === eventData.id) {
+            selectedEvent.set(eventData);
+        }
     },
 
     removeEvent(x, y) {

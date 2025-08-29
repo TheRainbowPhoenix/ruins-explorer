@@ -1,42 +1,38 @@
-<script>
+<script lang='ts'>
     import { onMount } from 'svelte';
     import { 
         mapData, mapWidth, mapHeight, tileSize, zoomLevel, canvasSize,
         selectedTile, currentTool, currentPanel, selectedPosition, 
-        isDrawing, areaStart, areaEnd, hoveredTile, lastHoveredTile, 
-        lastSelectedPosition, events, selectedEvent, actions 
+        isDrawing, areaStart, areaEnd, hoveredTile, events, 
+        selectedEvent, actions, tooltip
     } from '../store.js';
     import StatusBar from './StatusBar.svelte';
     import ZoomControls from './ZoomControls.svelte';
 
-    let canvas;
+    let canvas: HTMLCanvasElement;
     let ctx;
     let selectionOverlay;
     let tileset = new Image();
-    
+
+    // ensure renderMap() is called with the latest data after Svelte's update cycle.
+    $: if (canvas) renderMap($canvasSize, $mapData, $events);
+
     onMount(() => {
         ctx = canvas.getContext('2d');
         tileset.src = 'jrpg.png';
         
         tileset.onload = () => {
-            renderMap();
+            renderMap($canvasSize, $mapData, $events);
         };
 
         // Subscribe to reactive updates
         const unsubscribes = [
-            canvasSize.subscribe(size => {
-                if (canvas) {
-                    canvas.width = size.width;
-                    canvas.height = size.height;
-                    renderMap();
-                }
-            }),
-            mapData.subscribe(() => renderMap()),
-            zoomLevel.subscribe(() => renderMap()),
+            canvasSize.subscribe(updateSelectionOverlay),
             hoveredTile.subscribe(updateSelectionOverlay),
             selectedPosition.subscribe(updateSelectionOverlay),
             areaStart.subscribe(updateSelectionOverlay),
             areaEnd.subscribe(updateSelectionOverlay)
+
         ];
 
         return () => {
@@ -51,35 +47,22 @@
         const y = Math.floor((e.clientY - rect.top) / ($tileSize * $zoomLevel));
         
         if (x >= 0 && x < $mapWidth && y >= 0 && y < $mapHeight) {
+            selectedPosition.set({ x, y });
             if ($currentPanel === 'tiles') {
                 isDrawing.set(true);
-                selectedPosition.set({ x, y });
                 
                 if ($currentTool === 'place') {
-                    placeTile(x, y);
+                    // Place tile immediately on mousedown
+                    actions.placeTile(x, y, $selectedTile);
+                } else if ($currentTool === 'brush') {
+                    actions.placeTile(x, y, $selectedTile);
                 } else if ($currentTool === 'area') {
                     areaStart.set({ x, y });
                     areaEnd.set({ x, y });
                 }
             } else if ($currentPanel === 'events') {
-                selectedPosition.set({ x, y });
-                
                 const posKey = `${x},${y}`;
-                if ($events[posKey]) {
-                    selectedEvent.set($events[posKey]);
-                } else {
-                    const newEvent = {
-                        id: Object.keys($events).length + 1,
-                        name: `Event ${Object.keys($events).length + 1}`,
-                        x: x,
-                        y: y,
-                        pages: [{
-                            graphic: { tileId: 0 },
-                            list: []
-                        }]
-                    };
-                    selectedEvent.set(newEvent);
-                }
+                selectedEvent.set($events[posKey] || null);
             }
         }
     }
@@ -90,37 +73,45 @@
         const y = Math.floor((e.clientY - rect.top) / ($tileSize * $zoomLevel));
         
         if (x >= 0 && x < $mapWidth && y >= 0 && y < $mapHeight) {
-            if ($currentPanel === 'tiles' || $currentPanel === 'events') {
-                if ($isDrawing && $currentPanel === 'tiles') {
-                    if ($currentTool === 'brush') {
-                        selectedPosition.set({ x, y });
-                        placeTile(x, y);
-                    } else if ($currentTool === 'area') {
-                        areaEnd.set({ x, y });
-                    }
-                } else {
-                    hoveredTile.set({ x, y });
-                    
-                    if ($lastHoveredTile?.x !== x || $lastHoveredTile?.y !== y || 
-                        $lastSelectedPosition.x !== $selectedPosition.x || 
-                        $lastSelectedPosition.y !== $selectedPosition.y) {
-                        
-                        lastHoveredTile.set({ x, y });
-                        lastSelectedPosition.set({ ...$selectedPosition });
-                    }
+            hoveredTile.set({ x, y });
+            if ($currentPanel === 'tiles' && $isDrawing) {
+                if ($currentTool === 'brush') {
+                    actions.placeTile(x, y, $selectedTile);
+                } else if ($currentTool === 'area') {
+                    areaEnd.set({ x, y });
                 }
             }
+            
+            // Tooltip Logic
+            let displayText = '';
+            if ($currentPanel === 'tiles') {
+                const tileId = $mapData[y * $mapWidth + x];
+                displayText = `ID: ${tileId}`;
+            } else if ($currentPanel === 'events') {
+                const posKey = `${x},${y}`;
+                displayText = $events[posKey] ? $events[posKey].name : `(${x}, ${y})`;
+            }
+            
+            tooltip.set({
+                visible: true,
+                content: displayText,
+                x: e.clientX + 15,
+                y: e.clientY
+            });
+
+        } else {
+            hoveredTile.set(null);
+            tooltip.set({ visible: false, content: '', x: 0, y: 0 });
         }
     }
 
     function handleMouseLeave() {
         hoveredTile.set(null);
-        lastHoveredTile.set(null);
+        tooltip.set({ visible: false, content: '', x: 0, y: 0 });
     }
 
     function handleMouseUp() {
-        if ($isDrawing && $currentTool === 'area' && $areaStart) {
-            // Fill the area
+        if ($isDrawing && $currentTool === 'area' && $areaStart && $areaEnd) {
             const startX = Math.min($areaStart.x, $areaEnd.x);
             const endX = Math.max($areaStart.x, $areaEnd.x);
             const startY = Math.min($areaStart.y, $areaEnd.y);
@@ -140,91 +131,65 @@
             areaStart.set(null);
             areaEnd.set(null);
         }
-        
         isDrawing.set(false);
     }
 
-    function placeTile(x, y) {
-        mapData.update(data => {
-            const newData = [...data];
-            const index = y * $mapWidth + x;
-            newData[index] = $selectedTile;
-            return newData;
-        });
-    }
-
-    function renderMap() {
-        if (!ctx || !tileset.complete) return;
+    function renderMap(size, data, evts) {
+        if (!ctx || !tileset.complete || !canvas || !size || !data || !evts) return;
         
-        // Clear canvas
+        canvas.width = size.width;
+        canvas.height = size.height;
+        
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Draw map tiles
         for (let y = 0; y < $mapHeight; y++) {
             for (let x = 0; x < $mapWidth; x++) {
-                const tileId = $mapData[y * $mapWidth + x];
-                drawTile(x, y, tileId);
+                const tileId = data[y * $mapWidth + x];
+                if (tileId !== undefined) drawTile(x, y, tileId);
             }
         }
         
-        // Draw events
-        Object.keys($events).forEach(posKey => {
-            const [x, y] = posKey.split(',').map(Number);
-            const event = $events[posKey];
-            drawEvent(x, y, event.pages[0].graphic.tileId);
+        Object.values(evts).forEach(event => {
+            if (event?.pages?.length > 0) {
+                 drawEvent(event.x, event.y, event.pages[0].graphic.tileId);
+            }
         });
     }
 
     function drawTile(x, y, tileId) {
-        if (!ctx || !tileset.complete) return;
-
+        if (tileId < 0) return;
         const tilesPerRow = Math.floor(tileset.width / $tileSize);
         const srcX = (tileId % tilesPerRow) * $tileSize;
         const srcY = Math.floor(tileId / tilesPerRow) * $tileSize;
         
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(
-            tileset,
-            srcX, srcY, $tileSize, $tileSize,
+            tileset, srcX, srcY, $tileSize, $tileSize,
             x * $tileSize * $zoomLevel, y * $tileSize * $zoomLevel,
             $tileSize * $zoomLevel, $tileSize * $zoomLevel
         );
     }
 
     function drawEvent(x, y, tileId) {
-        const tilesPerRow = Math.floor(tileset.width / $tileSize);
-        const srcX = (tileId % tilesPerRow) * $tileSize;
-        const srcY = Math.floor(tileId / tilesPerRow) * $tileSize;
-        
-        // Draw semi-transparent black background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.fillRect(
             x * $tileSize * $zoomLevel,
             y * $tileSize * $zoomLevel,
             $tileSize * $zoomLevel,
             $tileSize * $zoomLevel
         );
-        
-        // Draw event graphic
-        ctx.save();
+        // Draw the event graphic on top of the overlay
+        const originalAlpha = ctx.globalAlpha;
         ctx.globalAlpha = 0.8;
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(
-            tileset,
-            srcX, srcY, $tileSize, $tileSize,
-            x * $tileSize * $zoomLevel, y * $tileSize * $zoomLevel,
-            $tileSize * $zoomLevel, $tileSize * $zoomLevel
-        );
-        ctx.restore();
+        drawTile(x, y, tileId);
+        ctx.globalAlpha = originalAlpha;
     }
 
     function updateSelectionOverlay() {
         if (!selectionOverlay) return;
         
-        // Clear previous overlay
         selectionOverlay.innerHTML = '';
         
-        // Add area selection if active
         if ($areaStart && $areaEnd) {
             const startX = Math.min($areaStart.x, $areaEnd.x);
             const endX = Math.max($areaStart.x, $areaEnd.x);
@@ -240,8 +205,7 @@
             selectionOverlay.appendChild(areaRect);
         }
         
-        // Add selected position highlight
-        if ($selectedPosition.x >= 0 && $selectedPosition.y >= 0) {
+        if ($selectedPosition?.x >= 0 && $selectedPosition?.y >= 0) {
             const { x, y } = $selectedPosition;
             const selectedRect = document.createElement('div');
             selectedRect.className = 'selection-rect';
@@ -272,8 +236,6 @@
             <canvas 
                 bind:this={canvas}
                 id="tilemap-canvas" 
-                width={$canvasSize.width} 
-                height={$canvasSize.height}
                 on:mousedown={handleMouseDown}
                 on:mousemove={handleMouseMove}
                 on:mouseleave={handleMouseLeave}

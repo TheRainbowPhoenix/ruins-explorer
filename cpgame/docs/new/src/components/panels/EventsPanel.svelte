@@ -1,18 +1,25 @@
 <script>
-    import { events, selectedEvent, selectedPosition, actions } from '../../store.js';
+    import { events, selectedEvent, selectedPosition, actions, isEventEditorOpen } from '../../store.js';
+    import EventEditorDialog from '../dialogs/EventEditorDialog.svelte';
 
     function addEvent() {
-        actions.addEvent($selectedPosition.x, $selectedPosition.y);
+        // Prevent adding an event on top of an existing one
+        const posKey = `${$selectedPosition.x},${$selectedPosition.y}`;
+        if (!$events[posKey]) {
+            actions.addEvent($selectedPosition.x, $selectedPosition.y);
+        }
     }
 
     function editEvent() {
         if ($selectedEvent) {
-            showEventEditorDialog();
+            isEventEditorOpen.set(true);
         }
     }
 
     function removeEvent() {
-        actions.removeEvent($selectedPosition.x, $selectedPosition.y);
+        if ($selectedEvent) {
+            actions.removeEvent($selectedEvent.x, $selectedEvent.y);
+        }
     }
 
     function selectEvent(event) {
@@ -20,25 +27,24 @@
         selectedPosition.set({ x: event.x, y: event.y });
     }
 
-    function showEventEditorDialog() {
-        // This would open a modal dialog - placeholder for now
-        console.log('Event editor dialog would open here');
-    }
+    $: eventList = Object.values($events);
+    $: canAddEvent = $events[`${$selectedPosition.x},${$selectedPosition.y}`] === undefined;
 
-    $: eventList = Object.keys($events).map(posKey => {
-        const [x, y] = posKey.split(',').map(Number);
-        return { ...($events)[posKey], posKey };
-    });
 </script>
+
+{#if $isEventEditorOpen && $selectedEvent}
+    <EventEditorDialog event={$selectedEvent} />
+{/if}
 
 <div class="form-group">
     <label class="form-label">Event List</label>
     <div class="event-list">
-        {#each eventList as event}
+        {#each eventList as event (event.id)}
             <div 
                 class="event-item" 
-                class:active={$selectedPosition.x === event.x && $selectedPosition.y === event.y}
+                class:active={$selectedEvent && $selectedEvent.id === event.id}
                 on:click={() => selectEvent(event)}
+                on:dblclick={editEvent}
             >
                 <div><strong>{event.name}</strong></div>
                 <div>Position: {event.x}, {event.y}</div>
@@ -48,19 +54,11 @@
 </div>
 
 <div class="form-group">
-    <button class="btn btn-primary" on:click={addEvent}>Add Event</button>
-    <button 
-        class="btn btn-secondary" 
-        disabled={!$selectedEvent}
-        on:click={editEvent}
-    >
+    <button class="btn btn-primary" on:click={addEvent} disabled={!canAddEvent}>Add Event Here</button>
+    <button class="btn btn-secondary" disabled={!$selectedEvent} on:click={editEvent}>
         Edit Event
     </button>
-    <button 
-        class="btn btn-danger" 
-        disabled={!$selectedEvent}
-        on:click={removeEvent}
-    >
+    <button class="btn btn-danger" disabled={!$selectedEvent} on:click={removeEvent}>
         Remove Event
     </button>
 </div>

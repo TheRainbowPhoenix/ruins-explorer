@@ -1,16 +1,42 @@
 <script>
-    import { onMount } from 'svelte';
+    import { onMount, afterUpdate } from 'svelte';
     import { currentTool, selectedTile, actions, tileSize } from '../../store.js';
 
     let tileset = new Image();
     let tilesetLoaded = false;
+    let previewCanvas;
 
     onMount(() => {
         tileset.src = 'jrpg.png';
         tileset.onload = () => {
             tilesetLoaded = true;
+            drawPreview();
         };
     });
+
+    afterUpdate(() => {
+        if (tilesetLoaded) {
+            drawPreview();
+        }
+    });
+
+    function drawPreview() {
+        if (!previewCanvas) return;
+        const ctx = previewCanvas.getContext('2d');
+        const tile = $selectedTile;
+        
+        const tilesPerRow = Math.floor(tileset.width / $tileSize);
+        const srcX = (tile % tilesPerRow) * $tileSize;
+        const srcY = Math.floor(tile / tilesPerRow) * $tileSize;
+
+        ctx.clearRect(0, 0, 64, 64);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(
+            tileset,
+            srcX, srcY, $tileSize, $tileSize,
+            0, 0, 64, 64
+        );
+    }
 
     function selectMode(mode) {
         currentTool.set(mode);
@@ -28,25 +54,13 @@
 <div class="form-group">
     <label class="form-label">Drawing Mode</label>
     <div class="mode-selector">
-        <div 
-            class="mode-btn" 
-            class:active={$currentTool === 'place'}
-            on:click={() => selectMode('place')}
-        >
+        <div class="mode-btn" class:active={$currentTool === 'place'} on:click={() => selectMode('place')}>
             Place
         </div>
-        <div 
-            class="mode-btn" 
-            class:active={$currentTool === 'brush'}
-            on:click={() => selectMode('brush')}
-        >
+        <div class="mode-btn" class:active={$currentTool === 'brush'} on:click={() => selectMode('brush')}>
             Brush
         </div>
-        <div 
-            class="mode-btn" 
-            class:active={$currentTool === 'area'}
-            on:click={() => selectMode('area')}
-        >
+        <div class="mode-btn" class:active={$currentTool === 'area'} on:click={() => selectMode('area')}>
             Area
         </div>
     </div>
@@ -56,7 +70,7 @@
     <label class="form-label">Selected Tile</label>
     <div id="selected-tile-preview" style="width: 64px; height: 64px; border: 2px solid var(--border-primary); background: var(--bg-tertiary); image-rendering: pixelated;">
         {#if tilesetLoaded}
-            <canvas width="64" height="64" style="width: 64px; height: 64px;"></canvas>
+            <canvas bind:this={previewCanvas} width="64" height="64"></canvas>
         {/if}
     </div>
 </div>
