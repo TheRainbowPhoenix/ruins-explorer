@@ -107,3 +107,44 @@ class GamePlayer(GameCharacter):
             JRPG.objects.map.setup(self.new_map_id)
             self.moveto(self.new_x, self.new_y)
             self.clear_transfer_info()
+
+    def region_id(self) -> int:
+        return 0 # TODO
+    
+    def make_encounter_troop_id(self) -> int:
+        """
+        Calculates and returns a troop ID based on the current map's
+        encounter list and region ID.
+        """
+        from cpgame.systems.jrpg import JRPG
+        
+        if not JRPG.objects or not JRPG.objects.map:
+            return 0
+        
+        encounter_list = JRPG.objects.map.encounter_list()
+        if not encounter_list:
+            return 0
+
+        # Filter encounters by the player's current region
+        valid_encounters = [
+            enc for enc in encounter_list 
+            if not enc.get('regionSet') or self.region_id() in enc.get('regionSet', [])
+        ]
+        
+        if not valid_encounters:
+            return 0
+
+        # Calculate total weight of valid encounters
+        total_weight = sum(enc.get('weight', 0) for enc in valid_encounters)
+        if total_weight <= 0:
+            return 0
+            
+        # Select a random encounter based on weight
+        import random
+        value = random.randint(0, total_weight - 1)
+        for encounter in valid_encounters:
+            value -= encounter.get('weight', 0)
+            if value < 0:
+                return encounter.get('troopId', 0)
+        
+        return 0

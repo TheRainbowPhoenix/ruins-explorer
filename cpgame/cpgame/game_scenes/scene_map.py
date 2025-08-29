@@ -188,7 +188,8 @@ class SceneMap(SceneBase):
     def destroy(self):
         """Called when this scene is being replaced. Unloads assets."""
         log("SceneMap: Destroying...")
-        self.assets.unload('jrpg')
+        self.assets.unload('jrpg') # self.map.tileset_id
+        for w in self._windows: w.destroy()
         self._windows.clear()
         self.dirty_tiles.clear()
         gc.collect()

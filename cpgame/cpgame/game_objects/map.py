@@ -134,6 +134,20 @@ class GameMap:
         
         tile = self.tile_id(x, y)
         return tile not in tileset.solid
+    
+    def encounter_list(self) -> List[Dict]:
+        """Gets the encounter list for the current map."""
+        return self._get_property('encounterList', [])
+
+    def region_id(self, x: int, y: int) -> int:
+        """Gets the region ID for a specific coordinate."""
+        # This assumes region data is stored in the 4th layer of the map data array
+        data = self._get_property('data')
+        # TODO: 
+        # if data and 0 <= x < self.width and 0 <= y < self.height:
+        #     # RPG Maker stores region ID in the upper 8 bits of the 4th layer tile
+        #     return (data[y * self.width + x + (self.width * self.height * 3)] >> 8) & 0xFF
+        return 0
 
 class GameMapFULL_TODO:
     """

@@ -36,8 +36,18 @@
             case 122: return `Control Variables: V[${p(0, 1)}-${p(1, 1)}] ...`;
             case 123: return `Control Self Switch: ${String.fromCharCode(65 + p(0, 0))} = ${p(1, 0) === 0 ? 'ON' : 'OFF'}`;
             case 124: return `Control Timer: ${p(0, 0) === 0 ? 'Start' : 'Stop'} (${p(1, 60)}s)`;
+            case 125: return `Change Gold: ${p(0, 0) === 0 ? 'Increase' : 'Decrease'} by ${p(1, 0) === 1 ? `V[${p(2,0)}]` : p(2,0)}`;
+            case 126: return `Change Items: [ID ${p(0,1)}] ${p(1, 0) === 0 ? 'Increase' : 'Decrease'} by ${p(2, 0) === 1 ? `V[${p(3,0)}]` : p(3,0)}`;
+            case 127: return `Change Weapons: [ID ${p(0,1)}] ${p(1, 0) === 0 ? 'Increase' : 'Decrease'} by ${p(2, 0) === 1 ? `V[${p(3,0)}]` : p(3,0)}`;
+            case 128: return `Change Armors: [ID ${p(0,1)}] ${p(1, 0) === 0 ? 'Increase' : 'Decrease'} by ${p(2, 0) === 1 ? `V[${p(3,0)}]` : p(3,0)}`;
             case 201: return `Transfer Player: Map ${p(1, 1)}, (${p(2, 0)}, ${p(3, 0)})`;
-            case 301: return `Battle Processing: Enemy ID ${p(1, 1)}`;
+            case 301: {
+                const designation = p(0, 0) === 0 ? `Troop ID ${p(1, 1)}` : `Variable V[${p(1, 1)}]`;
+                const flags = [];
+                if (p(2, true)) flags.push('Can Escape');
+                if (p(3, false)) flags.push('Can Lose');
+                return `◆ Battle: ${designation}${flags.length > 0 ? ` (${flags.join(', ')})` : ''}`;
+            };
             case 302: return `Shop Processing`;
             case 303: return `Name Input: Actor ${p(0, 1)} (${p(1, 8)} chars)`;
             case 356: return `Plugin Command: ${p(0, '')}`;
@@ -53,14 +63,32 @@
 </script>
 
 <div class="command-list">
+    <!-- Insert bar for the very first item -->
+    <div class="command-item">
+        <div class="insert-bar" on:click={() => dispatch('add-here', { index: 0 })}></div>
+    </div>
+
     {#each commands as command, index}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="command-item" on:dblclick={() => dispatch('edit', index)}>
+            {#if ![401].includes(command.code)}
+                <div class="insert-bar" on:click={() => dispatch('add-here', { index })}></div>
+            {/if}
             <div class="indent-lines">
                 {#each Array(command.indent || 0) as _}<span class="indent-line"></span>{/each}
             </div>
             <div class="command-content">
                 {@html formatCommand(command)}
+            </div>
+            <div class="command-item-actions">
+                <!-- svelte-ignore a11y_consider_explicit_label -->
+                <button title="Edit Command" class="command-action-btn" on:click={() => dispatch('edit', index)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </button>
+                <!-- svelte-ignore a11y_consider_explicit_label -->
+                <button title="Delete Command" class="command-action-btn" on:click={() => dispatch('delete', index)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
             </div>
         </div>
 

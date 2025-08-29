@@ -3,7 +3,7 @@ from gint import *
 import random
 from cpgame.game_objects.actor import GameBattler
 from cpgame.game_scenes._scenes_base import SceneBase
-from cpgame.systems.jrpg import JRPG
+from cpgame.systems.jrpg import JRPG, BATTLE_RESULT_WIN, BATTLE_RESULT_ESCAPE, BATTLE_RESULT_LOSE
 from cpgame.engine.logger import log
 
 # --- Layout Constants ---
@@ -15,9 +15,12 @@ C_YELLOW = 0b00000_111111_11111
 class SceneBattle(SceneBase):
     """A lightweight, turn-based battle scene with action minigames."""
     
-    def __init__(self, game, enemy_id):
+    def __init__(self, game, **kwargs):
         super().__init__(game)
-        self._enemy_id = enemy_id
+        self._enemy_id = kwargs.get('enemy_id')
+        self._can_escape = kwargs.get('can_escape', True)
+        self._battle_end_callback = kwargs.get('battle_end_callback')
+        self._result_variable_id = kwargs.get('result_var_id')
         
         # --- State Machine ---
         # States: START, PLAYER_TURN, PLAYER_ACTION, ENEMY_TURN, MINIGAME, WIN, LOSE
@@ -113,6 +116,22 @@ class SceneBattle(SceneBase):
 
     # --- State Updates ---
 
+    def _end_battle(self, result: int):
+        """Common cleanup logic for ending the battle."""
+        log("Battle ended with result:", result)
+        if self._battle_end_callback:
+            self._battle_end_callback(result)
+        
+        if self._result_variable_id is not None and JRPG.objects:
+            JRPG.objects.variables[self._result_variable_id] = result
+    
+        # Return to the previous scene (the map)
+        # self.game.return_scene()
+        if JRPG.game:
+            self.draw_loading_screen()
+            from cpgame.game_scenes.scene_map import SceneMap
+            JRPG.game.change_scene(SceneMap)
+
     def update_player_command_selection(self):
         if self.input.up: self._command_index = max(0, self._command_index - 1)
         if self.input.down: self._command_index = min(2, self._command_index + 1)
@@ -124,10 +143,7 @@ class SceneBattle(SceneBase):
                 # For now, guard just skips turn
                 self._state = "ENEMY_TURN"
             elif self._command_index == 2: # Flee
-                if JRPG.game:
-                    self.draw_loading_screen()
-                    from cpgame.game_scenes.scene_map import SceneMap
-                    JRPG.game.change_scene(SceneMap)
+                self._end_battle(BATTLE_RESULT_ESCAPE)
 
     def update_minigame(self, dt):
         self._minigame_timer += int(dt * 1000)
@@ -452,23 +468,13 @@ class SceneBattle(SceneBase):
         """Handle victory state - wait for input then return to previous scene"""
         if self.input.interact:
             log("Battle won! Returning to previous scene.")
-            from cpgame.game_scenes.scene_map import SceneMap
-            # Here you might want to give rewards, experience, etc.
-            if JRPG.game:
-                    self.draw_loading_screen()
-                    from cpgame.game_scenes.scene_map import SceneMap
-                    JRPG.game.change_scene(SceneMap)
+            self._end_battle(BATTLE_RESULT_WIN)
 
     def handle_defeat(self):
         """Handle defeat state - wait for input then return to previous scene"""
         if self.input.interact:
             log("Battle lost! Returning to previous scene.")
-            # Here you might want to handle game over logic
-            from cpgame.game_scenes.scene_map import SceneMap
-            if JRPG.game:
-                    self.draw_loading_screen()
-                    from cpgame.game_scenes.scene_map import SceneMap
-                    JRPG.game.change_scene(SceneMap)
+            self._end_battle(BATTLE_RESULT_LOSE)
 
     # --- Drawing ---
 

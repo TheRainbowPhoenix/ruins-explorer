@@ -96,3 +96,5 @@ class WindowHUD:
     def handle_input(self, input_manager): pass
 
     def handle_touch(self, x, y): pass
+
+    def destroy(self): pass

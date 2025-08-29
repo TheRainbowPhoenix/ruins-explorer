@@ -1,7 +1,7 @@
 # cpgame/game_objects/interpreter.py
 # An interpreter for executing event command lists.
 
-from cpgame.systems.jrpg import JRPG
+from cpgame.systems.jrpg import JRPG, BATTLE_RESULT_LOSE
 from cpgame.engine.logger import log
 
 try:
@@ -90,9 +90,8 @@ class GameInterpreter:
         elif self._wait_mode == "scene_pop":
             # TODO: The wait ends when the current scene is NO LONGER a shop scene.
             # This is a bit of a hack; a better system might use callbacks.
-            from cpgame.game_scenes.shop_scene import SceneShop
             if JRPG.game:
-                waiting = isinstance(JRPG.game.scenes[-1], SceneShop)
+                waiting = JRPG.game.scenes[-1].__class__.__name__ != 'SceneMap'
         
         # Add other wait modes:
         # elif self._wait_mode == "transfer":
@@ -131,6 +130,10 @@ class GameInterpreter:
         elif code == 122: self.command_122(params); return True # Control Variables
         elif code == 123: self.command_123(params); return True # Control Self Switch
         elif code == 124: self.command_124(params); return True # Control Timer
+        elif code == 125: self.command_125(params); return True # Change Gold
+        elif code == 126: self.command_126(params); return True # Change Items
+        elif code == 127: self.command_127(params); return True # Change Weapons
+        elif code == 128: self.command_128(params); return True # Change Armor
         elif code == 201: self.command_201(params); return False # Transfer Player
         elif code == 301: self.command_301(params); return True # Battle
         elif code == 302: self.command_302(params); return True # Shop
@@ -157,6 +160,12 @@ class GameInterpreter:
             for ev in JRPG.objects.map.events.values():
                 if ev.id == target_id:
                     return ev
+    
+    def _operate_value(self, operation: int, operand_type: int, operand: int) -> int:
+        """Calculates the value for gain/loss commands."""
+        value = self._get_value_from_operand(operand_type, operand)
+        return value if operation == 0 else -value
+
         
     
     # --- Command Implementations ---
@@ -335,6 +344,39 @@ class GameInterpreter:
                 JRPG.objects.timer.start(seconds)
             else:  # Stop
                 JRPG.objects.timer.stop()
+    
+    def command_125(self, params: List[Any]):
+        """Change Gold"""
+        value = self._operate_value(params[0], params[1], params[2])
+        if JRPG.objects:
+            JRPG.objects.party.gain_gold(value)
+
+    def _change_item(self, item_id: int, category: str, params: List[Any]):
+        """Generic helper for changing items, weapons, and armors."""
+        if not JRPG.objects or not JRPG.data: return
+        
+        value = self._operate_value(params[1], params[2], params[3])
+        data_proxy = getattr(JRPG.data, category)
+        
+        with data_proxy.load(item_id) as item_data:
+            if item_data:
+                JRPG.objects.party.gain_item(item_data, value)
+                log("Party items changed: {} x {} ({})".format(item_data.name, value, category))
+
+    def command_126(self, params: List[Any]):
+        """Change Items"""
+        item_id = params[0]
+        self._change_item(item_id, 'items', params)
+
+    def command_127(self, params: List[Any]):
+        """Change Weapons"""
+        item_id = params[0]
+        self._change_item(item_id, 'weapons', params)
+
+    def command_128(self, params: List[Any]):
+        """Change Armor"""
+        item_id = params[0]
+        self._change_item(item_id, 'armors', params)
 
     def command_201(self, params: List[Any]):
         """Transfer Player"""
@@ -350,13 +392,53 @@ class GameInterpreter:
         """Battle Processing"""
         from cpgame.game_scenes.scene_battle import SceneBattle
         
-        # In a full game, params[0] would determine how to find the troop_id.
-        # For now, we'll assume direct designation.
-        enemy_id = params[1] # Using enemy ID directly instead of troop ID for simplicity
+        if not JRPG.game or not JRPG.objects: return
 
-        if JRPG.game:
-            # We use call_scene to push the battle on top of the map
-            JRPG.game.call_scene(SceneBattle, enemy_id=enemy_id)
+        # params[0]: Troop designation type (0=direct, 1=variable, 2=map)
+        # params[1]: Troop/Enemy ID or Variable ID
+        # params[2]: Can Escape flag
+        # params[3]: Lose handler branch
+        # params[4]: Variable ID to store the result
+
+        troop_id = 0
+        designation_type = params[0]
+
+        if designation_type == 0:  # Direct Designation
+            troop_id = params[1]
+        elif designation_type == 1:  # Variable Designation
+            troop_id = JRPG.objects.variables[params[1]]
+        else:  # Map Designation
+            troop_id = JRPG.objects.player.make_encounter_troop_id()
+        
+        if troop_id > 0:
+            can_escape = params[2]
+            can_lose = params[3]
+            result_var_id = params[4] if len(params) > 4 else None
+
+            # --- Branching Logic for "Can Lose" ---
+            # The callback will set the interpreter's branch based on the outcome.
+            def battle_end_callback(result: int):
+                if result_var_id is not None and JRPG.objects and JRPG.objects.variables:
+                    JRPG.objects.variables.set(result_var_id, result)
+                
+                # If the player lost AND the battle was set so "Can Lose",
+                # the event script continues down the normal path.
+                # Otherwise (win or escape), it skips the "Else" branch.
+                # if result == BATTLE_RESULT_LOSE and can_lose:
+                #     self._branch[self._indent] = True # Don't skip
+                # else:
+                #     self._branch[self._indent] = False # Skip the "Lose" branch
+            
+            # TODO: For simplicity, we still use the enemy_id directly for now, as we haven't implemented troop data files yet.
+            enemy_id = troop_id # HACK: Assume troop_id 1 contains enemy_id 1
+
+            JRPG.game.call_scene(
+                SceneBattle, 
+                enemy_id=enemy_id, 
+                can_escape=can_escape,
+                battle_end_callback=battle_end_callback,
+                result_var_id=result_var_id
+            )
             self._wait_mode = "scene_pop"
 
 

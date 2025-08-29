@@ -1,6 +1,18 @@
 <script>
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount } from 'svelte';
     const dispatch = createEventDispatcher();
+    let dialogElement;
+
+    onMount(() => {
+        dialogElement?.focus();
+    });
+
+    function handleKeydown(e) {
+        if (e.key === 'Escape') {
+            e.stopPropagation();
+            dispatch('close');
+        }
+    }
 
     const commandGroups = {
         "Message": [
@@ -22,9 +34,15 @@
             { name: "Control Self Switch", code: 123, params: [0, 0] },
             { name: "Control Timer", code: 124, params: [0, 60] }
         ],
+        "Party": [
+            { name: "Change Gold", code: 125, params: [0, 0, 100] },
+            { name: "Change Items", code: 126, params: [1, 0, 0, 1] },
+            { name: "Change Weapons", code: 127, params: [1, 0, 0, 1] },
+            { name: "Change Armors", code: 128, params: [1, 0, 0, 1] }
+        ],
         "Scene": [
             { name: "Transfer Player", code: 201, params: [0, 1, 0, 0] },
-            { name: "Battle Processing", code: 301, params: [0, 1] },
+            { name: "Battle Processing", code: 301, params: [0, 1, true, false, 10] },
             { name: "Shop Processing", code: 302, params: [0, 1, 0, 0, false] }
         ],
         "Map": [
@@ -41,8 +59,8 @@
     }
 </script>
 
-<div class="dialog-overlay" on:click={() => dispatch('close')}>
-    <div class="dialog dialog-large" on:click|stopPropagation>
+<div class="dialog-overlay" on:click|self={() => dispatch('close')} on:keydown={handleKeydown}>
+    <div class="dialog dialog-large" bind:this={dialogElement} tabindex="-1" on:click|stopPropagation>
         <div class="dialog-header">
             <span>Add Command</span>
             <button class="btn btn-secondary" on:click={() => dispatch('close')}>✕</button>

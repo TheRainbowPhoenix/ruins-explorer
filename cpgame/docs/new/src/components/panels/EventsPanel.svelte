@@ -36,29 +36,55 @@
     <EventEditorDialog event={$selectedEvent} />
 {/if}
 
-<div class="form-group">
-    <label class="form-label">Event List</label>
-    <div class="event-list">
-        {#each eventList as event (event.id)}
-            <div 
-                class="event-item" 
-                class:active={$selectedEvent && $selectedEvent.id === event.id}
-                on:click={() => selectEvent(event)}
-                on:dblclick={editEvent}
-            >
-                <div><strong>{event.name}</strong></div>
-                <div>Position: {event.x}, {event.y}</div>
-            </div>
-        {/each}
+<div class="events-group">
+
+    <div class="form-group ev-list">
+        <label class="form-label">Event List</label>
+        <div class="event-list">
+            {#each eventList as event (event.id)}
+                <div 
+                    class="event-item" 
+                    class:active={$selectedEvent && $selectedEvent.id === event.id}
+                    on:click={() => selectEvent(event)}
+                    on:dblclick={editEvent}
+                >
+                    <div><strong>{event.name}</strong></div>
+                    <div>Position: {event.x}, {event.y}</div>
+                </div>
+            {/each}
+        </div>
+    </div>
+
+    <div class="form-group fixed-bot">
+        <button class="btn btn-primary" on:click={addEvent} disabled={!canAddEvent}>Add Event Here</button>
+        <button class="btn btn-secondary" disabled={!$selectedEvent} on:click={editEvent}>
+            Edit Event
+        </button>
+        <button class="btn btn-danger" disabled={!$selectedEvent} on:click={removeEvent}>
+            Remove Event
+        </button>
     </div>
 </div>
 
-<div class="form-group">
-    <button class="btn btn-primary" on:click={addEvent} disabled={!canAddEvent}>Add Event Here</button>
-    <button class="btn btn-secondary" disabled={!$selectedEvent} on:click={editEvent}>
-        Edit Event
-    </button>
-    <button class="btn btn-danger" disabled={!$selectedEvent} on:click={removeEvent}>
-        Remove Event
-    </button>
-</div>
+<style>
+    .events-group {
+        display: flex;
+        align-items: stretch;
+        flex-direction: column;
+        overflow: hidden;
+        align-content: center;
+        justify-content: center;
+        flex: 1 1 auto;
+    }
+
+    .events-group .ev-list {
+        display: flex;
+        flex: 1 1 auto;
+        overflow: auto;
+    }
+
+    .events-group .fixed-bot {
+        display: flex;
+        flex: 0 0 auto;
+    }
+</style>

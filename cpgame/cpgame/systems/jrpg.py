@@ -12,6 +12,12 @@ try:
 except:
     pass
 
+from micropython import const
+
+BATTLE_RESULT_WIN = const(1)
+BATTLE_RESULT_ESCAPE = const(2)
+BATTLE_RESULT_LOSE = const(3)
+
 class JRPG:
     """
     A static class that holds references to all active JRPG subsystems.

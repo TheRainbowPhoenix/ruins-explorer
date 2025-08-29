@@ -1,5 +1,13 @@
 <script>
     import { createEventDispatcher, onMount } from 'svelte';
+    let dialogElement;
+
+    function handleKeydown(e) {
+        if (e.key === 'Escape') {
+            e.stopPropagation();
+            dispatch('close');
+        }
+    }
     export let command;
     
     let localCommand = JSON.parse(JSON.stringify(command));
@@ -23,6 +31,9 @@
     let loaded = false;
 
     onMount(() => {
+        
+        dialogElement?.focus();
+
         const defaults = {
             101: ['', 0],
             102: [[], -2, null],
@@ -32,8 +43,12 @@
             122: [1, 1, 0, 0, 0], // start, end, op, operand_type, val
             123: [0, 0],
             124: [0, 60],
+            125: [0, 0, 0],
+            126: [1, 0, 0, 1],
+            127: [1, 0, 0, 1],
+            128: [1, 0, 0, 1],
             201: [0, 1, 0, 0],
-            301: [0, 1], 
+            301: [0, 1, true, false, 10], 
             303: [1, 8], 
             356: [''],
             401: [''],
@@ -71,8 +86,8 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="dialog-overlay" on:click={() => dispatch('close')}>
-    <div class="dialog" on:click|stopPropagation>
+<div class="dialog-overlay" on:click|self={() => dispatch('close')} on:keydown={handleKeydown}>
+    <div class="dialog" bind:this={dialogElement} tabindex="-1" on:click|stopPropagation>
         <div class="dialog-header">
             <span>Edit Command</span>
             <button class="btn btn-secondary" on:click={() => dispatch('close')}>✕</button>
@@ -247,6 +262,55 @@
                         <input type="number" class="form-input" bind:value={localCommand.parameters[1]}>
                     </div>
                 {/if}
+            {:else if localCommand.code === 125}
+                <div class="form-group">
+                    <label>Operation</label>
+                    <select class="form-select" bind:value={localCommand.parameters[0]}>
+                        <option value={0}>Increase</option>
+                        <option value={1}>Decrease</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Operand</label>
+                    <select class="form-select" bind:value={localCommand.parameters[1]}>
+                        <option value={0}>Constant</option>
+                        <option value={1}>Variable</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>{localCommand.parameters[1] === 0 ? 'Amount' : 'Variable ID'}</label>
+                    <input type="number" class="form-input" bind:value={localCommand.parameters[2]}>
+                </div>
+            {:else if [126, 127, 128].includes(localCommand.code)}
+                {@const itemType = {126: 'Item', 127: 'Weapon', 128: 'Armor'}[localCommand.code]}
+                
+                <div class="form-group">
+                    <label>{itemType} ID</label>
+                    <input type="number" class="form-input" bind:value={localCommand.parameters[0]}>
+                </div>
+                
+                <div class="form-group">
+                    <label>Operation</label>
+                    <select class="form-select" bind:value={localCommand.parameters[1]}>
+                        <option value={0}>Increase</option>
+                        <option value={1}>Decrease</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Operand</label>
+                    <select class="form-select" bind:value={localCommand.parameters[2]}>
+                        <option value={0}>Constant</option>
+                        <option value={1}>Variable</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>{localCommand.parameters[2] === 0 ? 'Amount' : 'Variable ID'}</label>
+                    <input type="number" class="form-input" bind:value={localCommand.parameters[3]}>
+                </div>
             {:else if localCommand.code === 201}
                 <div class="form-group">
 					<label class="form-label">Map ID</label>
@@ -263,8 +327,33 @@
                 </div>
             {:else if localCommand.code === 301}
                 <div class="form-group">
-                    <label>Enemy ID</label>
+                    <label>Troop Designation</label>
+                    <select class="form-select" bind:value={localCommand.parameters[0]}>
+                        <option value={0}>Direct</option>
+                        <option value={1}>Variable</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>{localCommand.parameters[0] === 0 ? 'Troop ID' : 'Variable ID'}</label>
                     <input type="number" class="form-input" bind:value={localCommand.parameters[1]}>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" bind:checked={localCommand.parameters[2]}> Can Escape
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" bind:checked={localCommand.parameters[3]}> Can Lose
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label>Store Result in Variable ID (0=None)</label>
+                    <input type="number" class="form-input" bind:value={localCommand.parameters[4]}>
                 </div>
             {:else if localCommand.code === 303}
                 <div class="form-group">

@@ -1,5 +1,13 @@
 <script>
     import { createEventDispatcher, onMount } from 'svelte';
+    let dialogElement;
+
+    function handleKeydown(e) {
+        if (e.key === 'Escape') {
+            e.stopPropagation();
+            dispatch('close');
+        }
+    }
     export let conditions = {};
 
     const dispatch = createEventDispatcher();
@@ -9,6 +17,8 @@
 
     // Ensure all possible condition properties exist on the local object for reliable binding
     onMount(() => {
+        dialogElement?.focus();
+
         localConditions.switch1Valid = localConditions.switch1Valid || false;
         localConditions.switch1Id = localConditions.switch1Id || 1;
         localConditions.switch2Valid = localConditions.switch2Valid || false;
@@ -34,8 +44,8 @@
     }
 </script>
 
-<div class="dialog-overlay" on:click={() => dispatch('close')}>
-    <div class="dialog" on:click|stopPropagation>
+<div class="dialog-overlay" on:click|self={() => dispatch('close')} on:keydown={handleKeydown}>
+    <div class="dialog" bind:this={dialogElement} tabindex="-1" on:click|stopPropagation>
         <div class="dialog-header">
             <span>Edit Page Conditions</span>
             <button class="btn btn-secondary" on:click={() => dispatch('close')}>✕</button>

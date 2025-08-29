@@ -201,6 +201,20 @@ events: dict = {
                 {"code": 401, "parameters": ["On y vas ?"]},
                 {"code": 401, "parameters": ["Ou tu preferes rester"]},
                 {"code": 401, "parameters": ["plante ici ? Hihi-"]},
+                # Transfer player to Map 4 at coordinates (7, 22)
+                {"code": 201, "parameters": [0, 4, 7, 22]}
+            ]
+        }
+        ]
+    },
+    (5,4): {
+        "id": 1,
+        "name": "TEST",
+        "x": 8, "y": 23,
+        "pages": [{ # Default / welcome user
+            "graphic":{"tileId":97},
+            "list":[
+                {"code": 201, "parameters": [0, 4, 7, 22]}
             ]
         }
         ]

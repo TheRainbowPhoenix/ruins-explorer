@@ -6,6 +6,62 @@
 
     $: exportData = generateExportData();
 
+    /**
+     * A custom formatter to pretty-print a page object with special indentation for the command list.
+     * @param {object} page The event page object.
+     * @param {string} baseIndent The base indentation string for the page object.
+     * @returns {string} A formatted string representation of the page.
+     */
+    function formatPageObject(page, baseIndent) {
+        const lines = [];
+        const innerIndent = `${baseIndent}    `;
+
+        // Helper to format the 'conditions' object specifically for Python compatibility.
+        const formatConditionsObject = (conds) => {
+            if (!conds || typeof conds !== 'object') return '{}';
+            const parts = Object.entries(conds).map(([key, value]) => {
+                let valueStr;
+                if (typeof value === 'boolean') {
+                    valueStr = value ? 'True' : 'False';
+                } else {
+                    valueStr = JSON.stringify(value); // Handles numbers and strings correctly
+                }
+                return `"${key}": ${valueStr}`;
+            });
+            return `{${parts.join(', ')}}`;
+        };
+
+        // Handle all properties except 'list'
+        const pageKeys = Object.keys(page).filter(k => k !== 'list');
+        pageKeys.forEach(key => {
+            const value = page[key];
+            let valueStr;
+
+            if (key === 'conditions') {
+                valueStr = formatConditionsObject(value);
+            } else if (typeof value === 'boolean') {
+                valueStr = value ? 'True' : 'False';
+            } else {
+                valueStr = JSON.stringify(value);
+            }
+            lines.push(`${innerIndent}"${key}": ${valueStr}`);
+        });
+
+        // Handle the 'list' property with custom, nested indentation
+        if (page.hasOwnProperty('list')) {
+            const commandLines = [];
+            const commandBaseIndent = `${innerIndent}    `;
+            page.list.forEach(command => {
+                const extraIndent = '    '.repeat(command.indent || 0);
+                commandLines.push(`${commandBaseIndent}${extraIndent}${JSON.stringify(command)}`);
+            });
+            const commandBlock = `[\n${commandLines.join(',\n')}\n${innerIndent}]`;
+            lines.push(`${innerIndent}"list": ${commandBlock}`);
+        }
+
+        return `${baseIndent}{\n${lines.join(',\n')}\n${baseIndent}}`;
+    }
+
     function generateExportData() {
         let exportStr = 'HEADER = {\n';
         exportStr += '    \'description\': \'Map Data\',\n';
@@ -17,14 +73,14 @@
         exportStr += `width = ${$mapWidth}\n`;
         exportStr += `height = ${$mapHeight}\n`;
         exportStr += `scrollType = ${$scrollType}\n`;
-        exportStr += `specifyBattleback = ${$specifyBattleback}\n\n`;
+        exportStr += `specifyBattleback = ${$specifyBattleback ? 'True' : 'False'}\n\n`;
         
         exportStr += 'data = [\n';
         for (let y = 0; y < $mapHeight; y++) {
             let rowStr = '    ';
             for (let x = 0; x < $mapWidth; x++) {
                 const index = y * $mapWidth + x;
-                rowStr += $mapData[index];
+                rowStr += $mapData[index] ?? 0;
                 if (x < $mapWidth - 1) {
                     rowStr += ', ';
                 }
@@ -47,8 +103,9 @@
             exportStr += `        "name": "${event.name}",\n`;
             exportStr += `        "x": ${event.x}, "y": ${event.y},\n`;
             exportStr += `        "pages": [\n`;
+
             event.pages.forEach((page, pageIndex) => {
-                exportStr += `            ${JSON.stringify(page)}`;
+                exportStr += formatPageObject(page, '            '); // 12 spaces for base indent
                 if (pageIndex < event.pages.length - 1) {
                     exportStr += ',\n';
                 }

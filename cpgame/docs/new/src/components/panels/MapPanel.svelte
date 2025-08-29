@@ -1,7 +1,7 @@
 <script>
     import { displayName, mapWidth, mapHeight, tilesetId, actions } from '../../store.js';
 
-    let localDisplayName = $displayName;
+    // let localDisplayName = $displayName;
     let localWidth = $mapWidth;
     let localHeight = $mapHeight;
     let localTilesetId = $tilesetId;
@@ -9,7 +9,7 @@
     function resizeMap() {
         if (localWidth > 0 && localHeight > 0) {
             actions.resizeMap(localWidth, localHeight);
-            displayName.set(localDisplayName);
+            // displayName.set(localDisplayName);
             tilesetId.set(localTilesetId);
         }
     }
@@ -17,7 +17,7 @@
 
 <div class="form-group">
     <label class="form-label">Display Name</label>
-    <input type="text" class="form-input" bind:value={localDisplayName}>
+    <input type="text" class="form-input" bind:value={$displayName}>
 </div>
 <div class="form-group">
     <label class="form-label">Width</label>

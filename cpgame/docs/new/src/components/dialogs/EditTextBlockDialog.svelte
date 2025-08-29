@@ -1,5 +1,13 @@
 <script>
     import { createEventDispatcher, onMount } from 'svelte';
+    let dialogElement;
+
+    function handleKeydown(e) {
+        if (e.key === 'Escape') {
+            e.stopPropagation();
+            dispatch('close');
+        }
+    }
 
     export let commandList = [];
     export let startIndex = 0;
@@ -13,6 +21,8 @@
     // This block finds the start of the text block (the 101 command)
     // and gathers all subsequent 401 commands into a single string.
     onMount(() => {
+        dialogElement?.focus();
+
         let blockStartIndex = startIndex;
         if (commandList[startIndex].code === 401) {
             for (let i = startIndex - 1; i >= 0; i--) {
@@ -64,8 +74,9 @@
 
 </script>
 
-<div class="dialog-overlay" on:click={() => dispatch('close')}>
-    <div class="dialog" on:click|stopPropagation>
+
+<div class="dialog-overlay" on:dblclick={() => dispatch('close')} on:keydown={handleKeydown}>
+    <div class="dialog" bind:this={dialogElement} tabindex="-1" on:click|stopPropagation>
         <div class="dialog-header">
             <span>Edit Text Block</span>
             <button class="btn btn-secondary" on:click={() => dispatch('close')}>✕</button>

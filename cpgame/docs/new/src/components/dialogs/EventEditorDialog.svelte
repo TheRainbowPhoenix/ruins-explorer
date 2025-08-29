@@ -115,6 +115,21 @@
         recalculateIndents();
     }
 
+    // New handler for direct deletion from the list
+    function handleDeleteRequest(e) {
+        const index = e.detail;
+        const list = currentPage.list;
+        const command = list[index];
+
+        if (command.code === 101 && list[index + 1]?.code === 401) {
+             list.splice(index, 2);
+        } else {
+             list.splice(index, 1);
+        }
+        
+        recalculateIndents();
+    }
+
     function handleAddCommandHere(e) {
         showAddCommand = { index: e.detail.index, indent: e.detail.indent };
     }
@@ -264,7 +279,7 @@
             <div class="dialog-column-right">
                 <div class="form-group">
                     <label class="form-label">Commands</label>
-                    <CommandList commands={localEvent.pages[currentPageIndex].list} on:edit={handleEditRequest} on:add-here={handleAddCommandHere}/>
+                    <CommandList commands={localEvent.pages[currentPageIndex].list} on:edit={handleEditRequest} on:add-here={handleAddCommandHere}  on:delete={handleDeleteRequest}/>
                 </div>
                 <button class="btn btn-primary" style="min-height: 32px;" on:click={() => handleAddCommandHere({ detail: { index: localEvent.pages[currentPageIndex].list.length, indent: 0 }})}>+ Add Command...</button>
                 <div style="min-height: 24px;"></div>
