@@ -31,6 +31,28 @@
             return `{${parts.join(', ')}}`;
         };
 
+        /**
+         * A new, safe formatter for individual command objects to ensure Python-style booleans.
+         */
+        const formatCommandObject = (command) => {
+            const parts = [];
+            if (command.hasOwnProperty('code')) parts.push(`"code": ${command.code}`);
+            
+            if (command.hasOwnProperty('parameters')) {
+                const formattedParams = (command.parameters || []).map(p => {
+                    if (typeof p === 'boolean') return p ? 'True' : 'False';
+                    // JSON.stringify safely handles strings, numbers, arrays, null, etc.
+                    return JSON.stringify(p);
+                });
+                parts.push(`"parameters": [${formattedParams.join(',')}]`);
+            }
+            
+            if (command.hasOwnProperty('indent')) parts.push(`"indent": ${command.indent || 0}`);
+            
+            return `{${parts.join(', ')}}`;
+        };
+
+
         // Handle all properties except 'list'
         const pageKeys = Object.keys(page).filter(k => k !== 'list');
         pageKeys.forEach(key => {
@@ -53,7 +75,7 @@
             const commandBaseIndent = `${innerIndent}    `;
             page.list.forEach(command => {
                 const extraIndent = '    '.repeat(command.indent || 0);
-                commandLines.push(`${commandBaseIndent}${extraIndent}${JSON.stringify(command)}`);
+                commandLines.push(`${commandBaseIndent}${extraIndent}${formatCommandObject(command)}`);
             });
             const commandBlock = `[\n${commandLines.join(',\n')}\n${innerIndent}]`;
             lines.push(`${innerIndent}"list": ${commandBlock}`);

@@ -86,7 +86,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="dialog-overlay" on:click|self={() => dispatch('close')} on:keydown={handleKeydown}>
+<div class="dialog-overlay" on:dblclick|self={() => dispatch('close')} on:keydown={handleKeydown}>
     <div class="dialog" bind:this={dialogElement} tabindex="-1" on:click|stopPropagation>
         <div class="dialog-header">
             <span>Edit Command</span>

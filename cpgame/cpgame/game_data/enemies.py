@@ -15,7 +15,8 @@ ENEMY_1 = {
     "exp": 5,
     # NEW: Battle-specific properties
     "attack_pattern": ["normal", "wait", "normal", "strong"],
-    "minigame_difficulty": 1 # e.g., 1=slow, 5=fast
+    "minigame_difficulty": 1, # e.g., 1=slow, 5=fast
+    "battler_name": None
 }
 
 ENEMY_2 = {
@@ -25,7 +26,8 @@ ENEMY_2 = {
     "gold": 15,
     "exp": 8,
     "attack_pattern": ["normal", "aggressive", "normal", "bite"],
-    "minigame_difficulty": 2
+    "minigame_difficulty": 2,
+    "battler_name": None
 }
 
 ENEMY_3 = {
@@ -35,7 +37,8 @@ ENEMY_3 = {
     "gold": 20,
     "exp": 12,
     "attack_pattern": ["charge", "normal", "charge", "tusk"],
-    "minigame_difficulty": 3
+    "minigame_difficulty": 3,
+    "battler_name": None
 }
 
 ENEMY_4 = {
@@ -45,7 +48,8 @@ ENEMY_4 = {
     "gold": 8,
     "exp": 6,
     "attack_pattern": ["jump", "normal", "jump", "bite"],
-    "minigame_difficulty": 2
+    "minigame_difficulty": 2,
+    "battler_name": "cabbit"
 }
 
 # Bosses 
@@ -56,7 +60,8 @@ ENEMY_5 = {
     "gold": 100,
     "exp": 50,
     "attack_pattern": ["slash", "teleport", "slash", "vorpal_strike"],
-    "minigame_difficulty": 5
+    "minigame_difficulty": 5,
+    "battler_name": "vorpal"
 }
 
 ENEMY_6 = {
@@ -66,5 +71,6 @@ ENEMY_6 = {
     "gold": 80,
     "exp": 40,
     "attack_pattern": ["moo", "beam", "moo", "alien_charge"],
-    "minigame_difficulty": 4
+    "minigame_difficulty": 4,
+    "battler_name": None
 }

@@ -89,14 +89,20 @@ events = {
     # Event at (x=12, y=22)
     (12, 22): { # Event ID 4
         "id": 4,
-        "name": "Event 4",
+        "name": "Vorpal",
         "x": 12, "y": 22,
         "pages": [
             {
                 "graphic": {"tileId":55},
                 "through": False,
                 "list": [
-
+                    {"code": 101, "parameters": ["ylva_shocked",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["C'est un gros lapin"], "indent": 0},
+                    {"code": 401, "parameters": ["Tu es sur de l'affronter ?"], "indent": 0},
+                    {"code": 102, "parameters": [["Non ! Fuir","Oui ! Bagarre !"],0,10], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
+                        {"code": 301, "parameters": [0,5,True,True,10], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0}
                 ]
             }
         ]
@@ -121,38 +127,30 @@ events = {
     # Event at (x=2, y=13)
     (2, 13): { # Event ID 6
         "id": 6,
-        "name": "Event 6",
+        "name": "Cabbit",
         "x": 2, "y": 13,
         "pages": [
             {
                 "graphic": {"tileId":55},
                 "through": False,
                 "list": [
-                    {"code":101,"parameters":["",0,0,2],"indent":0},
-                    {"code":401,"parameters":["Before battle"],"indent":0},
-                    {"code":301,"parameters":[0, 1, False, True, 10],"indent":0},
-
-                    # BATTLE_RESULT_WIN = 1
-                    # BATTLE_RESULT_ESCAPE = 2
-                    # BATTLE_RESULT_LOSE = 3
-                    
-                    # If Variable #10 == 1 (BATTLE_RESULT_WIN)
-                    {"code": 111, "parameters": [1, 10, 0, 1, 0]},
-                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["Rival: What?! I... I lost?!"]},
-                    {"code": 412}, # End If
-
-                    # If Variable #10 == 2 (BATTLE_RESULT_ESCAPE)
-                    {"code": 111, "parameters": [1, 10, 0, 2, 0]},
-                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["Trying to run away, huh ?"]},
-                    {"code": 412}, # End If
-
-                    # If Variable #10 == 3 (BATTLE_RESULT_LOSE)
-                    {"code": 111, "parameters": [1, 10, 0, 3, 0]},
-                        {"code": 101, "indent": 1}, {"code": 401, "indent": 1, "parameters": ["Rival: Hah! You're still too weak."]},
-                    {"code": 412}, # End If
-                    
-                    {"code":101,"parameters":["",0,0,2],"indent":0},
-                    {"code":401,"parameters":["After battle"],"indent":0}
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Before battle"], "indent": 0},
+                    {"code": 301, "parameters": [0,4,True,True,10], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,1,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Heh what ?"], "indent": 1},
+                        {"code": 401, "parameters": ["Eeek !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Trying to run away, huh ?"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,3,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Hah!"], "indent": 1},
+                        {"code": 401, "parameters": ["You're still too weak."], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0}
                 ]
             }
         ]
@@ -328,23 +326,23 @@ events = {
                 "graphic": {"tileId":97},
                 "through": False,
                 "list": [
-                    {"code":101,"parameters":["ylva_angry",0,0,2],"indent":0},
-                    {"code":401,"parameters":["Oh non, non, non."],"indent":0},
-                    {"code":401,"parameters":["Tu crois que c'est fini ?"],"indent":0},
-                    {"code":401,"parameters":[""],"indent":0},
-                    {"code":101,"parameters":["ylva_happy",0,0,2],"indent":0},
-                    {"code":401,"parameters":["Je t'ai laisse sortir"],"indent":0},
-                    {"code":401,"parameters":["pour chasser, pas pour"],"indent":0},
-                    {"code":401,"parameters":["flaner dans les fleurs! "],"indent":0},
-                    {"code":101,"parameters":["ylva_ok",0,0,2],"indent":0},
-                    {"code":401,"parameters":["Cinq lapins."],"indent":0},
-                    {"code":401,"parameters":["Apporte-m'en cinq."],"indent":0},
-                    {"code":101,"parameters":["",0,0,2],"indent":0},
-                    {"code":401,"parameters":["*Ylva bloque le chemin"],"indent":0},
-                    {"code":401,"parameters":["du retour.*"],"indent":0},
-                    {"code":101,"parameters":["",0,0,2],"indent":0},
-                    {"code":401,"parameters":["Objectif :"],"indent":0},
-                    {"code":401,"parameters":["Chasser 5 lapins"],"indent":0}
+                    {"code": 101, "parameters": ["ylva_angry",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Oh non, non, non."], "indent": 0},
+                    {"code": 401, "parameters": ["Tu crois que c'est fini ?"], "indent": 0},
+                    {"code": 401, "parameters": [""], "indent": 0},
+                    {"code": 101, "parameters": ["ylva_happy",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Je t'ai laisse sortir"], "indent": 0},
+                    {"code": 401, "parameters": ["pour chasser, pas pour"], "indent": 0},
+                    {"code": 401, "parameters": ["flaner dans les fleurs! "], "indent": 0},
+                    {"code": 101, "parameters": ["ylva_ok",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Cinq lapins."], "indent": 0},
+                    {"code": 401, "parameters": ["Apporte-m'en cinq."], "indent": 0},
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["*Ylva bloque le chemin"], "indent": 0},
+                    {"code": 401, "parameters": ["du retour.*"], "indent": 0},
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Objectif :"], "indent": 0},
+                    {"code": 401, "parameters": ["Chasser 5 lapins"], "indent": 0}
                 ]
             },
             {
@@ -352,31 +350,31 @@ events = {
                 "graphic": {"tileId":0},
                 "through": False,
                 "list": [
-                    {"code":101,"parameters":["ylva_ok",0,0,2],"indent":0},
-                    {"code":401,"parameters":["Hmm... Pas totalement"],"indent":0},
-                    {"code":401,"parameters":["inefficace. Pour un humain."],"indent":0},
-                    {"code":101,"parameters":["",0,0,2],"indent":0},
-                    {"code":401,"parameters":["...Merci ?"],"indent":0},
-                    {"code":101,"parameters":["ylva_happy",0,0,2],"indent":0},
-                    {"code":401,"parameters":["Tiens, en fouillant les"],"indent":0},
-                    {"code":401,"parameters":["feuilles pour toi, j'ai"],"indent":0},
-                    {"code":401,"parameters":["trouve ça."],"indent":0},
-                    {"code":101,"parameters":["",0,0,2],"indent":0},
-                    {"code":401,"parameters":["*Ylva te tend"],"indent":0},
-                    {"code":401,"parameters":["d'etranges grains.*"],"indent":0},
-                    {"code":101,"parameters":["ylva_ok",0,0,2],"indent":0},
-                    {"code":401,"parameters":["On dirait des graines..."],"indent":0},
-                    {"code":401,"parameters":["bizarres. Tu devrais"],"indent":0},
-                    {"code":401,"parameters":["les planter, pour voir ?"],"indent":0},
-                    {"code":126,"parameters":[10,0,0,1],"indent":0},
-                    {"code":101,"parameters":["ylva_angry",0,0,2],"indent":0},
-                    {"code":401,"parameters":["MAIS D'ABORD !"],"indent":0},
-                    {"code":401,"parameters":["Cinq autres lapins !"],"indent":0},
-                    {"code":401,"parameters":["La faim tenaille !"],"indent":0},
-                    {"code":101,"parameters":["",0,0,2],"indent":0},
-                    {"code":401,"parameters":["Objectif :"],"indent":0},
-                    {"code":401,"parameters":["Chasser 5 lapins"],"indent":0},
-                    {"code":401,"parameters":["de plus (10/12)"],"indent":0}
+                    {"code": 101, "parameters": ["ylva_ok",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Hmm... Pas totalement"], "indent": 0},
+                    {"code": 401, "parameters": ["inefficace. Pour un humain."], "indent": 0},
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["...Merci ?"], "indent": 0},
+                    {"code": 101, "parameters": ["ylva_happy",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Tiens, en fouillant les"], "indent": 0},
+                    {"code": 401, "parameters": ["feuilles pour toi, j'ai"], "indent": 0},
+                    {"code": 401, "parameters": ["trouve ça."], "indent": 0},
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["*Ylva te tend"], "indent": 0},
+                    {"code": 401, "parameters": ["d'etranges grains.*"], "indent": 0},
+                    {"code": 101, "parameters": ["ylva_ok",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["On dirait des graines..."], "indent": 0},
+                    {"code": 401, "parameters": ["bizarres. Tu devrais"], "indent": 0},
+                    {"code": 401, "parameters": ["les planter, pour voir ?"], "indent": 0},
+                    {"code": 126, "parameters": [10,0,0,1], "indent": 0},
+                    {"code": 101, "parameters": ["ylva_angry",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["MAIS D'ABORD !"], "indent": 0},
+                    {"code": 401, "parameters": ["Cinq autres lapins !"], "indent": 0},
+                    {"code": 401, "parameters": ["La faim tenaille !"], "indent": 0},
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Objectif :"], "indent": 0},
+                    {"code": 401, "parameters": ["Chasser 5 lapins"], "indent": 0},
+                    {"code": 401, "parameters": ["de plus (10/12)"], "indent": 0}
                 ]
             },
             {
@@ -384,22 +382,22 @@ events = {
                 "graphic": {"tileId":0},
                 "through": False,
                 "list": [
-                    {"code":101,"parameters":["ylva_ok",0,0,2],"indent":0},
-                    {"code":401,"parameters":["La harde faiblit !"],"indent":0},
-                    {"code":401,"parameters":["J'en veux encore deux."],"indent":0},
-                    {"code":101,"parameters":["ylva_happy",0,0,2],"indent":0},
-                    {"code":401,"parameters":["Les deux plus dodus,"],"indent":0},
-                    {"code":401,"parameters":["bien sur."],"indent":0},
-                    {"code":101,"parameters":["",0,0,2],"indent":0},
-                    {"code":401,"parameters":["...Ils ont tous"],"indent":0},
-                    {"code":401,"parameters":["la même taille."],"indent":0},
-                    {"code":101,"parameters":["ylva_ok",0,0,2],"indent":0},
-                    {"code":401,"parameters":["Alors trouve les deux"],"indent":0},
-                    {"code":401,"parameters":["qui *ont l'air* les"],"indent":0},
-                    {"code":401,"parameters":["plus dodus."],"indent":0},
-                    {"code":101,"parameters":["",0,0,2],"indent":0},
-                    {"code":401,"parameters":["Objectif :"],"indent":0},
-                    {"code":401,"parameters":["Chasser 2 derniers lapins"],"indent":0}
+                    {"code": 101, "parameters": ["ylva_ok",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["La harde faiblit !"], "indent": 0},
+                    {"code": 401, "parameters": ["J'en veux encore deux."], "indent": 0},
+                    {"code": 101, "parameters": ["ylva_happy",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Les deux plus dodus,"], "indent": 0},
+                    {"code": 401, "parameters": ["bien sur."], "indent": 0},
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["...Ils ont tous"], "indent": 0},
+                    {"code": 401, "parameters": ["la même taille."], "indent": 0},
+                    {"code": 101, "parameters": ["ylva_ok",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Alors trouve les deux"], "indent": 0},
+                    {"code": 401, "parameters": ["qui *ont l'air* les"], "indent": 0},
+                    {"code": 401, "parameters": ["plus dodus."], "indent": 0},
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Objectif :"], "indent": 0},
+                    {"code": 401, "parameters": ["Chasser 2 derniers lapins"], "indent": 0}
                 ]
             }
         ]

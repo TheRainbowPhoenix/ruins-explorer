@@ -5,6 +5,7 @@ from cpgame.game_objects.actor import GameBattler
 from cpgame.game_scenes._scenes_base import SceneBase
 from cpgame.systems.jrpg import JRPG, BATTLE_RESULT_WIN, BATTLE_RESULT_ESCAPE, BATTLE_RESULT_LOSE
 from cpgame.engine.logger import log
+from cpgame.modules.pakloader import PakProxy
 
 # --- Layout Constants ---
 ENEMY_AREA_H = DHEIGHT // 2
@@ -60,6 +61,7 @@ class SceneBattle(SceneBase):
             'spawn_frequency': {'min': 200, 'max': 800}  # milliseconds
         }
         self._last_spawn_time = 0
+        self._background_drawn = False
 
     def create(self):
         log("SceneBattle: Created for enemy ID", self._enemy_id)
@@ -71,6 +73,7 @@ class SceneBattle(SceneBase):
                     self.enemy._data = enemy_data # Attach data
                     self.enemy.name = enemy_data.name
                     self.enemy._param_plus = enemy_data.params
+                    self.enemy.battler_name = enemy_data.battler_name
                     # MHP, MMP, ATK, DEF, etc.
 
                     self.enemy.hp = enemy_data.params[0]
@@ -87,6 +90,7 @@ class SceneBattle(SceneBase):
             return
             
         self._state = "PLAYER_TURN"
+        self._background_drawn = False
 
     def update(self, dt):
         # self.input.update()
@@ -103,17 +107,57 @@ class SceneBattle(SceneBase):
             self.handle_defeat()
 
     def draw(self, frame_time_ms):
+
+        if not self._background_drawn:
+            self.draw_static_background()
+            self._background_drawn = True
+        
+        self.draw_dynamic_elements()
+
+    def draw_static_background(self):
+        """
+        Draws all elements that do not change during the battle.
+        This is called ONLY ONCE to avoid slow operations.
+        """
+        log("Performing one-time static draw for battle scene.")
+        
         dclear(C_BLACK)
-        self.draw_enemy_area()
+        
+        drect(0, 0, DWIDTH-1, ENEMY_AREA_H-1, C_RGB(10,10,15))
+        
+        if self.enemy and self.enemy.battler_name:
+            size = 160 if self.enemy.battler_name == 'vorpal' else 64
+            draw_x = (DWIDTH - size) // 2
+            draw_y = 70
+            clip_x_end = draw_x + size
+            
+            pak_proxy = PakProxy()
+            pak_proxy.draw_from(draw_x, draw_y, 'enemies.pak', self.enemy.battler_name, clip_x_end)
+
+    def draw_dynamic_elements(self):
+        """
+        Draws all elements that change frame-to-frame (text, cursors, minigame objects).
+        """
+        if self.enemy:
+            # Clear ONLY the area where text will be drawn to avoid erasing the sprite
+            drect(0, 20, DWIDTH - 1, 65, C_RGB(10,10,15)) # Top bar for text
+            dtext_opt(DWIDTH//2, 20, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, self.enemy.name, -1)
+            hp_text = "HP: {} / {}".format(self.enemy.hp, self.enemy.mhp)
+            dtext_opt(DWIDTH//2, 40, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, hp_text, -1)
+        
+        # --- Player Area ---
+        # Clear the entire bottom half for the player UI and minigame
+        drect(0, PLAYER_AREA_Y, DWIDTH - 1, DHEIGHT - 1, C_BLACK)
         self.draw_player_area()
 
+        # --- Conditional UI Elements ---
         if self._state == "MINIGAME":
             self.draw_minigame()
         elif self._state == "WIN":
             self.draw_victory_message()
         elif self._state == "LOSE":
             self.draw_defeat_message()
-
+        
     # --- State Updates ---
 
     def _end_battle(self, result: int):
@@ -481,9 +525,30 @@ class SceneBattle(SceneBase):
     def draw_enemy_area(self):
         drect(0, 0, DWIDTH-1, ENEMY_AREA_H-1, C_RGB(10,10,15))
         if self.enemy:
-            dtext_opt(DWIDTH//2, 50, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, self.enemy.name, -1)
+            dtext_opt(DWIDTH//2, 20, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, self.enemy.name, -1)
             hp_text = "HP: {} / {}".format(self.enemy.hp, self.enemy.mhp)
-            dtext_opt(DWIDTH//2, 80, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, hp_text, -1)
+            dtext_opt(DWIDTH//2, 40, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, hp_text, -1)
+
+            # --- Cached Sprite Drawing ---
+            # This block only runs ONCE per battle, or if a redraw is forced.
+            if not self._background_drawn and self.enemy.battler_name:
+                log("Drawing enemy sprite for the first time:", self.enemy.battler_name)
+                
+                # TODO: Placeholder sizes for assets
+                size = 160 if self.enemy.battler_name == 'vorpal' else 64
+                
+                draw_x = (DWIDTH - size) // 2
+                draw_y = 70 # Position it below the text
+                clip_x_end = draw_x + size
+
+
+                pak_proxy = PakProxy()
+                
+                # The last argument tells the proxy the max x-coordinate to draw to
+                pak_proxy.draw_from(draw_x, draw_y, 'enemies.pak', self.enemy.battler_name, clip_x_end)
+                
+                del pak_proxy
+                self._background_drawn = True
     
     def draw_player_area(self):
         if self._state == "PLAYER_TURN":
