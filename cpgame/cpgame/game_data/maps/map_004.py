@@ -354,7 +354,7 @@ events = {
             {
                 "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
                 "graphic": {"tileId":9},
-                "through": False,
+                "through": True,
                 "list": [
 
                 ]

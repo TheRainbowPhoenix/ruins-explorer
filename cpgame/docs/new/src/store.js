@@ -25,6 +25,12 @@ export const hoveredTile = writable(null);
 export const lastHoveredTile = writable(null);
 export const lastSelectedPosition = writable({ x: -1, y: -1 });
 
+// Guide Line State
+export const guidesEnabled = writable(false);
+export const guidePageWidth = writable(16);
+export const guidePageHeight = writable(24);
+export const isGuideEditorOpen = writable(false);
+
 // Dialog and Tooltip State
 export const isEventEditorOpen = writable(false);
 export const tooltip = writable({ visible: false, content: '', x: 0, y: 0 });

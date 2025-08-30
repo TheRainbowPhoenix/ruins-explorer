@@ -4,7 +4,8 @@
         mapData, mapWidth, mapHeight, tileSize, zoomLevel, canvasSize,
         selectedTile, currentTool, currentPanel, selectedPosition, 
         isDrawing, areaStart, areaEnd, hoveredTile, events, 
-        selectedEvent, actions, tooltip
+        selectedEvent, actions, tooltip,
+        guidesEnabled, guidePageWidth, guidePageHeight
     } from '../store.js';
     import StatusBar from './StatusBar.svelte';
     import ZoomControls from './ZoomControls.svelte';
@@ -13,6 +14,15 @@
     let ctx;
     let selectionOverlay;
     let tileset = new Image();
+
+    // Reactive variables to calculate the number of guides needed
+    $: numVerticalGuides = $guidesEnabled && $mapWidth > $guidePageWidth 
+        ? Math.floor(($mapWidth - 1) / $guidePageWidth) 
+        : 0;
+    $: numHorizontalGuides = $guidesEnabled && $mapHeight > $guidePageHeight 
+        ? Math.floor(($mapHeight - 1) / $guidePageHeight) 
+        : 0;
+
 
     // ensure renderMap() is called with the latest data after Svelte's update cycle.
     $: if (canvas) renderMap($canvasSize, $mapData, $events);
@@ -247,6 +257,25 @@
                 on:mouseup={handleMouseUp}
             ></canvas>
             <div class="selection-overlay" bind:this={selectionOverlay}></div>
+            {#if $guidesEnabled}
+            <div class="guide-overlay">
+                <!-- Render Vertical Guide Lines -->
+                {#each Array(numVerticalGuides) as _, i}
+                    <div 
+                        class="guide-line vertical"
+                        style="left: {(i + 1) * $guidePageWidth * $tileSize * $zoomLevel}px;"
+                    ></div>
+                {/each}
+
+                <!-- Render Horizontal Guide Lines -->
+                {#each Array(numHorizontalGuides) as _, i}
+                     <div 
+                        class="guide-line horizontal"
+                        style="top: {(i + 1) * $guidePageHeight * $tileSize * $zoomLevel}px;"
+                    ></div>
+                {/each}
+            </div>
+            {/if}
         </div>
     </div>
     <StatusBar />

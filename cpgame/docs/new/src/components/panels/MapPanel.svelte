@@ -1,5 +1,6 @@
 <script>
-    import { displayName, mapWidth, mapHeight, tilesetId, actions } from '../../store.js';
+    import { displayName, mapWidth, mapHeight, tilesetId, actions, guidesEnabled, isGuideEditorOpen } from '../../store.js';
+    import GuideEditorDialog from '../dialogs/GuideEditorDialog.svelte';
 
     // let localDisplayName = $displayName;
     let localWidth = $mapWidth;
@@ -34,3 +35,26 @@
 <div class="form-group">
     <button class="btn btn-primary" on:click={resizeMap}>Resize Map</button>
 </div>
+
+<!-- Advanced Settings Section -->
+<details>
+    <summary>Advanced Settings</summary>
+    <div class="details-content">
+        <div class="setting-row">
+            <span>
+                Enable Guides
+                <button class="btn-text" on:click={() => isGuideEditorOpen.set(true)}>Edit</button>
+            </span>
+            <label class="switch">
+                <input type="checkbox" bind:checked={$guidesEnabled}>
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+</details>
+
+
+
+{#if $isGuideEditorOpen}
+    <GuideEditorDialog on:close={() => isGuideEditorOpen.set(false)} />
+{/if}
