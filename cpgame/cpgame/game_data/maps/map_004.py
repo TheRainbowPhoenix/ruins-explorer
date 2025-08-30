@@ -57,11 +57,41 @@ events = {
     # Event at (x=9, y=3)
     (9, 3): { # Event ID 2
         "id": 2,
-        "name": "Event 2",
+        "name": "Flower Cabbit",
         "x": 9, "y": 3,
         "pages": [
             {
                 "graphic": {"tileId":55},
+                "through": False,
+                "list": [
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Vous etes venu admirer ma"], "indent": 0},
+                    {"code": 401, "parameters": ["collection de pissenlits ?"], "indent": 0},
+                    {"code": 301, "parameters": [0,4,True,True,10], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,1,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Non ! Au moins finis..."], "indent": 1},
+                        {"code": 401, "parameters": ["au sol... avec.."], "indent": 1},
+                        {"code": 401, "parameters": ["mes fleurs..."], "indent": 1},
+                        {"code": 122, "parameters": [9,9,1,0,1], "indent": 1},
+                        {"code": 123, "parameters": ["A",0], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Et n'oublies pas de mettre"], "indent": 1},
+                        {"code": 401, "parameters": ["5 etoiles a mon champ de "], "indent": 1},
+                        {"code": 401, "parameters": ["fleur sur Lapin-Maps !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,3,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["La nature reprend toujours"], "indent": 1},
+                        {"code": 401, "parameters": ["ses droits ! "], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0}
+                ]
+            },
+            {
+                "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
+                "graphic": {"tileId":9},
                 "through": False,
                 "list": [
 
@@ -73,11 +103,38 @@ events = {
     # Event at (x=18, y=9)
     (18, 9): { # Event ID 3
         "id": 3,
-        "name": "Event 3",
+        "name": "Chill Cabbit",
         "x": 18, "y": 9,
         "pages": [
             {
                 "graphic": {"tileId":55},
+                "through": False,
+                "list": [
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Oh bonjour!"], "indent": 0},
+                    {"code": 401, "parameters": ["Je n'ai plus de carottes"], "indent": 0},
+                    {"code": 401, "parameters": ["a t'offrir... "], "indent": 0},
+                    {"code": 301, "parameters": [0,4,True,True,10], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,1,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Je- rends l'ame..."], "indent": 1},
+                        {"code": 122, "parameters": [9,9,1,0,1], "indent": 1},
+                        {"code": 123, "parameters": ["A",0], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["He, tu me fais de l'ombre !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,3,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Le calme... maintenant..."], "indent": 1},
+                        {"code": 401, "parameters": ["Mes carottes !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0}
+                ]
+            },
+            {
+                "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
+                "graphic": {"tileId":9},
                 "through": False,
                 "list": [
 
@@ -111,7 +168,7 @@ events = {
     # Event at (x=18, y=21)
     (18, 21): { # Event ID 5
         "id": 5,
-        "name": "Event 5",
+        "name": "Vor-re-pal",
         "x": 18, "y": 21,
         "pages": [
             {
@@ -135,22 +192,36 @@ events = {
                 "through": False,
                 "list": [
                     {"code": 101, "parameters": ["",0,0,2], "indent": 0},
-                    {"code": 401, "parameters": ["Before battle"], "indent": 0},
+                    {"code": 401, "parameters": ["Heu. Bonjour. Vous ne"], "indent": 0},
+                    {"code": 401, "parameters": ["savez pas ou se cache"], "indent": 0},
+                    {"code": 401, "parameters": ["Ylva ? Je veux la fuir"], "indent": 0},
                     {"code": 301, "parameters": [0,4,True,True,10], "indent": 0},
                     {"code": 111, "parameters": [1,10,0,1,0,0], "indent": 0},
                         {"code": 101, "parameters": ["",0,0,2], "indent": 1},
-                        {"code": 401, "parameters": ["Heh what ?"], "indent": 1},
-                        {"code": 401, "parameters": ["Eeek !"], "indent": 1},
+                        {"code": 401, "parameters": ["Premiere sortie..."], "indent": 1},
+                        {"code": 401, "parameters": ["et je me fais..."], "indent": 1},
+                        {"code": 401, "parameters": ["devorer..."], "indent": 1},
+                        {"code": 122, "parameters": [9,9,1,0,1], "indent": 1},
+                        {"code": 123, "parameters": ["A",0], "indent": 1},
                     {"code": 412, "parameters": [], "indent": 0},
                     {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
                         {"code": 101, "parameters": ["",0,0,2], "indent": 1},
-                        {"code": 401, "parameters": ["Trying to run away, huh ?"], "indent": 1},
+                        {"code": 401, "parameters": ["Attendez ! Vous avez"], "indent": 1},
+                        {"code": 401, "parameters": ["au moins un indice non ? "], "indent": 1},
                     {"code": 412, "parameters": [], "indent": 0},
                     {"code": 111, "parameters": [1,10,0,3,0,0], "indent": 0},
                         {"code": 101, "parameters": ["",0,0,2], "indent": 1},
-                        {"code": 401, "parameters": ["Hah!"], "indent": 1},
-                        {"code": 401, "parameters": ["You're still too weak."], "indent": 1},
+                        {"code": 401, "parameters": ["Bon. Apparemment, je"], "indent": 1},
+                        {"code": 401, "parameters": ["suis bien cache ici..."], "indent": 1},
                     {"code": 412, "parameters": [], "indent": 0}
+                ]
+            },
+            {
+                "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
+                "graphic": {"tileId":9},
+                "through": False,
+                "list": [
+
                 ]
             }
         ]
@@ -159,11 +230,40 @@ events = {
     # Event at (x=2, y=2)
     (2, 2): { # Event ID 7
         "id": 7,
-        "name": "Event 7",
+        "name": "Grass Cabit",
         "x": 2, "y": 2,
         "pages": [
             {
                 "graphic": {"tileId":55},
+                "through": False,
+                "list": [
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Ssshhh ! Tu fais fuir"], "indent": 0},
+                    {"code": 401, "parameters": ["les bonnes herbes !"], "indent": 0},
+                    {"code": 301, "parameters": [0,4,True,True,10], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,1,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Glurb !"], "indent": 1},
+                        {"code": 401, "parameters": ["J'aurais du me cacher..."], "indent": 1},
+                        {"code": 401, "parameters": ["dans les plus hautes herbes"], "indent": 1},
+                        {"code": 122, "parameters": [9,9,1,0,1], "indent": 1},
+                        {"code": 123, "parameters": ["A",0], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Reviens te battre,"], "indent": 1},
+                        {"code": 401, "parameters": ["espece de mauviette !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,3,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Hah!"], "indent": 1},
+                        {"code": 401, "parameters": ["Pas fameux comme chasseur !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0}
+                ]
+            },
+            {
+                "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
+                "graphic": {"tileId":9},
                 "through": False,
                 "list": [
 
@@ -175,11 +275,39 @@ events = {
     # Event at (x=22, y=22)
     (22, 22): { # Event ID 8
         "id": 8,
-        "name": "Event 8",
+        "name": "Tree Cabbit",
         "x": 22, "y": 22,
         "pages": [
             {
                 "graphic": {"tileId":55},
+                "through": False,
+                "list": [
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Je suis un la- PIN !"], "indent": 0},
+                    {"code": 401, "parameters": ["Je suis un PIN !"], "indent": 0},
+                    {"code": 401, "parameters": ["Il n'y a rien a manger ici"], "indent": 0},
+                    {"code": 301, "parameters": [0,4,True,True,10], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,1,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["TIIIIMBEEEER !"], "indent": 1},
+                        {"code": 401, "parameters": [""], "indent": 1},
+                        {"code": 122, "parameters": [9,9,1,0,1], "indent": 1},
+                        {"code": 123, "parameters": ["A",0], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["La photosynthese, c'est epuisant"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,3,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Cette foret... est ma protection."], "indent": 1},
+                        {"code": 401, "parameters": ["Enfin, ce carre d'herbe, surtout."], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0}
+                ]
+            },
+            {
+                "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
+                "graphic": {"tileId":9},
                 "through": False,
                 "list": [
 
@@ -191,11 +319,41 @@ events = {
     # Event at (x=21, y=5)
     (21, 5): { # Event ID 9
         "id": 9,
-        "name": "Event 9",
+        "name": "Protect Cabbit",
         "x": 21, "y": 5,
         "pages": [
             {
                 "graphic": {"tileId":55},
+                "through": False,
+                "list": [
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Chut ! Ylva nous a vus ?"], "indent": 0},
+                    {"code": 401, "parameters": ["Non, attends, elle sent..."], "indent": 0},
+                    {"code": 401, "parameters": ["On est foutus, Gerard"], "indent": 0},
+                    {"code": 301, "parameters": [0,4,True,True,10], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,1,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Dis a ma femme... que..."], "indent": 1},
+                        {"code": 401, "parameters": ["Je suis parti a la peche"], "indent": 1},
+                        {"code": 401, "parameters": ["avec Gerard... pour toujours"], "indent": 1},
+                        {"code": 122, "parameters": [9,9,1,0,1], "indent": 1},
+                        {"code": 123, "parameters": ["A",0], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Bon, on se fait une"], "indent": 1},
+                        {"code": 401, "parameters": ["belotte ? "], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,3,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["C'etait pathetique..."], "indent": 1},
+                        {"code": 401, "parameters": ["Meme Ylva fait mieux ! "], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0}
+                ]
+            },
+            {
+                "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
+                "graphic": {"tileId":9},
                 "through": False,
                 "list": [
 
@@ -207,11 +365,41 @@ events = {
     # Event at (x=22, y=5)
     (22, 5): { # Event ID 10
         "id": 10,
-        "name": "Event 10",
+        "name": "Weak Cabbit",
         "x": 22, "y": 5,
         "pages": [
             {
                 "graphic": {"tileId":55},
+                "through": False,
+                "list": [
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["TU AS BUTE MARTIN ! IL ME"], "indent": 0},
+                    {"code": 401, "parameters": ["DEVAIT 10 BALLES ! MAINTENANT"], "indent": 0},
+                    {"code": 401, "parameters": ["TU VAS PAYER POUR LUI !!"], "indent": 0},
+                    {"code": 301, "parameters": [0,4,True,True,10], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,1,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Au moins... Je pourrais rejoindre"], "indent": 1},
+                        {"code": 401, "parameters": ["Martin et lui rapeller qu'il me"], "indent": 1},
+                        {"code": 401, "parameters": ["doit toujours 10 balles..."], "indent": 1},
+                        {"code": 122, "parameters": [9,9,1,0,1], "indent": 1},
+                        {"code": 123, "parameters": ["A",0], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["REVIENS ICI ! "], "indent": 1},
+                        {"code": 401, "parameters": ["JE VEUX MES 10 BALLES !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,3,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Speciale Deci Martin,"], "indent": 1},
+                        {"code": 401, "parameters": ["Repose en paix frere !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0}
+                ]
+            },
+            {
+                "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
+                "graphic": {"tileId":9},
                 "through": False,
                 "list": [
 
@@ -223,11 +411,39 @@ events = {
     # Event at (x=30, y=4)
     (30, 4): { # Event ID 11
         "id": 11,
-        "name": "Event 11",
+        "name": "Well Cabbit",
         "x": 30, "y": 4,
         "pages": [
             {
                 "graphic": {"tileId":55},
+                "through": False,
+                "list": [
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Je ... Je suis un cailloux !"], "indent": 0},
+                    {"code": 401, "parameters": ["Une pierre qui parle !"], "indent": 0},
+                    {"code": 301, "parameters": [0,4,True,True,10], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,1,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Adieux mes reves..."], "indent": 1},
+                        {"code": 401, "parameters": ["Pierre qui roule-"], "indent": 1},
+                        {"code": 122, "parameters": [9,9,1,0,1], "indent": 1},
+                        {"code": 123, "parameters": ["A",0], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Pierre-Cactus- Puits !"], "indent": 1},
+                        {"code": 401, "parameters": ["J'ai gagne !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,3,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["La prochaine fois, ne tues "], "indent": 1},
+                        {"code": 401, "parameters": ["pas un cactus pour rien..."], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0}
+                ]
+            },
+            {
+                "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
+                "graphic": {"tileId":9},
                 "through": False,
                 "list": [
 
@@ -271,12 +487,35 @@ events = {
     # Event at (x=29, y=3)
     (29, 3): { # Event ID 14
         "id": 14,
-        "name": "Event 14",
+        "name": "Cactus",
         "x": 29, "y": 3,
         "pages": [
             {
                 "graphic": {"tileId":26},
                 "through": False,
+                "list": [
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Juste un Cactus..."], "indent": 0},
+                    {"code": 401, "parameters": ["Juste un Cactus..."], "indent": 0},
+                    {"code": 401, "parameters": ["Juste un Cactus..."], "indent": 0},
+                    {"code": 101, "parameters": ["ylva_happy",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Regarde ! Derriere ! Un lapin !"], "indent": 0},
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["..."], "indent": 0},
+                    {"code": 401, "parameters": ["Non je suis un cactus !"], "indent": 0},
+                    {"code": 101, "parameters": ["ylva_shocked",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Un Lapin-Cactus ! "], "indent": 0},
+                    {"code": 401, "parameters": ["C'est tres rare ! "], "indent": 0},
+                    {"code": 401, "parameters": ["Attrapes le !"], "indent": 0},
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["*CRACK*"], "indent": 0},
+                    {"code": 123, "parameters": ["A",0], "indent": 0}
+                ]
+            },
+            {
+                "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
+                "graphic": {"tileId":6},
+                "through": True,
                 "list": [
 
                 ]
@@ -287,11 +526,42 @@ events = {
     # Event at (x=10, y=17)
     (10, 17): { # Event ID 15
         "id": 15,
-        "name": "Event 15",
+        "name": "Left Cabbit",
         "x": 10, "y": 17,
         "pages": [
             {
                 "graphic": {"tileId":55},
+                "through": False,
+                "list": [
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["ENFIN ! UN TEMOIN !"], "indent": 0},
+                    {"code": 401, "parameters": ["Tu es la, tu as vu,"], "indent": 0},
+                    {"code": 401, "parameters": ["c'est lui qui a commence !"], "indent": 0},
+                    {"code": 301, "parameters": [0,4,True,True,10], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,1,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Trahison..."], "indent": 1},
+                        {"code": 401, "parameters": ["J'aurais du... me mefier..."], "indent": 1},
+                        {"code": 401, "parameters": ["des... associes..."], "indent": 1},
+                        {"code": 122, "parameters": [9,9,1,0,1], "indent": 1},
+                        {"code": 123, "parameters": ["A",0], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["He ! Reviens !"], "indent": 1},
+                        {"code": 401, "parameters": ["On avait un accord verbal !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,3,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["La carotte du milieu EST"], "indent": 1},
+                        {"code": 401, "parameters": ["la meilleure. La science le dit."], "indent": 1},
+                        {"code": 401, "parameters": ["Merci, la science."], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0}
+                ]
+            },
+            {
+                "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
+                "graphic": {"tileId":9},
                 "through": False,
                 "list": [
 
@@ -303,11 +573,40 @@ events = {
     # Event at (x=10, y=16)
     (10, 16): { # Event ID 16
         "id": 16,
-        "name": "Event 16",
+        "name": "Right Cabbit",
         "x": 10, "y": 16,
         "pages": [
             {
                 "graphic": {"tileId":55},
+                "through": False,
+                "list": [
+                    {"code": 101, "parameters": ["",0,0,2], "indent": 0},
+                    {"code": 401, "parameters": ["Non mais tu l'entends ?!"], "indent": 0},
+                    {"code": 401, "parameters": ["Il dit que le milieu est"], "indent": 0},
+                    {"code": 401, "parameters": ["MEILLEUR que le bout !"], "indent": 0},
+                    {"code": 301, "parameters": [0,4,True,True,10], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,1,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Au moins... je meurs..."], "indent": 1},
+                        {"code": 401, "parameters": ["en ayant... raison..."], "indent": 1},
+                        {"code": 122, "parameters": [9,9,1,0,1], "indent": 1},
+                        {"code": 123, "parameters": ["A",0], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,2,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Tu nous fais perdre notre"], "indent": 1},
+                        {"code": 401, "parameters": ["temps !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0},
+                    {"code": 111, "parameters": [1,10,0,3,0,0], "indent": 0},
+                        {"code": 101, "parameters": ["",0,0,2], "indent": 1},
+                        {"code": 401, "parameters": ["Tu vois, j'ai toujours"], "indent": 1},
+                        {"code": 401, "parameters": ["raison !"], "indent": 1},
+                    {"code": 412, "parameters": [], "indent": 0}
+                ]
+            },
+            {
+                "conditions": {"switch1Valid": False, "switch2Valid": False, "variableValid": False, "selfSwitchValid": True, "selfSwitchCh": "A"},
+                "graphic": {"tileId":9},
                 "through": False,
                 "list": [
 

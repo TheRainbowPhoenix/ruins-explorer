@@ -157,7 +157,7 @@ def extract_tiles_from_module(module_name, prefix):
                 
                 # Copy entire row of tile data at once
                 row_bytes = tile_width * 2
-                if src_row_start + tile_width <= len(data):
+                if src_row_start + row_bytes <= len(data):
                     tile_data[dst_row_start:dst_row_start + row_bytes] = data[src_row_start:src_row_start + row_bytes]
             
             # Create entry for this tile

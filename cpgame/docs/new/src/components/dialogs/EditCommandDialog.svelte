@@ -41,7 +41,7 @@
             111: [0, 1, 0, 0, 0, 0], // type, id, val, operand_type, op
             121: [1, 1, 0],
             122: [1, 1, 0, 0, 0], // start, end, op, operand_type, val
-            123: [0, 0],
+            123: ["A", 0],
             124: [0, 60],
             125: [0, 0, 0],
             126: [1, 0, 0, 1],
@@ -233,10 +233,12 @@
                 <div class="form-group">
 					<label class="form-label">Self Switch</label>
                     <select class="form-select" bind:value={localCommand.parameters[0]}>
-                        <option value={0}>A</option>
-                        <option value={1}>B</option>
-                        <option value={2}>C</option>
-                        <option value={3}>D</option>
+                        <option value={"A"}>A</option>
+                        <option value={"B"}>B</option>
+                        <option value={"C"}>C</option>
+                        <option value={"D"}>D</option>
+                        <option value={"E"}>E</option>
+                        <option value={"F"}>F</option>
                     </select>
                 </div>
 

@@ -31,7 +31,7 @@
         "Game Data": [
             { name: "Control Switches", code: 121, params: [1, 1, 0] },
             { name: "Control Variables", code: 122, params: [1, 1, 0, 0, 0] },
-            { name: "Control Self Switch", code: 123, params: [0, 0] },
+            { name: "Control Self Switch", code: 123, params: ["A", 0] },
             { name: "Control Timer", code: 124, params: [0, 60] }
         ],
         "Party": [

@@ -34,7 +34,7 @@
                 return '◆ If: ...';
             case 121: return `Control Switches: [${p(0, 1)}-${p(1, 1)}] = ${p(2, 0) === 0 ? 'ON' : 'OFF'}`;
             case 122: return `Control Variables: V[${p(0, 1)}-${p(1, 1)}] ...`;
-            case 123: return `Control Self Switch: ${String.fromCharCode(65 + p(0, 0))} = ${p(1, 0) === 0 ? 'ON' : 'OFF'}`;
+            case 123: return `Control Self Switch: ${p(0, 0)} = ${p(1, 0) === 0 ? 'ON' : 'OFF'}`;
             case 124: return `Control Timer: ${p(0, 0) === 0 ? 'Start' : 'Stop'} (${p(1, 60)}s)`;
             case 125: return `Change Gold: ${p(0, 0) === 0 ? 'Increase' : 'Decrease'} by ${p(1, 0) === 1 ? `V[${p(2,0)}]` : p(2,0)}`;
             case 126: return `Change Items: [ID ${p(0,1)}] ${p(1, 0) === 0 ? 'Increase' : 'Decrease'} by ${p(2, 0) === 1 ? `V[${p(3,0)}]` : p(3,0)}`;
