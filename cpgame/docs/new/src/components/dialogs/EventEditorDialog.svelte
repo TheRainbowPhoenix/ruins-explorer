@@ -72,8 +72,10 @@
     function handleSaveCommand(event) {
         localEvent.pages[currentPageIndex].list[commandToEditIndex] = event.detail;
         commandToEditIndex = null;
-        localEvent = localEvent;
+        showConditionsEditor = false;
+        recalculateIndents();
     }
+
     function recalculateIndents() {
         let indentLevel = 0;
         const list = currentPage.list;
@@ -200,6 +202,8 @@
             if (list[i].code === 401) blockEndIndex = i; else break;
         }
         
+        recalculateIndents();
+        
         list.splice(blockStartIndex, blockEndIndex - blockStartIndex + 1, ...newCommands);
         textBlockEditIndex = null;
     }
@@ -302,7 +306,7 @@
     <EditConditionsDialog
         conditions={localEvent.pages[currentPageIndex].conditions}
         on:close={() => showConditionsEditor = false}
-        on:save={(e) => { localEvent.pages[currentPageIndex].conditions = e.detail; showConditionsEditor = false}}
+        on:save={handleSaveCommand}
     />
 {/if}
 
@@ -318,7 +322,7 @@
 {#if commandToEditIndex !== null}
     <EditCommandDialog 
         command={localEvent.pages[currentPageIndex].list[commandToEditIndex]}
-        on:save={(e) => { localEvent.pages[currentPageIndex].list[commandToEditIndex] = e.detail; commandToEditIndex = null; }}
+        on:save={handleSaveCommand}
         on:delete={handleDeleteCommand}
         on:close={() => commandToEditIndex = null}
     />
