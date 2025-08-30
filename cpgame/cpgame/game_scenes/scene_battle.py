@@ -45,7 +45,7 @@ class SceneBattle(SceneBase):
         self._player_grounded = True
         self._player_invulnerable = False  # During down slash
         self._gravity = 0.5
-        self._jump_strength = -8
+        self._jump_strength = -11
         self._ground_level = ACTION_BOX_H - 20
         
         # --- Graze System ---
@@ -140,10 +140,10 @@ class SceneBattle(SceneBase):
         """
         if self.enemy:
             # Clear ONLY the area where text will be drawn to avoid erasing the sprite
-            drect(0, 20, DWIDTH - 1, 65, C_RGB(10,10,15)) # Top bar for text
-            dtext_opt(DWIDTH//2, 20, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, self.enemy.name, -1)
+            drect(0, 10, DWIDTH - 1, 50, C_RGB(10,10,15)) # Top bar for text
+            dtext_opt(DWIDTH//2, 10, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, self.enemy.name, -1)
             hp_text = "HP: {} / {}".format(self.enemy.hp, self.enemy.mhp)
-            dtext_opt(DWIDTH//2, 40, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, hp_text, -1)
+            dtext_opt(DWIDTH//2, 30, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, hp_text, -1)
         
         # --- Player Area ---
         # Clear the entire bottom half for the player UI and minigame
@@ -201,9 +201,9 @@ class SceneBattle(SceneBase):
         
         # Horizontal movement
         if self.input.dx != 0:
+            box_x = (DWIDTH - ACTION_BOX_W) // 2
             self._player_box_x += self.input.dx * 4  # Slightly slower for precision
-            self._player_box_x = max(self._player_box_x, box_x)
-            self._player_box_x = min(self._player_box_x, box_x + ACTION_BOX_W - 20)
+            self._player_box_x = max(box_x, min(self._player_box_x, box_x + ACTION_BOX_W - 20))
         
         # Vertical movement - Jump and Down Slash
         if self.input.up and self._player_grounded:
@@ -248,11 +248,12 @@ class SceneBattle(SceneBase):
                 projectiles_to_remove.append(i)
                 continue
             
-            # Get player hitbox
+            # Get player's current size based on jump height
+            player_w, player_h = self.get_player_current_size()
             player_left = self._player_box_x
-            player_right = self._player_box_x + 20
+            player_right = self._player_box_x + player_w
             player_top = PLAYER_AREA_Y + self._player_box_y
-            player_bottom = PLAYER_AREA_Y + self._player_box_y + 20
+            player_bottom = PLAYER_AREA_Y + self._player_box_y + player_h
             
             # Get projectile hitbox
             proj_left = p['x']
@@ -321,6 +322,36 @@ class SceneBattle(SceneBase):
         elif self._minigame_timer >= self._minigame_duration:
             log("Player successfully survived the minigame!")
             self.end_minigame()
+    
+    def get_player_current_size(self) -> tuple[int, int]:
+        """Calculates player hitbox size based on jump height. Smaller when higher."""
+        base_size = 20
+        min_jump_size = 5 # Size at the absolute peak of the jump (4x smaller area)
+
+        if self._player_grounded:
+            return base_size, base_size
+
+        ground_y = self._ground_level # e.g., 130
+        peak_y = 65.0 # Approximate peak height of a full jump
+
+        # Calculate the total range of the jump.
+        jump_height_range = ground_y - peak_y # e.g., 130 - 65 = 65
+        if jump_height_range <= 0: return base_size, base_size # Avoid division by zero
+
+        # Calculate the player's current progress within that range.
+        #    This will be 0.0 at the peak and 1.0 on the ground.
+        current_pos_in_range = self._player_box_y - peak_y
+        progress = current_pos_in_range / jump_height_range
+        
+        # Clamp the progress between 0.0 and 1.0 to handle small hops or overshoots.
+        progress = max(0.0, min(1.0, progress))
+
+        # Interpolate the size based on the progress.
+        #    size = min_size + progress * (max_size - min_size)
+        size_range = base_size - min_jump_size
+        current_size = int(min_jump_size + (progress * size_range))
+        
+        return current_size, current_size
 
     def handle_graze(self, projectile):
         """Handle grazing a projectile - heal player and show visual feedback"""
@@ -331,15 +362,15 @@ class SceneBattle(SceneBase):
                 health_percentage = self.player.hp / player_max_hp
                 
                 if health_percentage <= 0.2:  # 20% or less HP
-                    heal_amount = 8
+                    heal_amount = 4
                 elif health_percentage <= 0.4:  # 40% or less HP
-                    heal_amount = 7
-                elif health_percentage <= 0.6:  # 60% or less HP
-                    heal_amount = 6
-                elif health_percentage <= 0.8:  # 80% or less HP
-                    heal_amount = 5
-                else:  # Above 80% HP
                     heal_amount = 3
+                elif health_percentage <= 0.6:  # 60% or less HP
+                    heal_amount = 2
+                elif health_percentage <= 0.8:  # 80% or less HP
+                    heal_amount = 2
+                else:  # Above 80% HP
+                    heal_amount = 1
                 
                 self.player.hp = min(player_max_hp, self.player.hp + heal_amount)
                 log(f"Graze! Healed {heal_amount} HP (health was {health_percentage:.1%}). Current HP: {self.player.hp}")
@@ -421,31 +452,31 @@ class SceneBattle(SceneBase):
             self._difficulty['projectile_speed'] = {'min': 1, 'max': 2}
             self._difficulty['projectile_size'] = {'min': 3, 'max': 4}
             self._difficulty['spawn_frequency'] = {'min': 800, 'max': 1200}
-            self._minigame_duration = 6000  # 6 seconds (3x)
+            self._minigame_duration = 8000  # 8 seconds (3x)
         elif final_difficulty <= 2.5:  # Easy (2 * health or 1 * full health)
             self._difficulty['projectile_count'] = {'min': 1, 'max': 3}
             self._difficulty['projectile_speed'] = {'min': 2, 'max': 3}
             self._difficulty['projectile_size'] = {'min': 4, 'max': 5}
             self._difficulty['spawn_frequency'] = {'min': 600, 'max': 900}
-            self._minigame_duration = 7500  # 7.5 seconds (3x)
+            self._minigame_duration = 9500  # 9.5 seconds (3x)
         elif final_difficulty <= 3.5:  # Normal (3 * health or 2 * full health)
             self._difficulty['projectile_count'] = {'min': 2, 'max': 4}
             self._difficulty['projectile_speed'] = {'min': 3, 'max': 4}
             self._difficulty['projectile_size'] = {'min': 4, 'max': 6}
             self._difficulty['spawn_frequency'] = {'min': 400, 'max': 700}
-            self._minigame_duration = 9000  # 9 seconds (3x)
+            self._minigame_duration = 12000  # 12 seconds (3x)
         elif final_difficulty <= 4.5:  # Hard (4 * health or 3 * full health)
             self._difficulty['projectile_count'] = {'min': 3, 'max': 5}
             self._difficulty['projectile_speed'] = {'min': 4, 'max': 6}
             self._difficulty['projectile_size'] = {'min': 5, 'max': 7}
             self._difficulty['spawn_frequency'] = {'min': 300, 'max': 500}
-            self._minigame_duration = 10500  # 10.5 seconds (3x)
+            self._minigame_duration = 20500  # 20.5 seconds (3x)
         else:  # Nightmare (5 * health or 4+ * full health)
-            self._difficulty['projectile_count'] = {'min': 4, 'max': 7}
-            self._difficulty['projectile_speed'] = {'min': 5, 'max': 8}
-            self._difficulty['projectile_size'] = {'min': 6, 'max': 9}
-            self._difficulty['spawn_frequency'] = {'min': 200, 'max': 400}
-            self._minigame_duration = 12000  # 12 seconds (3x)
+            self._difficulty['projectile_count'] = {'min': 4, 'max': 9}
+            self._difficulty['projectile_speed'] = {'min': 5, 'max': 9}
+            self._difficulty['projectile_size'] = {'min': 6, 'max': 8}
+            self._difficulty['spawn_frequency'] = {'min': 150, 'max': 500}
+            self._minigame_duration = 24000  # 24 seconds (3x)
             
         return True  # Signal that minigame should proceed
 
@@ -565,24 +596,26 @@ class SceneBattle(SceneBase):
 
     def draw_minigame(self):
         # Draw instructions
-        dtext_opt(DWIDTH//2, PLAYER_AREA_Y - 20, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, "Dodge the projectiles!", -1)
+        drect(1,ENEMY_AREA_H - 25, DWIDTH-1, ENEMY_AREA_H - (25-12), C_RGB(10,10,15))
+        dtext_opt(DWIDTH//2,ENEMY_AREA_H - 25, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, "Dodge!", -1)
         
         # Draw the action box
         box_x = (DWIDTH - ACTION_BOX_W) // 2
         drect_border(box_x, PLAYER_AREA_Y, box_x + ACTION_BOX_W, PLAYER_AREA_Y + ACTION_BOX_H, C_NONE, 1, C_WHITE)
 
         # Draw player
-        player_y = int(PLAYER_AREA_Y + self._player_box_y)
+        player_w, player_h = self.get_player_current_size()
+        player_draw_y = int(PLAYER_AREA_Y + self._player_box_y + (20 - player_h)) # Align to bottom
         if self._player_invulnerable:
             # Draw only border when invulnerable (down slash)
-            drect_border(self._player_box_x, player_y, self._player_box_x + 20, player_y + 20, C_NONE, 1, C_BLUE)
+            drect_border(self._player_box_x, player_draw_y, self._player_box_x + player_w, player_draw_y + player_h, C_NONE, 1, C_BLUE)
         else:
             # Draw full player
-            drect(self._player_box_x, player_y, self._player_box_x + 20, player_y + 20, C_BLUE)
+            drect(self._player_box_x, player_draw_y, self._player_box_x + player_w, player_draw_y + player_h, C_BLUE)
 
         # Draw projectiles (only if they're within or near the action box)
         for p in self._projectiles:
-            if p['y'] >= PLAYER_AREA_Y - 50 and p['y'] <= PLAYER_AREA_Y + ACTION_BOX_H + 10:
+            if p['y'] >= PLAYER_AREA_Y - 0 and p['y'] <= PLAYER_AREA_Y + ACTION_BOX_H + 10:
                 drect(p['x'], p['y'], p['x'] + p['size'], p['y'] + p['size'], C_RED)
         
         # Draw graze particles
@@ -615,8 +648,10 @@ class SceneBattle(SceneBase):
                 difficulty_text = f"{difficulty_name} (Mercy: {player_health_factor:.1f}x)"
             else:
                 difficulty_text = difficulty_name
-                
-            dtext_opt(DWIDTH//2, PLAYER_AREA_Y - 60, C_YELLOW, C_NONE, DTEXT_CENTER, DTEXT_TOP, difficulty_text, -1)
+            
+            
+            drect(1,PLAYER_AREA_Y - 12, DWIDTH-1, PLAYER_AREA_Y, C_RGB(10,10,15))
+            dtext_opt(DWIDTH//2, PLAYER_AREA_Y - 12, C_YELLOW, C_NONE, DTEXT_CENTER, DTEXT_TOP, difficulty_text, -1)
 
     def draw_victory_message(self):
         dtext_opt(DWIDTH//2, DHEIGHT//2, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_MIDDLE, "VICTORY!", -1)
