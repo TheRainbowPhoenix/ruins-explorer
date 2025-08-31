@@ -275,14 +275,15 @@ class TemplarScene(Scene):
             self.player.facing = FACING_RIGHT
         elif self.input.dx < 0: 
             self.player.facing = FACING_LEFT
-            
-        # If facing changed, update animation variant
-        # if old_facing != self.player.facing:
-        self.player.anim.update_variant_states(flipped=(self.player.facing == FACING_LEFT))
         
         # Update stance (this will handle variant selection automatically)
+        old_stance = self.player.stance
         self.player_set_stance(STANCE_JUMPING if self.player.airborne() else 
                              (STANCE_RUNNING if self.input.dx else STANCE_IDLE))
+        
+        # If facing changed, update animation variant
+        if old_facing != self.player.facing or old_stance != self.player.stance:
+            self.player.anim.update_variant_states(flipped=(self.player.facing == FACING_LEFT))
         
         # self.player_set_stance(STANCE_JUMPING if self.player.airborne() else (STANCE_RUNNING if self.input.dx else STANCE_IDLE))
         # if self.input.dx > 0: self.player.facing = FACING_RIGHT
