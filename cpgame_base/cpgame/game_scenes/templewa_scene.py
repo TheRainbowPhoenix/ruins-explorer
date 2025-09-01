@@ -49,7 +49,10 @@ class GameMap:
     def __init__(self, width: int, height: int, data: List[int]):
         self.width = width
         self.height = height
-        self.tiles = data
+        
+        if data is not None:
+            self.tiles = data
+        
         self.tile_size = 16
         self.edited: Set[Tuple[int, int]] = set()
 
@@ -535,7 +538,7 @@ class TemplewaScene(Scene):
     def create(self):
         # Game State
         self.state = 'menu' # 'menu', 'playing', 'paused', 'gameover'
-        self.camera = Vec2(0, 0) # TODO: vec2
+        self.camera = Vec2(0, 0)
         self.crystal_hp = 100
         self.to_remove_entities: List[Entity] = []
         self.to_draw_calls = []
@@ -579,8 +582,8 @@ class TemplewaScene(Scene):
         # Initial Skeletons
         for _ in range(8):
             self.spawn_skeleton()
-            # for j in range(20):
-            #     self.update(0.0)
+            for j in range(20):
+                self.update(0.0)
         
 
     def update(self, dt: float):
@@ -647,7 +650,7 @@ class TemplewaScene(Scene):
 
     def draw(self, frame_time_ms: int):
         if self.state == 'menu':
-            self.draw_panel((96, 110),(224, 190))
+            self.draw_panel(Vec2(96, 110),Vec2(224, 190))
             self.draw_main_logo(96,30)
             dtext_opt(160, 135, C_WHITE if self.menu_idx == 0 else C_BLACK, 43463, DTEXT_CENTER, DTEXT_MIDDLE, "New Game", -1)
             dtext_opt(160, 165, C_WHITE if self.menu_idx == 1 else C_BLACK, 43463, DTEXT_CENTER, DTEXT_MIDDLE, "Exit", -1)
@@ -684,7 +687,7 @@ class TemplewaScene(Scene):
                 self.draw_gauge_crystal((DWIDTH//2)-31, 0, self.crystal_hp / 100.0)
         
         elif self.state == 'paused':
-            self.draw_panel((220, 50),(330, 130))
+            self.draw_panel(Vec2(220, 50),Vec2(330, 130))
             dtext_opt(275, 75, C_WHITE if self.pause_idx == 0 else C_BLACK, 43463, DTEXT_CENTER, DTEXT_MIDDLE, "Resume", -1)
             dtext_opt(275, 105, C_WHITE if self.pause_idx == 1 else C_BLACK, 43463, DTEXT_CENTER, DTEXT_MIDDLE, "Exit", -1)
         
@@ -723,13 +726,27 @@ class TemplewaScene(Scene):
 
     def draw_map_full(self):
         dclear(C_BLACK) # Or a background color
-        for y in range(self.map.height):
-            for x in range(self.map.width):
+        for y in range(
+            max(0, self.camera.y // self.map.tile_size),
+            min(self.map.height, ((self.camera.y + DHEIGHT) // self.map.tile_size)),
+            1
+        ): # self.map.height
+            for x in range(
+                max(0, self.camera.x // self.map.tile_size),
+                min(self.map.width, ((self.camera.x + DWIDTH) // self.map.tile_size) + 1)
+            ): # self.map.width
                 self.draw_tile(x, y)
+        self.refreshCrystal = True
+        self.refreshLife = True
     
     def draw_map_edited(self):
         for x, y in self.map.edited:
             self.draw_tile(x, y)
+
+            draw_y = int((y * self.map.tile_size) - self.camera.y)
+            if draw_y <= 16:
+                self.refreshCrystal = True
+                self.refreshLife = True
     
     def draw_tile(self, x, y):
         tile_id = self.map.get(x, y)
@@ -739,10 +756,6 @@ class TemplewaScene(Scene):
         tile_y = (tile_id // 5) * self.map.tile_size
         draw_x = int((x * self.map.tile_size) - self.camera.x)
         draw_y = int((y * self.map.tile_size) - self.camera.y)
-
-        if draw_y <= 16:
-            self.refreshCrystal = True
-            self.refreshLife = True
         
         dsubimage(draw_x, draw_y, templewa_data.tiles, tile_x, tile_y, self.map.tile_size, self.map.tile_size)
 
@@ -762,17 +775,17 @@ class TemplewaScene(Scene):
         if ext > 0: drect(x + 3, y + 8, x + 3 + ext, y + 10, C_RED)
         dsubimage(x, y, templewa_data.ui, 68, 60, 129 - 68, 15)
         
-    def draw_panel(self, tl, br):
+    def draw_panel(self, tl: Vec2, br: Vec2):
         ui_img = templewa_data.ui
-        # Draw NineSlice
-        dsubimage(tl[0], tl[1], ui_img, 124, 0, 17, 17)
-        dsubimage(tl[0], br[1]-17, ui_img, 124, 19, 17, 17)
-        dsubimage(br[0]-17, tl[1], ui_img, 124 + 19, 0, 17, 17)
-        dsubimage(br[0]-17, br[1]-17, ui_img, 124 + 19, 19, 17, 17)
-        for i in range(tl[0] + 17, br[0] - 16):
-            dsubimage(i, tl[1], ui_img, 124 + 18, 0, 1, 17)
-            dsubimage(i, br[1]-17, ui_img, 124 + 18, 19, 1, 17)
-        for i in range(tl[1] + 17, br[1] - 16):
-            dsubimage(tl[0], i, ui_img, 124, 18, 17, 1)
-            dsubimage(br[0]-17, i, ui_img, 124 + 19, 18, 17, 1)
-        drect(tl[0]+17, tl[1]+17, br[0]-17, br[1]-17, 43463)
+        # TODO: Draw NineSlice
+        dsubimage(tl.x, tl.y, ui_img, 124, 0, 17, 17)
+        dsubimage(tl.x, br.y-17, ui_img, 124, 19, 17, 17)
+        dsubimage(br.x-17, tl.y, ui_img, 124 + 19, 0, 17, 17)
+        dsubimage(br.x-17, br.y-17, ui_img, 124 + 19, 19, 17, 17)
+        for i in range(tl.x + 17, br.x - 16):
+            dsubimage(i, tl.y, ui_img, 124 + 18, 0, 1, 17)
+            dsubimage(i, br.y-17, ui_img, 124 + 18, 19, 1, 17)
+        for i in range(tl.y + 17, br.y - 16):
+            dsubimage(tl.x, i, ui_img, 124, 18, 17, 1)
+            dsubimage(br.x-17, i, ui_img, 124 + 19, 18, 17, 1)
+        drect(tl.x+17, tl.y+17, br.x-17, br.y-17, 43463)
