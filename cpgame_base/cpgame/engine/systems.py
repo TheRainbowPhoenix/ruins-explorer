@@ -20,6 +20,7 @@ class InputManager:
         self.menu: bool = False
         self.exit: bool = False
         self.shift: bool = False
+        self.debug: bool = False
 
         self.nexp: bool = False
         self.n0: bool = False
@@ -53,6 +54,7 @@ class InputManager:
         self.menu = gint.keypressed(gint.KEY_MENU)
         self.exit = gint.keypressed(gint.KEY_EXIT)
         self.shift = gint.keypressed(gint.KEY_SHIFT)
+        self.debug = gint.keypressed(gint.KEY_KBD)
 
         # Numpad
         self.nexp = gint.keypressed(gint.KEY_EXP)
@@ -95,6 +97,8 @@ class InputManager:
             return self.n3
         if code == 'page_up':
             return self.n9
+        if code == 'debug':
+            return self.debug
         
         if code == 'down':
             return self.down

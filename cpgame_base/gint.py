@@ -7,8 +7,10 @@ from typing import List, Optional, Tuple, Set
 
 
 # Display dimensions
-DWIDTH = 320
-DHEIGHT = 528
+# DWIDTH = 320
+# DHEIGHT = 528
+DWIDTH = 396
+DHEIGHT = 224
 
 C_WHITE = 0xFFFF
 C_LIGHT = 0xad55
@@ -27,11 +29,6 @@ DTEXT_RIGHT = 'right'
 DTEXT_TOP = 'top'
 DTEXT_MIDDLE = 'middle'
 DTEXT_BOTTOM = 'bottom'
-
-# Image stuff
-IMAGE_MONO = 0
-IMAGE_P4_RGB565 = 1
-IMAGE_RGB565 = 2
 
 # Pygame initialization
 pygame.init()
@@ -740,11 +737,6 @@ def pollevent() -> KeyEvent:
         return KeyEvent(KEYEV_DOWN, KEY_EXIT)
 
     elif event.type == KEYDOWN:
-    
-        # Capture Print Screen key to save VRAM
-        if event.key == pygame.K_PRINTSCREEN:  # <-- Add this block
-            pygame.image.save(vram, "screenshot.png")
-        
         gint_key = _key_mapping.get(event.key)
         if gint_key is not None:
             # Only report a DOWN event if it's a new press
@@ -857,166 +849,137 @@ def getkey_opt(options: int, timeout_ms: Optional[int] = 2000) -> KeyEvent:
 
 # --------------------------------------------------------------
 # Image stuff
-IMAGE_MONO = 0
-IMAGE_RGB565 = 1
-IMAGE_RGB565A = 2
-IMAGE_P8_RGB565 = 3
-IMAGE_P8_RGB565A = 4
-IMAGE_P4_RGB565 = 5
-IMAGE_P4_RGB565A = 6
+# IMAGE_MONO = 0
+IMAGE_RGB565      = 0  # RGB565 without alpha
+IMAGE_RGB565A     = 1  # RGB565 with one transparent color
+IMAGE_P8_RGB565   = 4  # 8-bit palette, all opaque colors
+IMAGE_P8_RGB565A  = 5  # 8-bit with one transparent color
+IMAGE_P4_RGB565   = 6  # 4-bit palette, all opaque colors
+IMAGE_P4_RGB565A  = 3  # 4-bit with one transparent color
+IMAGE_DEPRECATED_P8 = 2
+
+def _image_alpha(format: int):
+    if format == IMAGE_RGB565A:
+        return 0x0001
+    elif format == IMAGE_P8_RGB565A:
+        return 128 # -128 ?
+    elif format == IMAGE_P4_RGB565A:
+        return 0
+    else:
+        return 0x10000 # A value that cannot be found in any pixel of any format
 
 class Image:
     """Represents a graphical image in VRAM"""
-    def __init__(self, format: int, profile: int, color_count: int, width: int, height: int, 
-                stride: int, data: bytes, palette: bytes):
+    def __init__(self, format: int, color_count: int, width: int, height: int, stride: int, data: bytes, palette: bytes):
         self.format = format
-        self.profile = profile
         self.color_count = color_count
         self.width = width
         self.height = height
         self.stride = stride
         self.data = data
         self.palette = palette
-        self.surface = self._decode_image()
+        self.surface = None
+        self._decode_image()
 
-    def _decode_image(self) -> pygame.Surface:
-        surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        pixels = pygame.PixelArray(surface)
+    def _decode_image(self) -> None:
+        if self.format in [IMAGE_RGB565A, IMAGE_P8_RGB565A, IMAGE_P4_RGB565A]:
+            self.surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        else:
+            self.surface = pygame.Surface((self.width, self.height))
+        pixels = pygame.PixelArray(self.surface)
         
-        if self.profile == IMAGE_MONO:
-            # 1‑bpp: bit 0 = black, bit 1 = white
-            for y in range(self.height):
-                row = y * self.stride
-                for x in range(self.width):
-                    byte = self.data[row + (x >> 3)]
-                    bit  = (byte >> (7 - (x & 7))) & 1
-                    pixels[x, y] = (255,255,255) if bit else (0,0,0)
-        
-        elif self.profile == IMAGE_RGB565:
-            # Decode 16bpp direct color
-            for y in range(self.height):
-                for x in range(self.width):
-                    px_idx = (y * self.width + x) * 2
-                    rgb565 = struct.unpack('>H', self.data[px_idx:px_idx+2])[0]
-                    r = (rgb565 >> 11) * 255 // 31
-                    g = ((rgb565 >> 5) & 0x3F) * 255 // 63
-                    b = (rgb565 & 0x1F) * 255 // 31
-                    pixels[x, y] = (r, g, b)
-        
-        elif self.profile == IMAGE_RGB565A:
-            # 16‑bpp with 1-bit alpha
-            ALPHA_VAL = 0x0001   # as in fxconv’s CgProfile
-            for y in range(self.height):
-                for x in range(self.width):
-                    off = y * self.stride + x*2
-                    c = struct.unpack('>H', self.data[off:off+2])[0]
-                    if c == ALPHA_VAL:
-                        # leave pixel transparent
-                        continue
-                    # if c collided with alpha value, fxconv flips its low‑bit
-                    # but you can ignore that here
-                    r = (c >> 11) * 255 // 31
-                    g = ((c >> 5) & 0x3F) * 255 // 63
-                    b = (c & 0x1F) * 255 // 31
-                    pixels[x, y] = (r, g, b, 255)
-        
-        elif self.profile in (IMAGE_P8_RGB565, IMAGE_P8_RGB565A):
-            # 8‑bpp indexed
-            PALETTE_BASE = 0x80  # for RGB565; 0x81 if you’re using the ‘a’ profile
-            ALPHA_IDX    = 0x80  # only for IMAGE_P8_RGB565A
-            # build 256‑entry palette from your 2‑byte‑per‑entry self.palette
-            palette = []
-            for i in range(0, len(self.palette), 2):
-                rgb565 = struct.unpack('>H', self.palette[i:i+2])[0]
-                r = (rgb565 >> 11) * 255 // 31
-                g = ((rgb565 >> 5) & 0x3F) * 255 // 63
-                b = (rgb565 & 0x1F) * 255 // 31
-                palette.append((r, g, b))
-            for y in range(self.height):
-                row = y * self.stride
-                for x in range(self.width):
-                    c = self.data[(row + x)%len(self.data)]
-                    if self.profile == IMAGE_P8_RGB565A and c == ALPHA_IDX:
-                        continue
-                    idx = c - PALETTE_BASE if c >= PALETTE_BASE else c
-                    pixels[x, y] = palette[idx%len(palette)]
-
-        elif self.profile in (IMAGE_P4_RGB565, IMAGE_P4_RGB565A):
-            # 4‑bpp indexed: two pixels per byte
-            PALETTE_BASE = 0     # for non‑alpha; 1 for the ‘a’ profile
-            ALPHA_IDX    = 0     # only for IMAGE_P4_RGB565A
-            palette = []
-            for i in range(0, len(self.palette), 2):
-                rgb565 = struct.unpack('>H', self.palette[i:i+2])[0]
-                r = (rgb565 >> 11) * 255 // 31
-                g = ((rgb565 >> 5) & 0x3F) * 255 // 63
-                b = (rgb565 & 0x1F) * 255 // 31
-                palette.append((r, g, b))
-            for y in range(self.height):
-                row = y * self.stride
-                for x in range(self.width):
-                    byte = self.data[row + (x >> 1)]
-                    # even pixel in high nibble, odd in low
-                    nibble = (byte >> 4) if (x & 1)==0 else (byte & 0xF)
-                    if self.profile == IMAGE_P4_RGB565A and nibble == ALPHA_IDX:
-                        continue
-                    idx = nibble - PALETTE_BASE
-                    pixels[x, y] = palette[idx]
-
-        elif self.profile == IMAGE_P4_RGB565:
-            # Decode 4bpp palette-based image
-            palette = []
-            for i in range(0, len(self.palette), 2):
-                rgb565 = struct.unpack('>H', self.palette[i:i+2])[0]
-                r = (rgb565 >> 11) * 255 // 31
-                g = ((rgb565 >> 5) & 0x3F) * 255 // 63
-                b = (rgb565 & 0x1F) * 255 // 31
-                palette.append((r, g, b))
+        if self.palette is not None:
             
+            palette = [
+                struct.unpack('>H', self.palette[i:i+2])[0]
+                for i in range(0, len(self.palette), 2)
+            ]
+        
+        format = '>B'
+        step = 1
+
+        if self.format == IMAGE_RGB565 or self.format == IMAGE_RGB565A:
+            format = '>H'
+            step = 2
+        
+        data = [
+            struct.unpack(format, self.data[i:i+step])[0]
+            for i in range(0, len(self.data), step)
+        ]
+        
+        # if self.format == IMAGE_MONO:
+        #     # 1‑bpp: bit 0 = black, bit 1 = white
+        #     for y in range(self.height):
+        #         row = y * self.stride
+        #         for x in range(self.width):
+        #             byte = self.data[row + (x >> 3)]
+        #             bit  = (byte >> (7 - (x & 7))) & 1
+        #             self.surface.set_at((x, y), (255,255,255) if bit else (0,0,0))
+        if  self.format == IMAGE_RGB565:
             for y in range(self.height):
                 for x in range(self.width):
-                    byte_idx = y * self.stride + (x // 2)
-                    byte = self.data[byte_idx]
-                    nibble = (byte >> 4) if x % 2 == 0 else (byte & 0x0F)
-                    
-                    pixels[x, y] = palette[nibble]
-
-        
-        
-        elif self.profile == IMAGE_P8_RGB565:
-            # 8‑bit palette‑based image -----------------------------------------
-            # The converter stores indices that start at 0x80 (palette_base)      # ←
-            # so we must subtract that offset before looking them up.             #
-            PALETTE_BASE = 0x80                                                   # |
-            palette = []
-            for i in range(0, len(self.palette), 2):
-                rgb565 = struct.unpack('>H', self.palette[i:i+2])[0]
-                r = (rgb565 >> 11) * 255 // 31
-                g = ((rgb565 >> 5) & 0x3F) * 255 // 63
-                b = (rgb565 & 0x1F) * 255 // 31
-                palette.append((r, g, b))
-
+                    color = data[y*self.width + x]
+                    r, g, b = _to_rgb(color)
+                    pixels[x, y] = (r, g, b)
+        elif self.format == IMAGE_RGB565A:
             for y in range(self.height):
-                row = y * self.stride
                 for x in range(self.width):
-                    idx = self.data[row + x] - PALETTE_BASE
-                    pixels[x, y] = palette[idx]
-        
+                    color = data[y*self.width + x]
+                    if color == _image_alpha(self.format):
+                        pixels[x, y] = (0, 0, 0, 255)
+                    else:
+                        r, g, b = _to_rgb(color)
+                        pixels[x, y] = (r, g, b, 255)
+        elif self.format == IMAGE_P8_RGB565:
+            for y in range(self.height):
+                for x in range(self.width):
+                    index = data[y * self.stride + x]
+                    color = palette[index - 128]
+                    r, g, b = _to_rgb(color)
+                    pixels[x, y] = (r, g, b)
+        elif self.format == IMAGE_P8_RGB565A:
+            for y in range(self.height):
+                for x in range(self.width):
+                    index = data[y * self.stride + x]
+                    if index == _image_alpha(self.format):
+                        pixels[x, y] = (0, 0, 0, 0)
+                    else:
+                        color = palette[index - 128]
+                        r, g, b = _to_rgb(color)
+                        pixels[x, y] = (r, g, b, 255)
+        elif self.format == IMAGE_P4_RGB565:
+            for y in range(self.height):
+                for x in range(self.width):
+                    index = data[(y * self.stride + (x//2))]
+                    index = index & 0x0F if x & 1 else index >> 4
+                    color = palette[index]
+                    r, g, b = _to_rgb(color)
+                    pixels[x, y] = (r, g, b)
+        elif self.format == IMAGE_P4_RGB565A:
+            for y in range(self.height):
+                for x in range(self.width):
+                    index = data[(y * self.stride + (x//2))]
+                    index = index & 0x0F if x & 1 else index >> 4
+                    if index == _image_alpha(self.format):
+                        pixels[x, y] = (0, 0, 0, 0)
+                    else:
+                        color = palette[index]
+                        r, g, b = _to_rgb(color)
+                        pixels[x, y] = (r, g, b, 255)
         pixels.close()
-        return surface
+        # return surface
 
 def image(profile: int, color_count: int, width: int, height: int, 
                 stride: int, data: bytearray, palette: bytearray) -> Image:
-    return Image(IMAGE_RGB565, profile, color_count, width, height, stride, data, palette)
+    return Image(profile, color_count, width, height, stride, data, palette)
 
 def image_rgb565(width: int, height: int, data: bytes) -> Image:
     """
     16‑bpp RGB565, tightly packed (no alpha, no padding)
     """
-    stride = width * 2
+    stride = width
     return Image(
         format=IMAGE_RGB565,
-        profile=IMAGE_RGB565,
         color_count=0,
         width=width,
         height=height,
@@ -1029,11 +992,10 @@ def image_rgb565a(width: int, height: int, data: bytes) -> Image:
     """
     16‑bpp RGB565 + 1‑bit alpha (alpha index == 0x0001)
     """
-    stride = width * 2
+    stride = width
     return Image(
         format=IMAGE_RGB565A,
-        profile=IMAGE_RGB565A,
-        color_count=0,
+        color_count=65536,
         width=width,
         height=height,
         stride=stride,
@@ -1049,8 +1011,7 @@ def image_p8_rgb565(width: int, height: int, data: bytes, palette: bytes) -> Ima
     color_count = len(palette) // 2
     return Image(
         format=IMAGE_P8_RGB565,
-        profile=IMAGE_P8_RGB565,
-        color_count=color_count,
+        color_count=256, # color_count,
         width=width,
         height=height,
         stride=stride,
@@ -1067,8 +1028,7 @@ def image_p8_rgb565a(width: int, height: int, data: bytes, palette: bytes) -> Im
     color_count = len(palette) // 2
     return Image(
         format=IMAGE_P8_RGB565A,
-        profile=IMAGE_P8_RGB565A,
-        color_count=color_count,
+        color_count=256, # color_count,
         width=width,
         height=height,
         stride=stride,
@@ -1084,7 +1044,6 @@ def image_p4_rgb565(width: int, height: int, data: bytes, palette: bytes) -> Ima
     color_count = len(palette) // 2
     return Image(
         format=IMAGE_P4_RGB565,
-        profile=IMAGE_P4_RGB565,
         color_count=color_count,
         width=width,
         height=height,
@@ -1101,7 +1060,6 @@ def image_p4_rgb565a(width: int, height: int, data: bytes, palette: bytes) -> Im
     color_count = len(palette) // 2
     return Image(
         format=IMAGE_P4_RGB565A,
-        profile=IMAGE_P4_RGB565A,
         color_count=color_count,
         width=width,
         height=height,
@@ -1118,7 +1076,9 @@ def dsubimage(x: int, y: int, img: Image,
              left: int, top: int, width: int, height: int):
     """Draw subregion of image"""
     sub_rect = pygame.Rect(left, top, width, height)
-    sub_surf = img.surface.subsurface(sub_rect)
+    # sub_surf = img.surface.subsurface(sub_rect)
+    sub_surf = pygame.Surface((width, height), pygame.SRCALPHA)
+    sub_surf.blit(img.surface, (0, 0), sub_rect)
     vram.blit(sub_surf, (x, y))
 
 #  --- Polyfill

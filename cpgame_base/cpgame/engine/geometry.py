@@ -14,6 +14,20 @@ class Vec2:
         return Vec2(self.x + other.x, self.y + other.y)
     def __mul__(self, scalar: int) -> 'Vec2':
         return Vec2(self.x * scalar, self.y * scalar)
+    def items(self):
+        return (self.x, self.y)
+
+class VecF2:
+    """Vector2 when you don't want the noise."""
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    def __add__(self, other: 'VecF2') -> 'VecF2':
+        return VecF2(self.x + other.x, self.y + other.y)
+    def __mul__(self, scalar: float) -> 'VecF2':
+        return VecF2(self.x * scalar, self.y * scalar)
+    def items(self):
+        return (self.x, self.y)
 
 class Vector2:
     """A 2D vector using integers, suitable for fixed-point math."""
