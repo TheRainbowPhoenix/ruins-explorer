@@ -7,10 +7,10 @@ from typing import List, Optional, Tuple, Set
 
 
 # Display dimensions
-# DWIDTH = 320
-# DHEIGHT = 528
-DWIDTH = 396
-DHEIGHT = 224
+DWIDTH = 320
+DHEIGHT = 528
+# DWIDTH = 396
+# DHEIGHT = 224
 
 C_WHITE = 0xFFFF
 C_LIGHT = 0xad55
