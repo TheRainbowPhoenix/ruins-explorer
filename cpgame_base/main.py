@@ -22,6 +22,7 @@ from cpgame.engine.game import Game
 from cpgame.game_scenes.templar_scene import TemplarScene
 from cpgame.game_scenes.templewa_scene import TemplewaScene
 from cpgame.game_scenes.geodash_scene import GeoDashScene
+from cpgame.game_scenes.promenad_scene import PromenadScene
 
 def main():
     """Initializes and runs the game, starting with the MenuScene."""
@@ -29,7 +30,8 @@ def main():
     # try:
     # game.start(TemplarScene)
     # game.start(TemplewaScene)
-    game.start(GeoDashScene)
+    # game.start(GeoDashScene)
+    game.start(PromenadScene)
     # except Exception as e:
     #     # This provides a clean crash screen on PC for easier debugging.
     #     gint.dclear(gint.C_WHITE)
