@@ -5,6 +5,8 @@
 
 from cpgame.engine.game import Game
 from cpgame.engine.scene import Scene
+from cpgame.engine.geometry import Rect
+from cpgame.engine.drawing import draw_nineslice
 import gint
 from time import sleep
 from random import randint
@@ -25,11 +27,11 @@ from cpgame.game_assets.promenad_data import sentier, fond4, decor_champi, decor
 
 
 # --- Game Constants ---
-LL = 396  # Screen width
+LL = 320 # 396  # Screen width
 HH = 224  # Screen height
 Arbres = [10, 35, 80, 135, 160, 220, 270, 300, 320, 340, 390, 410, 445, 480]
 clr_fond = gint.C_RGB(20, 10, 5)
-largeur_niveau = 792 + 396  # Image width + screen width
+largeur_niveau = 792 + 320 # 396  # Image width + screen width
 
 # --- Helper Functions ---
 def fill_rect(x, y, l, h, clr):
@@ -67,12 +69,12 @@ class Objets:
 
     def update(self, scene):
         """Handles logic for the object, like timers or giving items."""
+        scene.Vie_max = 10 + 2 * scene.Objets_recuperes.count("Vie+")
+        scene.Attaque = 5 + 6 * scene.Objets_recuperes.count("Atq+")
+    
         if self.Type == "coffre" and self.contenu != "" and self.NivEnvahissement == 0:
             scene.Objets_recuperes.append(self.contenu)
-            scene.Vie_max = 10 + 2 * scene.Objets_recuperes.count("Vie+")
-            scene.Attaque = 5 + 3 * scene.Objets_recuperes.count("Atq+")
-            # In a real game, you might want to show the item before it disappears
-            # For this port, we instantly grant it. The original sleep(2) is removed.
+            
             self.contenu = ""
 
         if self.Type == "feuille":
@@ -112,6 +114,9 @@ class Objets:
 
     def draw_panel_content(self):
         """Draws the panel UI and text."""
+        panel_rect = Rect(20, 20, LL - 40, HH - 40)
+        source_panel_rect = Rect(1, 1, 99, 99) # Assumed source location and size
+
         # Draw frame
         Qx = (LL - 41 - 40) // 18
         Rx = (LL - 41 - 40) % 18
@@ -127,11 +132,12 @@ class Objets:
         for k in range(Qy):
             gint.dsubimage(Rx // 2, Ry // 2 + 18 * k + 41, panneau_morceaux, 1, 44, 41, 18)
             gint.dsubimage(Rx // 2 + 18 * Qx + 41, Ry // 2 + 18 * k + 41, panneau_morceaux, 63, 44, 41, 18)
-        
-        # Draw text
-        for k in range(len(self.texte)):
-            gint.dtext(60, 60 + 20 * k, gint.C_RGB(25, 20, 5), self.texte[k])
-        gint.dtext(150, HH - 10 - 41 - 10, gint.C_RGB(30, 15, 0), "-- EXE pour continuer --")
+            
+        # Draw Text On Top of the Panel
+        for k, line in enumerate(self.texte):
+            gint.dtext(40, 60 + 20 * k, gint.C_RGB(25, 20, 5), line)
+        confirm_text = "EXE pour continuer"
+        gint.dtext(LL-42-gint.dsize(confirm_text, None)[0], HH - 60, gint.C_RGB(30, 15, 0), confirm_text)
 
 class Ennemis:
     def __init__(self, x, y, vie, atq, Type=-1):
@@ -209,13 +215,34 @@ class PromenadScene(Scene):
         # Intro text setup
         self.intro_textes = [
             ("Bienvenue dans l'aventure :", "     Promenade en Foret"),
-            ("Connais-tu l'histoire de la foret des", "Carpettes ?", "Non ?", "Eh bien moi non plus."),
-            ("Mais ce n'est pas le sujet, en fait.", "Je vais te raconter l'histoire", "de la foret de Brosse&Viande"),
-            ("Il y a bien longtemps, le seigneur", "Brosse, avec ses cheveux coiffes en...", "- enfin bref - ", "etait un grand mangeur de viande."),
-            ("Il aimait se promener en foret", "pour rapporter de quoi satisfaire", "son tres grand appetit."),
-            ("Mais un jour, une mysterieuse", "malediction s'abatit sur sa foret", "preferee et... il devint chauve ! ", "Ah non, c'est pas ca. Je m'egare."),
-            ("Donc, je disais : une malediction", "s'abatit sur sa foret preferee et", "les animaux qui y vivaient", "furent transformes en creatures", "hostiles et aggressives !"),
-            ("Allons voir de quoi il s'agit !", "Au fait, si tu t'aventures dans cette", "mysterieuse foret, tu pourrais bien", "etre tranforme toi aussi...", "Prends garde !")
+            ("Connais-tu l'histoire de la", "foret des Carpettes ?", "Non ?", "Eh bien moi non plus."),
+            ("Mais ce n'est pas le sujet,",
+             "en fait. Je vais te raconter",
+             "l'histoire de la foret",
+             "de Brosse&Viande"),
+            ("Il y a bien longtemps, le",
+             "seigneur Brosse, avec ses",
+             "cheveux coiffes en...",
+             "- enfin bref - ",
+             "etait un amateur de viande."),
+            ("Il aimait se promener en",
+            "foret pour rapporter de quoi",
+            "satisfaire son grand appetit."),
+            ("Mais un jour, une malediction",
+            "s'abatit sur sa foret",
+            "et... il devint chauve ! ",
+            "Ah non, c'est pas ca.",
+            "Je m'egare."),
+            ("Donc : une malediction",
+             "s'abatit sur sa foret et",
+             "les animaux qui y vivaient",
+             "furent changes en creatures",
+             "hostiles et aggressives !"),
+            ("Allons voir si c'est le cas !",
+             "Au fait, si tu t'aventures",
+             "dans cette foret, tu pourrais",
+             "etre tranforme toi aussi...",
+             "Prends garde !")
         ]
         self.current_intro_panel = 0
         self.active_panel = Objets(0, 0, "panneau", self.intro_textes[0])
@@ -230,7 +257,7 @@ class PromenadScene(Scene):
             self.Liste_ennemis = [Ennemis(x, HH - 50, 20 + 5 * (x > 1000), 1) for x in [200, 820, 870, 900, 950, 990, 1050, 1100, 1150]]
             self.Liste_rochers = [Objets(570, HH - 70, "rocher")]
             self.Liste_coffres = [Objets(x, HH - 80, "coffre", NivEnv, Contenu) for (x, NivEnv, Contenu) in [(330, 0, ""), (380, 2, "Vie+"), (430, 4, "Atq+")]]
-            textes = (("Ceci est un panneau...", "Utilise les fleches pour te deplacer"), ("Oh, une creature hostile !", "Appuie sur SHIFT pour attaquer."), ("Si l'ennemi te touche, tu perds de la vie.",), ("Les coffres sont parfois pleins...",), ("Un rocher bloque le passage !", "Un appui sur ALPHA permet de sauter."), ("Lors d'un saut, on peut attaquer vers le bas.",), ("Elimine tous les ennemis pour continuer.",))
+            textes = (("Ceci est un panneau...", "Utilise les fleches pour", "te deplacer"), ("Oh, une creature hostile !", "Appuie sur SHIFT", "pour attaquer."), ("Si l'ennemi te touche,", "tu perds de la vie.",), ("Les coffres sont parfois", "pleins...",), ("Un rocher bloque le passage !", "Un appui sur KEY_UP permet", "de sauter."), ("Lors d'un saut, on peut attaquer vers le bas.",), ("Elimine tous les ennemis pour continuer.",))
             self.Liste_panneaux = [Objets(x, HH-90, "panneau", texte) for (x,texte) in [(70,textes[0]), (120,textes[1]), (250,textes[2]), (300,textes[3]), (500,textes[4]), (650,textes[5]), (750,textes[6])]]
         elif level_num == 1:
             self.Liste_ennemis = [Ennemis(x, HH-50, 20+5*(x//100), 1) for x in [80,120,200,350,400,450,700,720,740,820,950,990,1050,1100,1150]]
@@ -368,50 +395,67 @@ class PromenadScene(Scene):
                     if -15 + 45 * self.Direction < coffre.x - self.xJ < 15 + 45 * self.Direction:
                         coffre.NivEnvahissement = max(0, coffre.NivEnvahissement - 1)
         # Jump
-        if gint.keydown(gint.KEY_ALPHA):
+        jumping = gint.keydown(gint.KEY_UP)
+        if jumping:
             if not self.saut_en_cours:
                 self.saut_en_cours, self.mode_montee, self.appui_permis, self.hauteur_initiale = True, True, True, 0
-            elif self.appui_permis and self.hauteur_initiale < 40:
+            if self.saut_en_cours and self.appui_permis and self.hauteur_initiale < 40:
                 self.hauteur_initiale += 4
                 self.delta_hauteur = self.hauteur_initiale
-        elif self.saut_en_cours and self.appui_permis:
+        if self.saut_en_cours and self.appui_permis and (self.hauteur_initiale>=40 or not jumping):
             self.appui_permis = False
             self.delta_hauteur = self.hauteur_initiale
 
     def update_jump(self):
-        if not self.saut_en_cours and not any(-40 < r.x - self.xJ < 42 for r in self.Liste_rochers):
-             self.saut_en_cours = True
-             self.mode_montee = False
-             self.appui_permis = False
-             self.hauteur_initiale = (170 - self.yJ)//2
-             self.delta_hauteur = 0.8
+
+        if not self.saut_en_cours:
+            self.saut_en_cours = True
+            self.mode_montee = False
+            self.appui_permis = False
+            self.hauteur_initiale = (170 - self.yJ)//2
+            self.delta_hauteur = 0.8
+            for rock in self.Liste_rochers:
+                if -40 < rock.x - self.xJ < 42:
+                    self.yJ = rock.y - 42 + 12
+                    self.saut_en_cours = False
         
         if self.saut_en_cours:
             if self.appui_permis:
                 self.yJ = 170 - 2 * self.hauteur_initiale + self.delta_hauteur
             else:
                 if self.mode_montee:
-                    if self.delta_hauteur > 6: self.delta_hauteur *= 0.85
-                    else: self.mode_montee = False
+                    if self.delta_hauteur > 28: self.delta_hauteur *= 0.95
+                    elif self.delta_hauteur > 15: self.delta_hauteur *= 0.85
+                    elif self.delta_hauteur > 6: self.delta_hauteur *= 0.8
+                    else:
+                        self.delta_hauteur *= 0.8
+                        self.mode_montee = False
                 else:
-                    self.delta_hauteur /= 0.85
+                    if self.delta_hauteur>28:
+                        self.delta_hauteur/=0.9
+                    elif self.delta_hauteur>15:
+                        self.delta_hauteur/=0.85
+                    else:
+                        self.delta_hauteur/=0.8
                 
                 if self.delta_hauteur > 2 * self.hauteur_initiale:
                     self.saut_en_cours = False
                     self.yJ = 170
                 else:
                     self.yJ = 170 - 2 * self.hauteur_initiale + self.delta_hauteur
+
+                
             
-            on_rock = False
-            for rocher in self.Liste_rochers:
-                if -40 < rocher.x - self.xJ < 42 and rocher.y > self.yJ and rocher.y - self.yJ < 42:
-                    self.yJ = rocher.y - 30
+                on_rock = False
+                for rocher in self.Liste_rochers:
+                    if -40 < rocher.x - self.xJ < 42 and rocher.y > self.yJ and rocher.y - self.yJ < 42:
+                        self.yJ = rocher.y - 42 + 12
+                        self.saut_en_cours = False
+                        on_rock = True
+                        break
+                if not on_rock and self.yJ > 170:
+                    self.yJ = 170
                     self.saut_en_cours = False
-                    on_rock = True
-                    break
-            if not on_rock and self.yJ > 170:
-                 self.yJ = 170
-                 self.saut_en_cours = False
 
     def check_collisions(self):
         # Panels
@@ -482,11 +526,11 @@ class PromenadScene(Scene):
         coeff = 0.5
         gint.dimage(0, 161, sentier)
         if self.xJ < LL // 2:
-            gint.dsubimage(0, 0, fond4, 0, 0, 396, 161)
+            gint.dsubimage(0, 0, fond4, 0, 0, 320, 161) # 396
         elif self.xJ > largeur_niveau - LL // 2:
-            gint.dsubimage(0, 0, fond4, 792 - 396, 0, 396, 161)
+            gint.dsubimage(0, 0, fond4, 792 - 320, 0, 320, 161)
         else:
-            gint.dsubimage(0, 0, fond4, int(coeff * (self.xJ - LL // 2)), 0, 396, 161)
+            gint.dsubimage(0, 0, fond4, int(coeff * (self.xJ - LL // 2)), 0, 320, 161)
 
     def draw_arbres(self):
         coeff = 1
