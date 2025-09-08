@@ -1,5 +1,5 @@
 <script>
-    import { displayName, mapWidth, mapHeight, tilesetId, actions, guidesEnabled, isGuideEditorOpen } from '../../store.js';
+    import { displayName, mapWidth, mapHeight, tilesetId, actions, guidesEnabled, isGuideEditorOpen, tileSize } from '../../store.js';
     import GuideEditorDialog from '../dialogs/GuideEditorDialog.svelte';
 
     // let localDisplayName = $displayName;
@@ -49,6 +49,10 @@
                 <input type="checkbox" bind:checked={$guidesEnabled}>
                 <span class="slider"></span>
             </label>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Tile Size</label>
+            <input type="number" class="form-input" min="1" max="100" bind:value={$tileSize}>
         </div>
     </div>
 </details>

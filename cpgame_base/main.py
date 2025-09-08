@@ -29,9 +29,9 @@ def main():
     game = Game()
     # try:
     # game.start(TemplarScene)
-    # game.start(TemplewaScene)
+    game.start(TemplewaScene)
     # game.start(GeoDashScene)
-    game.start(PromenadScene)
+    # game.start(PromenadScene)
     # except Exception as e:
     #     # This provides a clean crash screen on PC for easier debugging.
     #     gint.dclear(gint.C_WHITE)

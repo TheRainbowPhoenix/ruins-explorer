@@ -1,0 +1,29 @@
+python tools\fxconv-main.py --bopti-image cpgame\_tests\ChipSet\Basic.png -o cpgame\cpgame\game_assets\chipset_basic.py --cg profile:p8_rgb565a name:tileset --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\ChipSet\Dungeon.png -o cpgame\cpgame\game_assets\chipset_dungeon.py --cg profile:p8_rgb565a name:tileset --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\ChipSet\Interior.png -o cpgame\cpgame\game_assets\chipset_interior.py --cg profile:p8_rgb565a name:tileset --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\ChipSet\Outside.png -o cpgame\cpgame\game_assets\chipset_outside.py --cg profile:p8_rgb565a name:tileset --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\ChipSet\Boat.png -o cpgame\cpgame\game_assets\chipset_boat.py --cg profile:p8_rgb565a name:tileset --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\System\System.png -o cpgame\cpgame\game_assets\system_ui.py --cg profile:p8_rgb565a name:tileset --py
+
+
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\Animals.png -o cpgame\cpgame\game_assets\charset_Animals.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\General1.png -o cpgame\cpgame\game_assets\charset_General1.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\General2.png -o cpgame\cpgame\game_assets\charset_General2.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\General3.png -o cpgame\cpgame\game_assets\charset_General3.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\General4.png -o cpgame\cpgame\game_assets\charset_General4.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\General5.png -o cpgame\cpgame\game_assets\charset_General5.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\Hero1.png -o cpgame\cpgame\game_assets\charset_Hero1.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\Hero2.png -o cpgame\cpgame\game_assets\charset_Hero2.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\Hero3.png -o cpgame\cpgame\game_assets\charset_Hero3.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\Hero4.png -o cpgame\cpgame\game_assets\charset_Hero4.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\Monster1.png -o cpgame\cpgame\game_assets\charset_Monster1.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\Monster2.png -o cpgame\cpgame\game_assets\charset_Monster2.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\Object1.png -o cpgame\cpgame\game_assets\charset_Object1.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\Object2.png -o cpgame\cpgame\game_assets\charset_Object2.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\CharSet\Vehicle.png -o cpgame\cpgame\game_assets\charset_Vehicle.py --cg profile:p8_rgb565a name:images --py
+
+python tools\fxconv-main.py --bopti-image cpgame\_tests\zelda\Overworld.png -o cpgame\cpgame\game_assets\zelda\overworld.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\zelda\SideScrolling.png -o cpgame\cpgame\game_assets\zelda\sidescrolling.py --cg profile:p8_rgb565a name:images --py
+python tools\fxconv-main.py --bopti-image cpgame\_tests\zelda\House.gif -o cpgame\cpgame\game_assets\zelda\house.py --cg profile:p8_rgb565a name:images --py
+
+python tools\fxconv-main.py --bopti-image cpgame\_tests\riosma\world.png -o cpgame\cpgame\game_assets\riosma\world.py --cg profile:p8_rgb565a name:images --py

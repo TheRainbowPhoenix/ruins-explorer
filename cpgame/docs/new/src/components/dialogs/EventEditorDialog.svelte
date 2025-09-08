@@ -1,6 +1,6 @@
 <script>
     import { onMount } from 'svelte';
-    import { isEventEditorOpen, actions, tileSize } from '../../store.js';
+    import { isEventEditorOpen, actions, tileSize, tilesetId } from '../../store.js';
     import CommandList from '../commands/CommandList.svelte';
     import EditCommandDialog from './EditCommandDialog.svelte';
     import AddCommandDialog from './AddCommandDialog.svelte';
@@ -25,7 +25,7 @@
     $: currentPage = localEvent.pages[currentPageIndex];
 
     onMount(() => {
-        tileset.src = 'jrpg.png';
+        tileset.src = $tilesetId + ".png";
         tileset.onload = () => tilesetLoaded = true;
         if (!localEvent.pages[currentPageIndex].through) {
             localEvent.pages[currentPageIndex].through = false;
@@ -71,6 +71,16 @@
 
     function handleSaveCommand(event) {
         localEvent.pages[currentPageIndex].list[commandToEditIndex] = event.detail;
+        commandToEditIndex = null;
+        showConditionsEditor = false;
+        recalculateIndents();
+    }
+
+    function handleSaveConditions(event) {
+        const localConditions = event.detail;
+
+        localEvent.pages[currentPageIndex].conditions = localConditions;
+        localEvent
         commandToEditIndex = null;
         showConditionsEditor = false;
         recalculateIndents();
@@ -267,11 +277,23 @@
                     <label class="form-label">Graphic</label>
                     <div class="graphic-picker">
                         {#if tilesetLoaded}
-                            {#each Array(160) as _, i}
-                                <div
+                            {#each Array(
+                                Math.floor(tileset.width / $tileSize) * Math.floor(tileset.height / $tileSize)
+                            ) as _, i}
+                                {@const tilesPerRow = Math.floor(tileset.width / $tileSize)}
+                                {@const srcX = (i % tilesPerRow) * $tileSize}
+                                {@const srcY = Math.floor(i / tilesPerRow) * $tileSize}
+                                <div 
                                     class="graphic-item"
                                     class:selected={localEvent.pages[currentPageIndex].graphic.tileId === i}
-                                    style="background-image: url('{tileset.src}'); background-position: -{(i % 16) * $tileSize * 2}px -{Math.floor(i / 16) * $tileSize * 2}px; background-size: {tileset.width * 2}px {tileset.height * 2}px;"
+                                    data-id={i}
+                                    style="
+                                        background-image: url('{tileset.src}');
+                                        background-position: -{srcX * 2}px -{srcY * 2}px;
+                                        background-size: {tileset.width * 2}px {tileset.height * 2}px;
+                                        width: {$tileSize*2}px;
+                                        height: {$tileSize*2}px;
+                                    "
                                     on:click={() => localEvent.pages[currentPageIndex].graphic.tileId = i}
                                 ></div>
                             {/each}
@@ -306,7 +328,7 @@
     <EditConditionsDialog
         conditions={localEvent.pages[currentPageIndex].conditions}
         on:close={() => showConditionsEditor = false}
-        on:save={handleSaveCommand}
+        on:save={handleSaveConditions}
     />
 {/if}
 

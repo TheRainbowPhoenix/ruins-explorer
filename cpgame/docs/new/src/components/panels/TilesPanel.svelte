@@ -1,13 +1,13 @@
 <script>
     import { onMount, afterUpdate } from 'svelte';
-    import { currentTool, selectedTile, actions, tileSize } from '../../store.js';
+    import { currentTool, selectedTile, actions, tileSize, tilesetId } from '../../store.js';
 
     let tileset = new Image();
     let tilesetLoaded = false;
     let previewCanvas;
 
     onMount(() => {
-        tileset.src = 'jrpg.png';
+        tileset.src = $tilesetId + ".png";
         tileset.onload = () => {
             tilesetLoaded = true;
             drawPreview();
@@ -79,14 +79,23 @@
     <label class="form-label">Tiles</label>
     <div class="tile-palette">
         {#if tilesetLoaded}
-            {#each Array(160) as _, i}
+            {#each Array(
+                Math.floor(tileset.width / $tileSize) * Math.floor(tileset.height / $tileSize)
+            ) as _, i}
                 {@const tilesPerRow = Math.floor(tileset.width / $tileSize)}
                 {@const srcX = (i % tilesPerRow) * $tileSize}
                 {@const srcY = Math.floor(i / tilesPerRow) * $tileSize}
                 <div 
                     class="tile-item" 
                     class:selected={$selectedTile === i}
-                    style="background-image: url('{tileset.src}'); background-position: -{srcX * 2}px -{srcY * 2}px; background-size: {tileset.width * 2}px {tileset.height * 2}px;"
+                    data-id={i}
+                    style="
+                        background-image: url('{tileset.src}');
+                        background-position: -{srcX * 2}px -{srcY * 2}px;
+                        background-size: {tileset.width * 2}px {tileset.height * 2}px;
+                        width: {$tileSize*2}px;
+                        height: {$tileSize*2}px;
+                    "
                     on:click={() => selectTile(i)}
                 ></div>
             {/each}

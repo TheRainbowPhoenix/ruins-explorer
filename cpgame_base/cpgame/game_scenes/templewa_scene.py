@@ -17,6 +17,10 @@ from cpgame.engine.geometry import Vec2, VecF2
 
 # Asset and data import
 from cpgame.game_assets import templewa_data
+from micropython import const
+
+DH = const(240)
+DW = const(320)
 
 class GameTimer:
     """Manages the delta time and speed compensation from game_time.py."""
@@ -622,14 +626,14 @@ class TemplewaScene(Scene):
             # Camera follow
             if (self.player.position.x - self.camera.x) < -18:
                 self.move_camera(self.camera.x - 25 * self.map.tile_size, self.camera.y)
-            if (self.player.position.x - self.camera.x) > DWIDTH-14:
+            if (self.player.position.x - self.camera.x) > DH-14:
                 self.move_camera(self.camera.x + 25 * self.map.tile_size, self.camera.y)
             if (self.player.position.y - self.camera.y) < -18:
                 self.move_camera(self.camera.x, self.camera.y - 14 * self.map.tile_size)
-            if (self.player.position.y - self.camera.y) > DHEIGHT-14:
+            if (self.player.position.y - self.camera.y) > DH-14:
                 self.move_camera(self.camera.x, self.camera.y + 14 * self.map.tile_size)
-            # self.camera.x = self.player.position.x - DWIDTH / 2
-            # self.camera.y = self.player.position.y - DHEIGHT / 2
+            # self.camera.x = self.player.position.x - DW / 2
+            # self.camera.y = self.player.position.y - DH / 2
 
             if self.player.health <= 0 or self.crystal_hp <= 0:
                 self.state = 'gameover'
@@ -662,9 +666,9 @@ class TemplewaScene(Scene):
             for entity in self.entities:
                 if (
                     entity.position.x - self.camera.x > -18 and
-                    entity.position.x - self.camera.x < DWIDTH-14 and
+                    entity.position.x - self.camera.x < DW-14 and
                     entity.position.y - self.camera.y > -18 and
-                    entity.position.y - self.camera.y < DHEIGHT-14
+                    entity.position.y - self.camera.y < DH-14
                 ):
                     entity.draw()
                 else:
@@ -684,7 +688,7 @@ class TemplewaScene(Scene):
             if self.refreshLife:
                 self.draw_gauge_life(0, 0, self.player.health / 100.0)
             if self.refreshCrystal:
-                self.draw_gauge_crystal((DWIDTH//2)-31, 0, self.crystal_hp / 100.0)
+                self.draw_gauge_crystal((DW//2)-31, 0, self.crystal_hp / 100.0)
         
         elif self.state == 'paused':
             self.draw_panel(Vec2(220, 50),Vec2(330, 130))
@@ -695,8 +699,8 @@ class TemplewaScene(Scene):
             # TODO: should be a separate scene ?
             dclear(C_BLACK)
             self.draw_main_logo(96, 30)
-            dtext_opt(DWIDTH//2, 130, C_WHITE, C_BLACK, DTEXT_CENTER, DTEXT_MIDDLE, "Game Over", -1)
-            dtext_opt(DWIDTH//2, 170, C_WHITE, C_BLACK, DTEXT_CENTER, DTEXT_MIDDLE, "Press EXE for Menu", -1)
+            dtext_opt(DW//2, 130, C_WHITE, C_BLACK, DTEXT_CENTER, DTEXT_MIDDLE, "Game Over", -1)
+            dtext_opt(DW//2, 170, C_WHITE, C_BLACK, DTEXT_CENTER, DTEXT_MIDDLE, "Press EXE for Menu", -1)
             
     # --- Ported Helper Methods ---
     def spawn_skeleton(self):
@@ -715,7 +719,11 @@ class TemplewaScene(Scene):
         self.crystal_hp = max(0, value)
 
     def draw_subimage(self, x, y, image, sx, sy, sw, sh):
-        self.to_draw_calls.append((x, y, image, sx, sy, sw, sh))
+        self.to_draw_calls.append((
+            int(x), int(y), image,
+            int(round(sx)), int(round(sy)),
+            int(round(sw)), int(round(sh))
+        ))
         # Mark underlying tiles as dirty
         world_x, world_y = round(x + self.camera.x), round(y + self.camera.y)
         x_start, y_start = (world_x // 16), (world_y // 16) # // 16
@@ -728,12 +736,12 @@ class TemplewaScene(Scene):
         dclear(C_BLACK) # Or a background color
         for y in range(
             max(0, self.camera.y // self.map.tile_size),
-            min(self.map.height, ((self.camera.y + DHEIGHT) // self.map.tile_size)),
+            min(self.map.height, ((self.camera.y + DH) // self.map.tile_size)),
             1
         ): # self.map.height
             for x in range(
                 max(0, self.camera.x // self.map.tile_size),
-                min(self.map.width, ((self.camera.x + DWIDTH) // self.map.tile_size) + 1)
+                min(self.map.width, ((self.camera.x + DW) // self.map.tile_size) + 1)
             ): # self.map.width
                 self.draw_tile(x, y)
         self.refreshCrystal = True

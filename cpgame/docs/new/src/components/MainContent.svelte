@@ -5,7 +5,10 @@
         selectedTile, currentTool, currentPanel, selectedPosition, 
         isDrawing, areaStart, areaEnd, hoveredTile, events, 
         selectedEvent, actions, tooltip,
-        guidesEnabled, guidePageWidth, guidePageHeight
+        guidesEnabled, guidePageWidth, guidePageHeight,
+
+        tilesetId
+
     } from '../store.js';
     import StatusBar from './StatusBar.svelte';
     import ZoomControls from './ZoomControls.svelte';
@@ -27,9 +30,25 @@
     // ensure renderMap() is called with the latest data after Svelte's update cycle.
     $: if (canvas) renderMap($canvasSize, $mapData, $events);
 
+    $: if ($tilesetId && canvas) {
+        const newTileset = new Image();
+        newTileset.src = $tilesetId + ".png";
+
+        newTileset.onload = () => {
+            tileset = newTileset; // Replace the old tileset
+            renderMap($canvasSize, $mapData, $events); // Re-render with new tileset
+        };
+
+        newTileset.onerror = (err) => {
+            console.error("Failed to load tileset:", err);
+        };
+
+        renderMap($canvasSize, $mapData, $events);
+    }
+
     onMount(() => {
         ctx = canvas.getContext('2d');
-        tileset.src = 'jrpg.png';
+        tileset.src =  $tilesetId + ".png";
         
         tileset.onload = () => {
             renderMap($canvasSize, $mapData, $events);

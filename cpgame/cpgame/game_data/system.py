@@ -13,6 +13,6 @@ test_battlers = [{
         "level": 1
     }]
 
-start_map_id = 3
-start_x = 8
-start_y = 22
+start_map_id = 10
+start_x = 0
+start_y = 4

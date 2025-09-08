@@ -27,7 +27,7 @@ from cpgame.game_windows.window_number_input import WindowNumberInput
 from cpgame.engine.logger import log
 from cpgame.engine.text_parser import parse_text_codes
 
-TILE_SIZE = 20
+TILE_SIZE = 8
 MOVE_DELAY = 0.15
 
 
@@ -149,9 +149,9 @@ class SceneMap(SceneBase):
     def create(self):
         log("SceneMap: Creating...")
         # Load assets required for this scene
-        self.tileset = self.assets.get_tileset('jrpg')
+        self.tileset = self.assets.get_tileset(self.map.tileset_id) # 'jrpg'
         if not self.tileset:
-            raise Exception("Failed to load 'jrpg' tileset.")
+            raise Exception(f"Failed to load '{self.map.tileset_id}' tileset.")
 
         # Create the windows managed by this scene
         self.message_window = WindowMessage()
@@ -188,7 +188,7 @@ class SceneMap(SceneBase):
     def destroy(self):
         """Called when this scene is being replaced. Unloads assets."""
         log("SceneMap: Destroying...")
-        self.assets.unload('jrpg') # self.map.tileset_id
+        self.assets.unload(self.map.tileset_id) # self.map.tileset_id  # 'jrpg'
         for w in self._windows: w.destroy()
         self._windows.clear()
         self.dirty_tiles.clear()
@@ -366,7 +366,7 @@ class SceneMap(SceneBase):
             return
 
         # Unload tileset temporarily to save memory
-        self.assets.unload('jrpg')
+        self.assets.unload(self.map.tileset_id) # 'jrpg'
         
         # Use keyword arguments for proper instantiation
         with WindowProxy('cpgame.game_windows.window_name_edit', 'WindowNameEdit') as name_edit_window:
@@ -404,7 +404,7 @@ class SceneMap(SceneBase):
 
 
         # Reload tileset
-        self.tileset = self.assets.get_tileset('jrpg')
+        self.tileset = self.assets.get_tileset(self.map.tileset_id) # 'jrpg'
         self.full_redraw_needed = True
         self.hud_window._needs_redraw = True
 
@@ -416,7 +416,7 @@ class SceneMap(SceneBase):
         msg = JRPG.objects.message
 
         # Temporarily unload tileset
-        self.assets.unload('jrpg')
+        self.assets.unload(self.map.tileset_id) # 'jrpg'
 
         with WindowProxy('cpgame.game_windows.window_choice_list', 'WindowChoiceList', self._windows[1]) as choice_window:  # message_window
             choice_window.set_handler('ok', self._on_choice_confirmed)
@@ -443,7 +443,7 @@ class SceneMap(SceneBase):
                     time.sleep_ms(self.game.frame_cap_ms - frame_time_ms)
 
         # Reload tileset
-        self.tileset = self.assets.get_tileset('jrpg')
+        self.tileset = self.assets.get_tileset(self.map.tileset_id) # 'jrpg'
         self.full_redraw_needed = True
         self.hud_window._needs_redraw = True
 

@@ -11,17 +11,6 @@ import gint
 from time import sleep
 from random import randint
 
-# --- Asset Placeholders ---
-# In a real project, these would be loaded from sprite files.
-# Here, we create dummy 1x1 images to ensure the code runs without errors.
-# The 'profile' and other arguments are based on the gint.image signature.
-def create_dummy_image(width=1, height=1):
-    """Creates a minimal gint.image object."""
-    return gint.image(
-        profile=gint.IMAGE_P4_RGB565A, color_count=1, width=width, height=height, stride=1,
-        data=b'\x00', palette=b'\xff\xff' # White pixel
-    )
-
 from cpgame.game_assets.promenad_data import sentier, fond4, decor_champi, decor_fougere, points_de_vie, objets_precieux, objet_coffre_envahi, objet_rocher, objet_panneau, panneau_morceaux, ennemi_arbre_1, ennemi_arbre_2, ennemi_arbre_3, corbeau_walk, bouleau
 
 
