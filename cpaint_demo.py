@@ -1,3 +1,4 @@
+from gint import KEY_KBD
 from gint import *
 import cgui
 import cinput
@@ -100,7 +101,8 @@ class Canvas:
         cw, ch = BUF_W, BUF_H
         
         # Calculate radius in buffer pixels
-        r_buf = max(1, int(size // 4))
+        # Allow r_buf = 0 for 1-pixel brushes (size 1-3 on screen)
+        r_buf = int(size // 4)
         r2_buf = r_buf * r_buf
         
         # Color components
@@ -133,7 +135,9 @@ class Canvas:
             if shape == 'circle':
                 dy2 = dy*dy
                 if dy2 > r2_buf: continue
-                dx_limit = int(math.sqrt(r2_buf - dy2))
+                # Handling r_buf=0 case where r2_buf=0
+                if r2_buf == 0: dx_limit = 0
+                else: dx_limit = int(math.sqrt(r2_buf - dy2))
                 row_x_min = max(x_min, cx - dx_limit)
                 row_x_max = min(x_max, cx + dx_limit + 1)
             elif shape == 'rect_v':
@@ -143,7 +147,6 @@ class Canvas:
                 row_x_max = min(x_max, cx + dx_limit + 1)
             elif shape == 'oval':
                 if abs(dy) > max(1, r_buf//2): continue
-                # circle x bounds apply roughly or full width
                 # Use simplified oval (flattened circle)
                 pass 
 
@@ -220,28 +223,128 @@ def load_gip(canvas, filename):
         cgui.msgbox(f"Error: {e}")
 
 def save_bmp(canvas, filename):
-    # Save the small buffer as BMP
-    file_size = 14 + 40 + len(canvas.buffer)
+    # Save as 24-bit BGR BMP (RGB888)
+    # Convert RGB565 (internal buffer format) -> RGB888
+    
+    file_size = 54 + BUF_W * BUF_H * 3
     offset = 54
+    # No padding needed for 160 width (160*3 = 480 is div by 4)
+    row_size = BUF_W * 3
+    
     try:
         with open(filename, "wb") as f:
             f.write(b'BM')
             f.write(struct.pack("<I", file_size))
             f.write(b'\x00\x00\x00\x00')
             f.write(struct.pack("<I", offset))
-            f.write(struct.pack("<I", 40)) 
+            f.write(struct.pack("<I", 40)) # Header size
             f.write(struct.pack("<i", BUF_W))
-            f.write(struct.pack("<i", -BUF_H))
-            f.write(struct.pack("<H", 1))
-            f.write(struct.pack("<H", 16))
-            f.write(struct.pack("<I", 0))
-            f.write(struct.pack("<I", len(canvas.buffer)))
+            f.write(struct.pack("<i", -BUF_H)) # Top-down
+            f.write(struct.pack("<H", 1)) # Planes
+            f.write(struct.pack("<H", 24)) # 24-bit
+            f.write(struct.pack("<I", 0)) # Compression
+            f.write(struct.pack("<I", row_size * BUF_H)) # Image size
             f.write(struct.pack("<ii", 2835, 2835))
             f.write(struct.pack("<II", 0, 0))
-            f.write(canvas.buffer)
+            
+            buf = canvas.buffer
+            row_buf = bytearray(row_size)
+            ptr = 0
+            
+            for y in range(BUF_H):
+                r_ptr = 0
+                for x in range(BUF_W):
+                    lo = buf[ptr]
+                    hi = buf[ptr+1]
+                    c = (hi << 8) | lo
+                    ptr += 2
+                    
+                    # Unpack RGB565
+                    r5 = (c >> 11) & 0x1F
+                    g6 = (c >> 5) & 0x3F
+                    b5 = c & 0x1F
+                    
+                    # Scale to 8-bit
+                    r8 = (r5 * 255) // 31
+                    g8 = (g6 * 255) // 63
+                    b8 = (b5 * 255) // 31
+                    
+                    # Store BGR
+                    row_buf[r_ptr] = b8
+                    row_buf[r_ptr+1] = g8
+                    row_buf[r_ptr+2] = r8
+                    r_ptr += 3
+                
+                f.write(row_buf)
+                
         cgui.msgbox("Saved BMP")
     except Exception as e:
         cgui.msgbox(f"Save Err: {e}")
+
+def load_bmp(canvas, filename):
+    try:
+        with open(filename, "rb") as f:
+            header = f.read(54)
+            if len(header) < 54: raise ValueError("Bad Header")
+            if header[0:2] != b'BM': raise ValueError("Not a BMP")
+            
+            data_offset = struct.unpack("<I", header[10:14])[0]
+            width = struct.unpack("<i", header[18:22])[0]
+            height = struct.unpack("<i", header[22:26])[0]
+            bpp = struct.unpack("<H", header[28:30])[0]
+            comp = struct.unpack("<I", header[30:34])[0]
+            
+            if bpp != 24: raise ValueError("Need 24-bit BMP")
+            if comp != 0: raise ValueError("Compressed BMP unsupported")
+            
+            flip_y = (height > 0)
+            height = abs(height)
+            
+            # Fill rest with white
+            canvas.clear(C_WHITE)
+            
+            w_copy = min(width, BUF_W)
+            h_copy = min(height, BUF_H)
+            
+            row_bytes = width * 3
+            padding = (4 - (row_bytes % 4)) % 4
+            row_padded = row_bytes + padding
+            
+            f.seek(data_offset)
+            buf = canvas.buffer
+            
+            for i in range(height):
+                if i >= h_copy: break
+                
+                y = height - 1 - i if flip_y else i
+                if y >= BUF_H: 
+                    f.seek(row_padded, 1)
+                    continue
+                
+                row_data = f.read(row_padded)
+                if len(row_data) < row_bytes: break
+                
+                ptr = y * BUF_W * 2
+                
+                for x in range(w_copy):
+                    po = x * 3
+                    b8, g8, r8 = row_data[po], row_data[po+1], row_data[po+2]
+                    
+                    # 888 -> 565
+                    r5 = (r8 * 31) // 255
+                    g6 = (g8 * 63) // 255
+                    b5 = (b8 * 31) // 255
+                    
+                    c = (r5 << 11) | (g6 << 5) | b5
+                    
+                    buf[ptr] = c & 0xFF
+                    buf[ptr+1] = (c >> 8) & 0xFF
+                    ptr += 2
+
+        canvas.draw_scaled()
+        cgui.msgbox("Imported BMP")
+    except Exception as e:
+        cgui.msgbox(f"Err: {e}")
 
 # =============================================================================
 # PAINT TOOLS
@@ -278,6 +381,47 @@ def bresenham(x0, y0, x1, y1):
 # MAIN APP
 # =============================================================================
 
+# =============================================================================
+# UI HELPERS
+# =============================================================================
+
+def draw_icon_hamburger(x, y, col):
+    # Hamburger Icon
+    w = 18
+    # Top, Mid, Bot
+    cgui.fill_rect(x - w//2, y - 6, w, 2, col)
+    cgui.fill_rect(x - w//2, y - 1, w, 2, col)
+    cgui.fill_rect(x - w//2, y + 4, w, 2, col)
+
+def draw_icon_brush(x, y, col):
+    # Brush Icon (45 deg) - Refined
+    # Handle (Longer & Thinner)
+    cgui.dpoly([x+6, y-8, x+8, y-6, x, y+2, x-2, y], col, col)
+    # Base (Circle, Smaller) with Gap
+    cgui.dcircle(x-4, y+4, 2, col, col)
+    # Tip (Triangle, Small)
+    cgui.dpoly([x-6, y+3, x-3, y+6, x-8, y+8], col, col)
+
+class IconButton(cgui.Button):
+    def __init__(self, x, y, w, h, icon_func, color=None):
+        super().__init__(x, y, w, h, "", color)
+        self.icon_func = icon_func
+    
+    def draw(self):
+        # Background
+        base_col = cgui.THEME['accent'] if self.pressed else self.color
+        cgui.fill_rect(self.x, self.y, self.w, self.h, base_col)
+        # Border
+        drect_border(self.x, self.y, self.x+self.w-1, self.y+self.h-1, C_NONE, 1, cgui.THEME['panel_border'])
+        # Icon
+        cx = self.x + self.w // 2
+        cy = self.y + self.h // 2
+        self.icon_func(cx, cy, cgui.THEME['text'])
+
+# =============================================================================
+# MAIN APP
+# =============================================================================
+
 class PaintApp:
     def __init__(self):
         self.canvas = Canvas()
@@ -292,8 +436,8 @@ class PaintApp:
         self.brush_shape = 'circle'
         
         self.buttons = [
-            cgui.Button(5, 5, 40, 40, "M"),
-            cgui.Button(50, 5, 40, 40, "B"),
+            IconButton(5, 5, 40, 40, draw_icon_hamburger),
+            IconButton(50, 5, 40, 40, draw_icon_brush),
             cgui.Button(100, 5, 40, 40, "", self.color)
         ]
 
@@ -305,36 +449,23 @@ class PaintApp:
         info = f"S:{int(self.brush_size)} {self.brush_shape[:1].upper()}"
         dtext_opt(150, 25, cgui.THEME['text'], C_NONE, DTEXT_LEFT, DTEXT_MIDDLE, info, -1)
 
-    def handle_menu(self):
-        opts = ["New", "Load GIP", "Save GIP", "Save BMP", "Quit"]
-        res = cinput.pick(opts, "Menu", theme='dark')
-        
-        if res == "New":
-            self.canvas.clear(C_WHITE)
-        elif res == "Save GIP":
-            fn = cgui.prompt_filename(".gip")
-            if fn: save_gip(self.canvas, fn)
-        elif res == "Load GIP":
-            fn = cgui.prompt_filename(".gip")
-            if fn: load_gip(self.canvas, fn)
-        elif res == "Save BMP":
-            fn = cgui.prompt_filename(".bmp")
-            if fn: save_bmp(self.canvas, fn)
-        elif res == "Quit":
-            return "QUIT"
-        
-        # Restore full screen logic
-        clearevents()
-        dtext_opt(SCREEN_W//2, SCREEN_H//2, C_WHITE, C_BLACK, DTEXT_CENTER, DTEXT_MIDDLE, "Rendering...", -1)
-        dupdate()
-        self.canvas.draw_scaled()
-        self.draw_toolbar()
-        dupdate()
+    def show_loading(self, text="Loading..."):
+         # Modal loading indicator
+         cx, cy = SCREEN_W//2, SCREEN_H//2
+         w, h = 140, 40
+         # Shadow
+         cgui.fill_rect(cx - w//2 + 2, cy - h//2 + 2, w, h, cgui.THEME['key_spec'])
+         # Box
+         cgui.fill_rect(cx - w//2, cy - h//2, w, h, cgui.THEME['modal_bg'])
+         drect_border(cx - w//2, cy - h//2, cx + w//2, cy + h//2, C_NONE, 1, cgui.THEME['text_dim'])
+         
+         dtext_opt(cx, cy, cgui.THEME['text'], C_NONE, DTEXT_CENTER, DTEXT_MIDDLE, text, -1)
+         dupdate()
 
     def run(self):
+        # Clean start
+        clearevents()
         self.draw_toolbar()
-        
-        # Initial draw
         self.canvas.draw_scaled()
         dupdate()
         
@@ -343,6 +474,7 @@ class PaintApp:
         dist_acc = 0.0
         
         while True:
+            # Polling events
             cleareventflips()
             ev = pollevent()
             events = []
@@ -352,11 +484,19 @@ class PaintApp:
                 
             if keypressed(KEY_EXIT): return
             
-            # Additional key shortcuts (Menu)
+            # F1 / Menu Key
             if keypressed(KEY_KBD) or keypressed(KEY_MENU):
-                import cinput
-                res = cinput.pick(["Brush Settings", "Color Picker", "Fill Canvas", "Save BMP", "Quit"], "Menu")
-                if res == 0:
+                # ... same menu options ...
+                menu_opts = ["Brush Settings", "Color Picker", "Fill Canvas", "Save BMP", "Import BMP", "Quit"]
+                res = cinput.pick(menu_opts, "Menu")
+                
+                sel = None
+                if isinstance(res, int) and 0 <= res < len(menu_opts): sel = menu_opts[res]
+                elif isinstance(res, str): sel = res
+                
+                refresh_needed = True
+                
+                if sel == "Brush Settings":
                      dlg = cgui.BrushDialog(self.brush_size, self.brush_spacing, self.brush_spread, 
                                              self.brush_flow, self.brush_opacity, self.brush_shape)
                      val = dlg.run()
@@ -368,28 +508,37 @@ class PaintApp:
                          self.brush_opacity = val['opacity']
                          self.brush_shape = val['shape']
                      clearevents()
-                elif res == 1:
+                elif sel == "Color Picker":
                      picker = cgui.ColorPicker(self.color)
                      new_col = picker.run()
                      if new_col is not None:
                          self.color = new_col
                      clearevents()
-                elif res == 2:
-                     if cgui.ask_modal("Fill?", "Overwrite canvas?"):
+                elif sel == "Fill Canvas":
+                     if cinput.ask("Fill?", "Overwrite canvas?"):
                          self.canvas.clear(self.color)
-                elif res == 3:
+                elif sel == "Save BMP":
                      fname = cinput.input("Filename:", "drawing.bmp")
-                     if fname: save_bmp(self.canvas, fname)
-                elif res == 4: return
+                     if fname:
+                         self.show_loading("Saving BMP...")
+                         save_bmp(self.canvas, fname)
+                         clearevents() # Discard input after heavy op
+                elif sel == "Import BMP":
+                     fname = cinput.input("Filename:", "drawing.bmp")
+                     if fname:
+                         self.show_loading("Importing BMP...")
+                         load_bmp(self.canvas, fname)
+                         clearevents() # Discard input
+                elif sel == "Quit": return
+                else:
+                    refresh_needed = False
                 
-                # Draw Loading
-                cgui.fill_rect(SCREEN_W//2 - 40, SCREEN_H//2 - 15, 80, 30, C_BLACK)
-                dtext_opt(SCREEN_W//2, SCREEN_H//2 - 5, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, "Loading...", -1)
-                dupdate()
-                
-                self.draw_toolbar()
-                self.canvas.draw_scaled()
-                dupdate()
+                if refresh_needed:
+                    self.draw_toolbar()
+                    self.canvas.draw_scaled()
+                    dupdate()
+                    # Discard any buffered touches from the menu interaction time
+                    clearevents()
 
             needs_update = False
             
@@ -402,6 +551,9 @@ class PaintApp:
                                 self.draw_toolbar()
                                 needs_update = True
                     else:
+                        # Glitch rejection
+                        if not (0 <= e.x < SCREEN_W and 0 <= e.y < SCREEN_H): continue
+                        
                         painting = True
                         last_x, last_y = e.x, e.y
                         dist_acc = 0.0
@@ -418,25 +570,28 @@ class PaintApp:
 
                 elif e.type == KEYEV_TOUCH_DRAG:
                     if painting:
-                        # Interpolate
+                        # Glitch rejection
+                        if not (0 <= e.x < SCREEN_W and 0 <= e.y < SCREEN_H): continue
+                        
                         x0, y0 = last_x, last_y
                         x1, y1 = e.x, e.y
-                        
-                        dx = x1 - x0
-                        dy = y1 - y0
+                        dx, dy = x1 - x0, y1 - y0
                         seg_len = math.sqrt(dx*dx + dy*dy)
                         
+                        # Sanity check for huge jumps
+                        if seg_len > 100: 
+                            last_x, last_y = e.x, e.y
+                            continue
+
                         if seg_len > 0:
                             dist_covered = 0.0
                             spacing = max(1.0, self.brush_spacing)
-                            
                             next_step = spacing - dist_acc
                             
                             while dist_covered + next_step <= seg_len:
                                 dist_covered += next_step
                                 
                                 t = dist_covered / seg_len
-                                # Use int casting for strict coordinates as requested
                                 px = int(x0 + dx * t)
                                 py = int(y0 + dy * t)
                                 
@@ -460,61 +615,72 @@ class PaintApp:
                 elif e.type == KEYEV_TOUCH_UP:
                     if painting:
                         painting = False
-                    else:
-                        redraw_needed = False
-                        # Check buttons
-                        if self.buttons[0].pressed: # Menu
+                    else: # Toolbar interaction
+                        handled = False
+                        # Menu Button
+                        if self.buttons[0].pressed:
                             self.buttons[0].pressed = False
-                            # Simple Menu
-                            import cinput
-                            res = cinput.pick(["Fill Canvas", "Save BMP", "Quit"], "Menu")
-                            print(res)
-                            if res == "Fill Canvas":
-                                if cgui.ask_modal("Fill?", "Overwrite canvas?"):
+                            menu_opts = ["Fill Canvas", "Save BMP", "Import BMP", "Quit"]
+                            res = cinput.pick(menu_opts, "Menu")
+                            
+                            sel = None
+                            if isinstance(res, int) and 0 <= res < len(menu_opts): sel = menu_opts[res]
+                            elif isinstance(res, str): sel = res
+                            
+                            if sel == "Fill Canvas":
+                                if cinput.ask("Fill?", "Overwrite canvas?"):
                                     self.canvas.clear(self.color)
-                                    redraw_needed = True
-                            elif res == "Save BMP":
+                            elif sel == "Save BMP":
                                 fname = cinput.input("Filename:", "drawing.bmp")
-                                if fname: save_bmp(self.canvas, fname)
-                                redraw_needed = True
-                            elif res == "Quit":
-                                return
-                            redraw_needed = True
+                                if fname:
+                                    self.show_loading("Saving BMP...")
+                                    save_bmp(self.canvas, fname)
+                                    clearevents()
+                            elif sel == "Import BMP":
+                                fname = cinput.input("Filename:", "drawing.bmp")
+                                if fname:
+                                    self.show_loading("Importing BMP...")
+                                    load_bmp(self.canvas, fname)
+                                    clearevents()
+                            elif sel == "Quit": return
+                            
+                            handled = True
 
-                        elif self.buttons[1].pressed: # Brush
+                        # Brush Button
+                        elif self.buttons[1].pressed:
                             self.buttons[1].pressed = False
                             dlg = cgui.BrushDialog(self.brush_size, self.brush_spacing, self.brush_spread, 
                                                  self.brush_flow, self.brush_opacity, self.brush_shape)
-                            res = dlg.run()
-                            if res:
-                                self.brush_size = res['size']
-                                self.brush_spacing = res['spacing']
-                                self.brush_spread = res['spread']
-                                self.brush_flow = res['flow']
-                                self.brush_opacity = res['opacity']
-                                self.brush_shape = res['shape']
+                            val = dlg.run()
+                            if val:
+                                self.brush_size = val['size']
+                                self.brush_spacing = val['spacing']
+                                self.brush_spread = val['spread']
+                                self.brush_flow = val['flow']
+                                self.brush_opacity = val['opacity']
+                                self.brush_shape = val['shape']
                             clearevents()
-                            redraw_needed = True
+                            handled = True
 
-                        elif self.buttons[2].pressed: # Color
+                        # Color Button
+                        elif self.buttons[2].pressed:
                             self.buttons[2].pressed = False
                             picker = cgui.ColorPicker(self.color)
                             new_col = picker.run()
                             if new_col is not None:
                                 self.color = new_col
                             clearevents()
-                            redraw_needed = True
+                            handled = True
                         
-                        if redraw_needed:
-                            # Draw Loading
-                            cgui.fill_rect(SCREEN_W//2 - 40 - 10, SCREEN_H//2 - 15, 80+10+10, 30, C_BLACK)
-                            dtext_opt(SCREEN_W//2, SCREEN_H//2 - 5, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, "Loading...", -1)
-                            dupdate()
+                        if handled:
+                            self.draw_toolbar()
                             self.canvas.draw_scaled()
-                        
-                        self.draw_toolbar()
-                        needs_update = True
-
+                            dupdate()
+                            needs_update = False # Explicitly handled
+                        else:
+                            self.draw_toolbar() # Reset button states
+                            needs_update = True
+                            
             if needs_update:
                 dupdate()
             

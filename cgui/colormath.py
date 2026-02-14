@@ -1,8 +1,11 @@
 from gint import *
 
 def unpack_color(c):
-    r = (c >> 10) & 0x1F
-    g = (c >> 5) & 0x1F 
+    # Unpack RGB565 (standard gint buffer format)
+    # Output scaled to 0-31 for compatibility with existing tools
+    r = (c >> 11) & 0x1F
+    g_6 = (c >> 5) & 0x3F
+    g = g_6 >> 1 # Scale 6-bit (0-63) to 5-bit (0-31)
     b = c & 0x1F
     return r, g, b
 
