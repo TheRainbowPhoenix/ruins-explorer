@@ -427,9 +427,15 @@ class BrushDialog:
         
         rng = random
         
+        # Optimization: Limit point count for fast preview
+        step = max(5, self.spacing)
+        total_w = pw - 20
+        
         x = 10
-        while x < pw - 10:
-            offset_y = int(math.sin(x / 20) * (ph/4))
+        while x < total_w:
+            # Simple sine wave, less complex than before
+            offset_y = int(math.sin(x / 30) * (ph/3.5))
+            
             jx = rng.randint(-int(self.spread), int(self.spread)) if self.spread > 0 else 0
             jy = rng.randint(-int(self.spread), int(self.spread)) if self.spread > 0 else 0
             dx, dy = px + x + jx, center_y + offset_y + jy
@@ -439,25 +445,39 @@ class BrushDialog:
             elif self.shape == 'rect_v': drect(int(dx-max(1,r//2)), int(dy-r), int(dx+max(1,r//2)), int(dy+r), col)
             elif self.shape == 'oval': dellipse(int(dx-r), int(dy-max(1,r//2)), int(dx+r), int(dy+max(1,r//2)), col, col)
                 
-            x += max(1, self.spacing)
+            x += step
+
+    def _update_slider(self, slider):
+        slider.draw_clear()
+        slider.draw()
 
     def _draw_full(self, sl_size, sl_spac, sl_sprd, sl_flow, sl_opac, shapes, shape_y, btn_ok, btn_cn):
-        """Full redraw of the brush dialog UI. Only called when dirty."""
+        """Full redraw of the brush dialog UI. Only called on init."""
         fill_rect(0, HEADER_H, SCREEN_W, SCREEN_H - HEADER_H, THEME['bg'])
         draw_header("Brush Settings")
         
-        self.size = sl_size.val
-        self.spacing = sl_spac.val
-        self.spread = sl_sprd.val
-        self.flow = sl_flow.val
-        self.opacity = sl_opac.val
-        
         self.draw_preview()
+        
+        sl_size.val = self.size
+        sl_spac.val = self.spacing
+        sl_sprd.val = self.spread
+        sl_flow.val = self.flow
+        sl_opac.val = self.opacity
         
         sl_size.draw(); sl_spac.draw(); sl_sprd.draw(); sl_flow.draw(); sl_opac.draw()
         
         # Draw shapes row
-        qw = (SCREEN_W - 40) // 4
+        self._update_shapes(shapes, shape_y, None)
+        
+        btn_ok.draw(); btn_cn.draw()
+        dupdate()
+
+    def _update_shapes(self, shapes, shape_y, qw=None):
+        if qw is None: qw = (SCREEN_W - 40) // 4
+        
+        # Clear shape area
+        fill_rect(0, shape_y, SCREEN_W, 45, THEME['bg'])
+        
         for i, s in enumerate(shapes):
             sx = 20 + i * qw
             sy = shape_y
@@ -469,9 +489,6 @@ class BrushDialog:
             elif s == 'square': drect(cx-8, cy-8, cx+8, cy+8, col)
             elif s == 'rect_v': drect(cx-4, cy-8, cx+4, cy+8, col)
             elif s == 'oval': dellipse(cx-10, cy-5, cx+10, cy+5, col, col)
-        
-        btn_ok.draw(); btn_cn.draw()
-        dupdate()
 
     def run(self):
         sl_size = Slider(20, self.y_start, SCREEN_W-40, 30, 1, 50, self.size, "Size", None, "px")
@@ -489,15 +506,14 @@ class BrushDialog:
         btn_ok = Button(btn_w, SCREEN_H - FOOTER_H, btn_w, FOOTER_H, "OK", THEME['ok_btn'])
         btn_cn = Button(0, SCREEN_H - FOOTER_H, btn_w, FOOTER_H, "Cancel", THEME['cancel_btn'])
         
-        running = True
         touch_latched = False
-        dirty = True  # Start dirty so we draw once on entry
+        dirty_full = True
         
-        while running:
+        while True:
             # Only redraw when state has changed
-            if dirty:
+            if dirty_full:
                 self._draw_full(sl_size, sl_spac, sl_sprd, sl_flow, sl_opac, shapes, shape_y, btn_ok, btn_cn)
-                dirty = False
+                dirty_full = False
             
             cleareventflips()
             ev = pollevent()
@@ -517,19 +533,22 @@ class BrushDialog:
                     touch = e
                     sl_size.dragging = sl_spac.dragging = sl_sprd.dragging = sl_flow.dragging = sl_opac.dragging = False
                     btn_ok.pressed = btn_cn.pressed = False
-                    dirty = True
 
             if keypressed(KEY_EXIT):
                 clearevents()
                 return None
 
+            needs_dupdate = False
             if touch:
                 tx, ty = touch.x, touch.y
-                dirty = True  # Any touch interaction triggers redraw
+                
+                # Check Footer
                 if ty > SCREEN_H - FOOTER_H:
                     if touch.type == KEYEV_TOUCH_DOWN:
-                        if btn_ok.hit(tx, ty): btn_ok.pressed = True
-                        if btn_cn.hit(tx, ty): btn_cn.pressed = True
+                        if btn_ok.hit(tx, ty):
+                            btn_ok.pressed = True; btn_ok.draw(); needs_dupdate = True
+                        if btn_cn.hit(tx, ty):
+                            btn_cn.pressed = True; btn_cn.draw(); needs_dupdate = True
                     elif touch.type == KEYEV_TOUCH_UP:
                         if btn_ok.hit(tx, ty):
                             clearevents()
@@ -540,16 +559,41 @@ class BrushDialog:
                         if btn_cn.hit(tx, ty):
                             clearevents()
                             return None
-                elif shape_y <= ty <= shape_y + 40:
+
+                # Check Shapes
+                elif shape_y <= ty <= shape_y + 45:
                      if touch.type == KEYEV_TOUCH_DOWN and 20 <= tx < 20 + 4*qw:
                          idx = (tx - 20) // qw
-                         self.shape = shapes[idx]
+                         if 0 <= idx < len(shapes):
+                             self.shape = shapes[idx]
+                             self._update_shapes(shapes, shape_y, qw)
+                             self.draw_preview()
+                             needs_dupdate = True
+                
+                # Check Sliders
                 else:
-                    sl_size.update(tx, ty, touch.type)
-                    sl_spac.update(tx, ty, touch.type)
-                    sl_sprd.update(tx, ty, touch.type)
-                    sl_flow.update(tx, ty, touch.type)
-                    sl_opac.update(tx, ty, touch.type)
+                    changed = False
+                    if sl_size.update(tx, ty, touch.type):
+                        self.size = sl_size.val
+                        self._update_slider(sl_size); changed = True
+                    if sl_spac.update(tx, ty, touch.type):
+                        self.spacing = sl_spac.val
+                        self._update_slider(sl_spac); changed = True
+                    if sl_sprd.update(tx, ty, touch.type):
+                        self.spread = sl_sprd.val
+                        self._update_slider(sl_sprd); changed = True
+                    if sl_flow.update(tx, ty, touch.type):
+                        self.flow = sl_flow.val
+                        self._update_slider(sl_flow); changed = True
+                    if sl_opac.update(tx, ty, touch.type):
+                        self.opacity = sl_opac.val
+                        self._update_slider(sl_opac); changed = True
+                    
+                    if changed:
+                        self.draw_preview()
+                        needs_dupdate = True
 
-            # Sleep to avoid busy-looping when idle
+            if needs_dupdate:
+                dupdate()
+
             time.sleep(0.02)

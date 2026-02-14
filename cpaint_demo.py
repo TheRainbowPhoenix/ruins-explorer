@@ -34,7 +34,6 @@ class Canvas:
     def __init__(self):
         # Raw buffer RGB565 (2 bytes per pixel) for half-res
         # Size: 160 * 239 * 2 ~= 76 KB
-        # We start with an empty buffer and let clear() allocate it properly
         self.buffer = bytearray()
         self.mv = None
         self.clear(C_WHITE)
@@ -42,203 +41,155 @@ class Canvas:
     def clear(self, color_int):
         hi = (color_int >> 8) & 0xFF
         lo = color_int & 0xFF
-        
-        # Optimization: Re-allocate buffer to avoid slow loops or slice assignment issues.
-        # This bypasses the 'memoryview/bytearray does not support item assignment' error
-        # that occurs when trying to assign to a slice (buffer[start:end] = ...).
         gc.collect()
         try:
-            # Construct the full buffer pattern in one go
-            # This is fast and efficient in MicroPython
             pix = bytes([lo, hi])
             self.buffer = bytearray(pix * (BUF_W * BUF_H))
-            # Keep memoryview if needed for zero-copy reads, though we use buffer directly mostly
             self.mv = memoryview(self.buffer)
         except MemoryError:
             cgui.msgbox("Err: RAM full in Clear")
-        
         dclear(color_int)
 
     def draw_scaled(self):
-        # Manually upscale buffer to VRAM using rectangles
-        # This is the "slow" pixel perfect 2x scale render
-        # Optimization: We interpret 4 bytes from buffer as 2 pixels, 
-        # but Python is slow. 
-        # Faster strategy: Draw 2x2 rects.
+        # Full redraw from buffer
+        # Can use blit_roi for full screen
+        self.blit_roi(0, 0, BUF_W, BUF_H)
+
+    def blit_roi(self, bx, by, bw, bh):
+        # Draw buffer region to screen
+        # bx, by, bw, bh in buffer coordinates
+        if not self.mv: return
         
-        # We can try to use dsubimage if we had a scaler, but we don't.
-        # We will loop. To make it slightly faster, we avoid function calls in loop.
-        
-        # NOTE: This function is slow (seconds). Used only on full redraws.
-        buf = self.buffer
         cw = BUF_W
-        ch = BUF_H
+        bx = max(0, bx)
+        by = max(0, by)
+        bw = min(bw, BUF_W - bx)
+        bh = min(bh, BUF_H - by)
         
-        # dclear(C_WHITE) # Clear bg first
-        # Draw header bg? Done by app.
+        if bw <= 0 or bh <= 0: return
+
+        sx = bx * 2
+        sy = BUF_HEADER_OFFSET + by * 2
         
-        y_screen = BUF_HEADER_OFFSET
+        buf = self.mv
         
-        # Optimization: drawing line by line?
-        # drect is fast in C. Calling it 160*239 = 38k times is the bottleneck.
-        # We will warn user or use a "Loading..." placeholder if needed.
-        # Actually, for the "Paint" mode, we just keep the VRAM dirty.
-        # This function is only called when we restore context (e.g. after menu).
-        
-        ptr = 0
-        for y in range(ch):
-            ys = y_screen + y*2
-            for x in range(cw):
+        # Draw line by line to minimize function calls
+        for y in range(bh):
+            row_start = (by + y) * cw * 2 + (bx * 2)
+            row_end = row_start + (bw * 2)
+            ys = sy + y * 2
+            
+            ptr = row_start
+            for x in range(bw):
+                # Manual 2-byte read is fastest in MicroPython without struct
                 lo = buf[ptr]
                 hi = buf[ptr+1]
                 col = (hi << 8) | lo
                 ptr += 2
                 
                 # Draw 2x2 pixel
-                drect(x*2, ys, x*2+1, ys+1, col)
-    
-    def bake_stroke(self, points, color, size, spacing, spread, flow, opacity, shape):
-        # 1. Stroke Path Generation (Interpolation + Spacing + Spread)
-        stamps = []
-        if not points: return
+                drect(sx + x*2, ys, sx + x*2 + 1, ys + 1, col)
 
-        # Unpack color
-        sr, sg, sb = cgui.unpack_color(color)
+    def stroke_stamp(self, x, y, color, size, opacity, flow, shape):
+        # x, y are SCREEN coordinates
+        # Map to buffer coordinates
+        cx = x // 2
+        cy = (y - BUF_HEADER_OFFSET) // 2
         
-        # Jitter function
-        def get_jitter():
-            if spread <= 0: return 0, 0
-            jx = random.randint(-int(spread), int(spread))
-            jy = random.randint(-int(spread), int(spread))
-            return jx, jy
-
-        # Adjust size for half-res buffer (size is in screen pixels 1-50)
-        # Buffer pixels are 2x screen pixels.
-        # So a 10px brush on screen is 5px on buffer.
-        r_buf = max(1, int(size // 4)) # Radius in buffer coords
-        r2_buf = r_buf * r_buf
-        
-        # Spacing is screen pixels, map to buffer
-        spacing_buf = max(1.0, spacing / 2.0)
-        spread_buf = spread / 2.0
-
-        # Map screen points to buffer points
-        # Point (px, py) -> (px // 2, (py - HEADER) // 2)
-        b_points = []
-        for x, y in points:
-            bx = x // 2
-            by = (y - BUF_HEADER_OFFSET) // 2
-            b_points.append((bx, by))
-
-        # Interpolate
-        last_x, last_y = b_points[0]
-        jx, jy = get_jitter()
-        stamps.append((int(last_x + jx/2), int(last_y + jy/2))) # scaled jitter
-
-        dist_acc = 0.0
-        
-        for i in range(1, len(b_points)):
-            x0, y0 = b_points[i-1]
-            x1, y1 = b_points[i]
-            
-            dx = x1 - x0
-            dy = y1 - y0
-            seg_len = math.sqrt(dx*dx + dy*dy)
-            
-            if seg_len == 0: continue
-            
-            current_dist = 0.0
-            while (dist_acc + seg_len) >= spacing_buf:
-                step_needed = spacing_buf - dist_acc
-                current_dist += step_needed
-                
-                t = current_dist / seg_len
-                px = x0 + dx * t
-                py = y0 + dy * t
-                
-                jx, jy = get_jitter()
-                stamps.append((int(px + jx/2), int(py + jy/2)))
-                
-                dist_acc = 0.0
-                seg_len -= step_needed
-                x0, y0 = px, py
-                dx = x1 - x0
-                dy = y1 - y0
-                
-            dist_acc += seg_len
-
-        # 2. Render Stamps to Buffer
+        # Buffer dimensions
         cw, ch = BUF_W, BUF_H
         
-        # Opacity/Flow accumulation logic
-        # Simple implementation: blend each stamp.
-        alpha_base = (opacity / 100.0) * (flow / 100.0)
+        # Calculate radius in buffer pixels
+        r_buf = max(1, int(size // 4))
+        r2_buf = r_buf * r_buf
         
-        # Clamp alpha to avoid issues
-        alpha_base = max(0.01, min(1.0, alpha_base))
+        # Color components
+        sr, sg, sb = cgui.unpack_color(color)
+        clo = color & 0xFF
+        chi = (color >> 8) & 0xFF
+        
+        # Alpha calculation
+        alpha = (opacity / 100.0) * (flow / 100.0)
+        alpha = max(0.01, min(1.0, alpha))
+        is_solid = (alpha >= 0.98)
+        
+        # Bounding box in buffer
+        x_min = max(0, cx - r_buf)
+        x_max = min(cw, cx + r_buf + 1)
+        y_min = max(0, cy - r_buf)
+        y_max = min(ch, cy + r_buf + 1)
+        
+        if x_min >= x_max or y_min >= y_max: return None
+        
+        buf = self.mv
+        
+        # Draw loops
+        for buf_y in range(y_min, y_max):
+            dy = buf_y - cy
+            
+            # Shape bounds optimization for row
+            row_x_min, row_x_max = x_min, x_max
+            
+            if shape == 'circle':
+                dy2 = dy*dy
+                if dy2 > r2_buf: continue
+                dx_limit = int(math.sqrt(r2_buf - dy2))
+                row_x_min = max(x_min, cx - dx_limit)
+                row_x_max = min(x_max, cx + dx_limit + 1)
+            elif shape == 'rect_v':
+                if abs(dy) > r_buf: continue
+                dx_limit = max(1, r_buf//2)
+                row_x_min = max(x_min, cx - dx_limit)
+                row_x_max = min(x_max, cx + dx_limit + 1)
+            elif shape == 'oval':
+                if abs(dy) > max(1, r_buf//2): continue
+                # circle x bounds apply roughly or full width
+                # Use simplified oval (flattened circle)
+                pass 
 
-        if alpha_base >= 0.98:
-            is_solid = True
-            clo = color & 0xFF
-            chi = (color >> 8) & 0xFF
-        else:
-            is_solid = False
-
-        # Use self.buffer directly to avoid memoryview item assignment issues
-        buf = self.buffer
-
-        for cx, cy in stamps:
-            # Bounds
-            y_min = max(0, cy - r_buf)
-            y_max = min(ch, cy + r_buf + 1)
-            x_min = max(0, cx - r_buf)
-            x_max = min(cw, cx + r_buf + 1)
-
-            for y in range(y_min, y_max):
-                dy = y - cy
-                
-                if shape == 'circle':
-                    dy2 = dy*dy
-                    rem = r2_buf - dy2
-                    if rem < 0: continue
-                    dx_limit = int(math.sqrt(rem))
-                    row_x_min = max(x_min, cx - dx_limit)
-                    row_x_max = min(x_max, cx + dx_limit + 1)
-                elif shape == 'square':
-                    row_x_min, row_x_max = x_min, x_max
-                elif shape == 'rect_v':
-                     # Height dominant, width half
-                     if abs(dy) > r_buf: continue
-                     dx_limit = max(1, r_buf//2)
-                     row_x_min = max(x_min, cx - dx_limit)
-                     row_x_max = min(x_max, cx + dx_limit + 1)
-                elif shape == 'oval':
-                     # Width dominant
-                     if abs(dy) > max(1, r_buf//2): continue
-                     row_x_min = max(x_min, cx - r_buf)
-                     row_x_max = min(x_max, cx + r_buf + 1)
-                else: 
-                     row_x_min, row_x_max = x_min, x_max
-
-                for x in range(row_x_min, row_x_max):
-                    idx = (y * cw + x) * 2
+            if row_x_min >= row_x_max: continue
+            
+            start_idx = (buf_y * cw + row_x_min) * 2
+            
+            if is_solid:
+                # Optimized solid fill
+                # Create pattern for the row width
+                # This is faster than per-pixel assignment
+                width = row_x_max - row_x_min
+                # buf[start_idx : start_idx + width*2] = bytes([clo, chi]) * width
+                # MicroPython slice assignment might be slow for repeated creation of bytes calls?
+                # Actually loop assignment is safer for memory unless we preallocate patterns.
+                # For now, keep loop for safety, optimize later if needed.
+                ptr = start_idx
+                for _ in range(width):
+                    buf[ptr] = clo
+                    buf[ptr+1] = chi
+                    ptr += 2
+            else:
+                # Blending
+                ptr = start_idx
+                for _ in range(row_x_max - row_x_min):
+                    dlo = buf[ptr]
+                    dhi = buf[ptr+1]
+                    dest_c = (dhi << 8) | dlo
                     
-                    if is_solid:
-                        buf[idx] = clo
-                        buf[idx+1] = chi
-                    else:
-                        dlo = buf[idx]
-                        dhi = buf[idx+1]
-                        dest_c = (dhi << 8) | dlo
-                        dr, dg, db = cgui.unpack_color(dest_c)
-                        
-                        out_r = int(sr * alpha_base + dr * (1.0 - alpha_base))
-                        out_g = int(sg * alpha_base + dg * (1.0 - alpha_base))
-                        out_b = int(sb * alpha_base + db * (1.0 - alpha_base))
-                        
-                        res_c = cgui.pack_color(out_r, out_g, out_b)
-                        buf[idx] = res_c & 0xFF
-                        buf[idx+1] = (res_c >> 8) & 0xFF
+                    # Inline unpack (RGB565 -> 5-bit)
+                    dr = (dest_c >> 10) & 0x1F
+                    dg = (dest_c >> 5) & 0x1F
+                    db = dest_c & 0x1F
+                    
+                    out_r = int(sr * alpha + dr * (1.0 - alpha))
+                    out_g = int(sg * alpha + dg * (1.0 - alpha))
+                    out_b = int(sb * alpha + db * (1.0 - alpha))
+                    
+                    # Inline pack (5-bit -> RGB565)
+                    res_c = ((out_r & 0x1F) << 10) | ((out_g & 0x1F) << 5) | (out_b & 0x1F)
+                    
+                    buf[ptr] = res_c & 0xFF
+                    buf[ptr+1] = (res_c >> 8) & 0xFF
+                    ptr += 2
+                    
+        return (x_min, y_min, x_max - x_min, y_max - y_min)
 
 # =============================================================================
 # FILE IO
@@ -381,13 +332,15 @@ class PaintApp:
         dupdate()
 
     def run(self):
-        self.canvas.draw_scaled()
         self.draw_toolbar()
+        
+        # Initial draw
+        self.canvas.draw_scaled()
         dupdate()
         
-        last_x, last_y = -1, -1
-        stroke_points = []
         painting = False
+        last_x, last_y = 0, 0
+        dist_acc = 0.0
         
         while True:
             cleareventflips()
@@ -396,7 +349,37 @@ class PaintApp:
             while ev.type != KEYEV_NONE:
                 events.append(ev)
                 ev = pollevent()
+                
+            if keypressed(KEY_EXIT):
+                return
+            
+            # Additional key shortcuts
+            if keypressed(KEY_F1) or keypressed(KEY_MENU):
+                # Open Menu
+                res = cgui.select_modal("Menu", ["Brush Settings", "Color Picker", "Fill Canvas", "Save BMP", "Quit"])
+                if res == 0:
+                     self.open_brush_dialog()
+                elif res == 1:
+                     self.open_color_picker()
+                elif res == 2:
+                     if cgui.ask_modal("Fill?", "Overwrite canvas?"):
+                         self.canvas.clear(self.color)
+                         self.blit_full() # Refresh
+                elif res == 3:
+                     # Save
+                     import cinput
+                     fname = cinput.input("Filename:", "drawing.bmp")
+                     if fname: save_bmp(self.canvas, fname)
+                elif res == 4:
+                     return
+                
+                # Restore UI after menu
+                self.draw_toolbar()
+                self.canvas.draw_scaled()
+                dupdate()
 
+            needs_update = False
+            
             for e in events:
                 if e.type == KEYEV_TOUCH_DOWN:
                     if e.y < HEADER_H:
@@ -404,79 +387,121 @@ class PaintApp:
                             if btn.hit(e.x, e.y):
                                 btn.pressed = True
                                 self.draw_toolbar()
-                                dupdate()
+                                needs_update = True
                     else:
                         painting = True
                         last_x, last_y = e.x, e.y
-                        stroke_points.append((e.x, e.y))
-                        draw_brush_cursor(e.x, e.y, self.brush_size, self.color, self.brush_shape)
-                        dupdate()
+                        dist_acc = 0.0
+                        
+                        # Apply initial stamp
+                        jx = random.randint(-int(self.brush_spread), int(self.brush_spread)) if self.brush_spread > 0 else 0
+                        jy = random.randint(-int(self.brush_spread), int(self.brush_spread)) if self.brush_spread > 0 else 0
+                        
+                        roi = self.canvas.stroke_stamp(e.x + jx, e.y + jy, self.color, self.brush_size, 
+                                                     self.brush_opacity, self.brush_flow, self.brush_shape)
+                        if roi:
+                            self.canvas.blit_roi(*roi)
+                            needs_update = True
 
                 elif e.type == KEYEV_TOUCH_DRAG:
                     if painting:
-                        pts = bresenham(last_x, last_y, e.x, e.y)
-                        for px, py in pts:
-                            draw_brush_cursor(px, py, self.brush_size, self.color, self.brush_shape)
-                            stroke_points.append((px, py))
+                        # Interpolate
+                        x0, y0 = last_x, last_y
+                        x1, y1 = e.x, e.y
+                        
+                        dx = x1 - x0
+                        dy = y1 - y0
+                        seg_len = math.sqrt(dx*dx + dy*dy)
+                        
+                        if seg_len > 0:
+                            # Step logic
+                            current_dist = 0.0
+                            spacing = max(1.0, self.brush_spacing)
+                            
+                            while (dist_acc + seg_len) >= spacing:
+                                step_needed = spacing - dist_acc
+                                current_dist += step_needed
+                                
+                                t = current_dist / seg_len
+                                px = x0 + dx * t
+                                py = y0 + dy * t
+                                
+                                # Apply stamp
+                                jx = random.randint(-int(self.brush_spread), int(self.brush_spread)) if self.brush_spread > 0 else 0
+                                jy = random.randint(-int(self.brush_spread), int(self.brush_spread)) if self.brush_spread > 0 else 0
+                                
+                                roi = self.canvas.stroke_stamp(int(px + jx), int(py + jy), self.color, self.brush_size, 
+                                                             self.brush_opacity, self.brush_flow, self.brush_shape)
+                                if roi:
+                                    self.canvas.blit_roi(*roi)
+                                    needs_update = True
+                                
+                                dist_acc = 0.0
+                                seg_len -= step_needed
+                                x0, y0 = px, py # Advance start for dist logic
+                                
+                            dist_acc += seg_len
+                        
                         last_x, last_y = e.x, e.y
-                        dupdate()
 
                 elif e.type == KEYEV_TOUCH_UP:
                     if painting:
                         painting = False
-                        
-                        dtext_opt(SCREEN_W-50, 10, C_RED, C_NONE, DTEXT_LEFT, DTEXT_TOP, "Busy", -1)
-                        dupdate()
-                        
-                        self.canvas.bake_stroke(stroke_points, self.color, self.brush_size, 
-                                              self.brush_spacing, self.brush_spread,
-                                              self.brush_flow, self.brush_opacity, self.brush_shape)
-                        stroke_points = []
-                        
-                        self.canvas.draw_scaled()
-                        self.draw_toolbar()
-                        dupdate()
-                    
-                    if self.buttons[0].pressed: # Menu
-                        self.buttons[0].pressed = False
-                        if self.handle_menu() == "QUIT": return
+                    else:
+                        redraw_needed = False
+                        # Check buttons
+                        if self.buttons[0].pressed: # Menu
+                            self.buttons[0].pressed = False
+                            # Simple Menu
+                            import cinput
+                            res = cinput.pick(["Fill Canvas", "Save BMP", "Quit"], "Menu")
+                            if res == 0:
+                                if cgui.ask_modal("Fill?", "Overwrite canvas?"):
+                                    self.canvas.clear(self.color)
+                                    redraw_needed = True
+                            elif res == 1:
+                                import cinput
+                                fname = cinput.input("Filename:", "drawing.bmp")
+                                if fname: save_bmp(self.canvas, fname)
+                                redraw_needed = True
+                            elif res == 2:
+                                return
+                            redraw_needed = True
 
-                    if self.buttons[1].pressed: # Brush
-                        self.buttons[1].pressed = False
-                        dlg = cgui.BrushDialog(self.brush_size, self.brush_spacing, self.brush_spread, 
-                                             self.brush_flow, self.brush_opacity, self.brush_shape)
-                        res = dlg.run()
-                        if res:
-                            self.brush_size = res['size']
-                            self.brush_spacing = res['spacing']
-                            self.brush_spread = res['spread']
-                            self.brush_flow = res['flow']
-                            self.brush_opacity = res['opacity']
-                            self.brush_shape = res['shape']
-                        
-                        # Full redraw needed to clear dialog
-                        clearevents()
-                        self.canvas.draw_scaled()
-                        self.draw_toolbar()
-                        dupdate()
-                        
-                    if self.buttons[2].pressed: # Color
-                        self.buttons[2].pressed = False
-                        picker = cgui.ColorPicker(self.color)
-                        new_col = picker.run()
-                        if new_col is not None:
-                            self.color = new_col
-                        
-                        # Full redraw needed
-                        clearevents()
-                        self.canvas.draw_scaled()
-                        self.draw_toolbar()
-                        dupdate()
+                        elif self.buttons[1].pressed: # Brush
+                            self.buttons[1].pressed = False
+                            dlg = cgui.BrushDialog(self.brush_size, self.brush_spacing, self.brush_spread, 
+                                                 self.brush_flow, self.brush_opacity, self.brush_shape)
+                            res = dlg.run()
+                            if res:
+                                self.brush_size = res['size']
+                                self.brush_spacing = res['spacing']
+                                self.brush_spread = res['spread']
+                                self.brush_flow = res['flow']
+                                self.brush_opacity = res['opacity']
+                                self.brush_shape = res['shape']
+                            clearevents()
+                            redraw_needed = True
 
-            if keypressed(KEY_EXIT): return
+                        elif self.buttons[2].pressed: # Color
+                            self.buttons[2].pressed = False
+                            picker = cgui.ColorPicker(self.color)
+                            new_col = picker.run()
+                            if new_col is not None:
+                                self.color = new_col
+                            clearevents()
+                            redraw_needed = True
+                        
+                        if redraw_needed:
+                            self.canvas.draw_scaled()
+                        
+                        self.draw_toolbar()
+                        needs_update = True
 
-            # Small sleep to prevent busy loop
-            time.sleep(0.02)
+            if needs_update:
+                dupdate()
+            
+            time.sleep(0.01)
 
 app = PaintApp()
 app.run()
