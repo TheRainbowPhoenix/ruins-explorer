@@ -452,20 +452,44 @@ class PaintApp:
     def show_loading(self, text="Loading..."):
          # Modal loading indicator
          cx, cy = SCREEN_W//2, SCREEN_H//2
-         w, h = 140, 40
+         w, h = 140, 30
          # Shadow
-         cgui.fill_rect(cx - w//2 + 2, cy - h//2 + 2, w, h, cgui.THEME['key_spec'])
-         # Box
-         cgui.fill_rect(cx - w//2, cy - h//2, w, h, cgui.THEME['modal_bg'])
-         drect_border(cx - w//2, cy - h//2, cx + w//2, cy + h//2, C_NONE, 1, cgui.THEME['text_dim'])
-         
-         dtext_opt(cx, cy, cgui.THEME['text'], C_NONE, DTEXT_CENTER, DTEXT_MIDDLE, text, -1)
+         cgui.fill_rect(cx - w//2 + 2, cy - h//2 + 2, w, h, C_BLACK)
+         dtext_opt(SCREEN_W//2, SCREEN_H//2 - 5, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, text, -1)
          dupdate()
+         
+         
+
+    def handle_menu(self):
+        opts = ["New", "Load GIP", "Save GIP", "Save BMP", "Quit"]
+        res = cinput.pick(opts, "Menu", theme='dark')
+        
+        if res == "New":
+            self.canvas.clear(C_WHITE)
+        elif res == "Save GIP":
+            fn = cgui.prompt_filename(".gip")
+            if fn: save_gip(self.canvas, fn)
+        elif res == "Load GIP":
+            fn = cgui.prompt_filename(".gip")
+            if fn: load_gip(self.canvas, fn)
+        elif res == "Save BMP":
+            fn = cgui.prompt_filename(".bmp")
+            if fn: save_bmp(self.canvas, fn)
+        elif res == "Quit":
+            return "QUIT"
+        
+        # Restore full screen logic
+        clearevents()
+        dtext_opt(SCREEN_W//2, SCREEN_H//2, C_WHITE, C_BLACK, DTEXT_CENTER, DTEXT_MIDDLE, "Rendering...", -1)
+        dupdate()
+        self.canvas.draw_scaled()
+        self.draw_toolbar()
+        dupdate()
 
     def run(self):
-        # Clean start
-        clearevents()
         self.draw_toolbar()
+        
+        # Initial draw
         self.canvas.draw_scaled()
         dupdate()
         
@@ -474,7 +498,6 @@ class PaintApp:
         dist_acc = 0.0
         
         while True:
-            # Polling events
             cleareventflips()
             ev = pollevent()
             events = []
@@ -484,12 +507,14 @@ class PaintApp:
                 
             if keypressed(KEY_EXIT): return
             
-            # F1 / Menu Key
-            if keypressed(KEY_KBD) or keypressed(KEY_MENU):
-                # ... same menu options ...
+            # Additional key shortcuts (Menu F1)
+            # Use KBD or Menu key
+            if keypressed(KEY_KBD) or keypressed(KEY_EXE):
+                import cinput
                 menu_opts = ["Brush Settings", "Color Picker", "Fill Canvas", "Save BMP", "Import BMP", "Quit"]
                 res = cinput.pick(menu_opts, "Menu")
                 
+                # Robust string/index handling
                 sel = None
                 if isinstance(res, int) and 0 <= res < len(menu_opts): sel = menu_opts[res]
                 elif isinstance(res, str): sel = res
@@ -535,6 +560,7 @@ class PaintApp:
                 
                 if refresh_needed:
                     self.draw_toolbar()
+                    self.show_loading("Rendering...")
                     self.canvas.draw_scaled()
                     dupdate()
                     # Discard any buffered touches from the menu interaction time
@@ -586,12 +612,14 @@ class PaintApp:
                         if seg_len > 0:
                             dist_covered = 0.0
                             spacing = max(1.0, self.brush_spacing)
+                            
                             next_step = spacing - dist_acc
                             
                             while dist_covered + next_step <= seg_len:
                                 dist_covered += next_step
                                 
                                 t = dist_covered / seg_len
+                                # Use int casting for strict coordinates
                                 px = int(x0 + dx * t)
                                 py = int(y0 + dy * t)
                                 
@@ -615,11 +643,12 @@ class PaintApp:
                 elif e.type == KEYEV_TOUCH_UP:
                     if painting:
                         painting = False
-                    else: # Toolbar interaction
-                        handled = False
-                        # Menu Button
-                        if self.buttons[0].pressed:
+                    else:
+                        redraw_needed = False
+                        # Check buttons
+                        if self.buttons[0].pressed: # Menu
                             self.buttons[0].pressed = False
+                            import cinput
                             menu_opts = ["Fill Canvas", "Save BMP", "Import BMP", "Quit"]
                             res = cinput.pick(menu_opts, "Menu")
                             
@@ -630,24 +659,27 @@ class PaintApp:
                             if sel == "Fill Canvas":
                                 if cinput.ask("Fill?", "Overwrite canvas?"):
                                     self.canvas.clear(self.color)
+                                    redraw_needed = True
                             elif sel == "Save BMP":
                                 fname = cinput.input("Filename:", "drawing.bmp")
                                 if fname:
                                     self.show_loading("Saving BMP...")
                                     save_bmp(self.canvas, fname)
                                     clearevents()
+                                redraw_needed = True
                             elif sel == "Import BMP":
                                 fname = cinput.input("Filename:", "drawing.bmp")
                                 if fname:
                                     self.show_loading("Importing BMP...")
                                     load_bmp(self.canvas, fname)
                                     clearevents()
-                            elif sel == "Quit": return
-                            
-                            handled = True
 
-                        # Brush Button
-                        elif self.buttons[1].pressed:
+                                redraw_needed = True
+                            elif sel == "Quit":
+                                return
+                            redraw_needed = True
+
+                        elif self.buttons[1].pressed: # Brush
                             self.buttons[1].pressed = False
                             dlg = cgui.BrushDialog(self.brush_size, self.brush_spacing, self.brush_spread, 
                                                  self.brush_flow, self.brush_opacity, self.brush_shape)
@@ -660,27 +692,27 @@ class PaintApp:
                                 self.brush_opacity = val['opacity']
                                 self.brush_shape = val['shape']
                             clearevents()
-                            handled = True
+                            redraw_needed = True
 
-                        # Color Button
-                        elif self.buttons[2].pressed:
+                        elif self.buttons[2].pressed: # Color
                             self.buttons[2].pressed = False
                             picker = cgui.ColorPicker(self.color)
                             new_col = picker.run()
                             if new_col is not None:
                                 self.color = new_col
                             clearevents()
-                            handled = True
+                            redraw_needed = True
                         
-                        if handled:
+                        if redraw_needed:
                             self.draw_toolbar()
-                            self.canvas.draw_scaled()
+                            # Draw Loading
+                            self.show_loading("Rendering...")
                             dupdate()
-                            needs_update = False # Explicitly handled
-                        else:
-                            self.draw_toolbar() # Reset button states
-                            needs_update = True
-                            
+                            self.canvas.draw_scaled()
+                        
+                        self.draw_toolbar()
+                        needs_update = True
+
             if needs_update:
                 dupdate()
             
