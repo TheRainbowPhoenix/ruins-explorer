@@ -350,30 +350,43 @@ class PaintApp:
                 events.append(ev)
                 ev = pollevent()
                 
-            if keypressed(KEY_EXIT):
-                return
+            if keypressed(KEY_EXIT): return
             
-            # Additional key shortcuts
-            if keypressed(KEY_F1) or keypressed(KEY_MENU):
-                # Open Menu
-                res = cgui.select_modal("Menu", ["Brush Settings", "Color Picker", "Fill Canvas", "Save BMP", "Quit"])
+            # Additional key shortcuts (Menu)
+            if keypressed(KEY_KBD) or keypressed(KEY_MENU):
+                import cinput
+                res = cinput.pick(["Brush Settings", "Color Picker", "Fill Canvas", "Save BMP", "Quit"], "Menu")
                 if res == 0:
-                     self.open_brush_dialog()
+                     dlg = cgui.BrushDialog(self.brush_size, self.brush_spacing, self.brush_spread, 
+                                             self.brush_flow, self.brush_opacity, self.brush_shape)
+                     val = dlg.run()
+                     if val:
+                         self.brush_size = val['size']
+                         self.brush_spacing = val['spacing']
+                         self.brush_spread = val['spread']
+                         self.brush_flow = val['flow']
+                         self.brush_opacity = val['opacity']
+                         self.brush_shape = val['shape']
+                     clearevents()
                 elif res == 1:
-                     self.open_color_picker()
+                     picker = cgui.ColorPicker(self.color)
+                     new_col = picker.run()
+                     if new_col is not None:
+                         self.color = new_col
+                     clearevents()
                 elif res == 2:
                      if cgui.ask_modal("Fill?", "Overwrite canvas?"):
                          self.canvas.clear(self.color)
-                         self.blit_full() # Refresh
                 elif res == 3:
-                     # Save
-                     import cinput
                      fname = cinput.input("Filename:", "drawing.bmp")
                      if fname: save_bmp(self.canvas, fname)
-                elif res == 4:
-                     return
+                elif res == 4: return
                 
-                # Restore UI after menu
+                # Draw Loading
+                cgui.fill_rect(SCREEN_W//2 - 40, SCREEN_H//2 - 15, 80, 30, C_BLACK)
+                dtext_opt(SCREEN_W//2, SCREEN_H//2 - 5, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, "Loading...", -1)
+                dupdate()
+                
                 self.draw_toolbar()
                 self.canvas.draw_scaled()
                 dupdate()
@@ -414,33 +427,33 @@ class PaintApp:
                         seg_len = math.sqrt(dx*dx + dy*dy)
                         
                         if seg_len > 0:
-                            # Step logic
-                            current_dist = 0.0
+                            dist_covered = 0.0
                             spacing = max(1.0, self.brush_spacing)
                             
-                            while (dist_acc + seg_len) >= spacing:
-                                step_needed = spacing - dist_acc
-                                current_dist += step_needed
+                            next_step = spacing - dist_acc
+                            
+                            while dist_covered + next_step <= seg_len:
+                                dist_covered += next_step
                                 
-                                t = current_dist / seg_len
-                                px = x0 + dx * t
-                                py = y0 + dy * t
+                                t = dist_covered / seg_len
+                                # Use int casting for strict coordinates as requested
+                                px = int(x0 + dx * t)
+                                py = int(y0 + dy * t)
                                 
                                 # Apply stamp
                                 jx = random.randint(-int(self.brush_spread), int(self.brush_spread)) if self.brush_spread > 0 else 0
                                 jy = random.randint(-int(self.brush_spread), int(self.brush_spread)) if self.brush_spread > 0 else 0
                                 
-                                roi = self.canvas.stroke_stamp(int(px + jx), int(py + jy), self.color, self.brush_size, 
+                                roi = self.canvas.stroke_stamp(px + jx, py + jy, self.color, self.brush_size, 
                                                              self.brush_opacity, self.brush_flow, self.brush_shape)
                                 if roi:
                                     self.canvas.blit_roi(*roi)
                                     needs_update = True
                                 
                                 dist_acc = 0.0
-                                seg_len -= step_needed
-                                x0, y0 = px, py # Advance start for dist logic
+                                next_step = spacing
                                 
-                            dist_acc += seg_len
+                            dist_acc += (seg_len - dist_covered)
                         
                         last_x, last_y = e.x, e.y
 
@@ -455,16 +468,16 @@ class PaintApp:
                             # Simple Menu
                             import cinput
                             res = cinput.pick(["Fill Canvas", "Save BMP", "Quit"], "Menu")
-                            if res == 0:
+                            print(res)
+                            if res == "Fill Canvas":
                                 if cgui.ask_modal("Fill?", "Overwrite canvas?"):
                                     self.canvas.clear(self.color)
                                     redraw_needed = True
-                            elif res == 1:
-                                import cinput
+                            elif res == "Save BMP":
                                 fname = cinput.input("Filename:", "drawing.bmp")
                                 if fname: save_bmp(self.canvas, fname)
                                 redraw_needed = True
-                            elif res == 2:
+                            elif res == "Quit":
                                 return
                             redraw_needed = True
 
@@ -493,6 +506,10 @@ class PaintApp:
                             redraw_needed = True
                         
                         if redraw_needed:
+                            # Draw Loading
+                            cgui.fill_rect(SCREEN_W//2 - 40 - 10, SCREEN_H//2 - 15, 80+10+10, 30, C_BLACK)
+                            dtext_opt(SCREEN_W//2, SCREEN_H//2 - 5, C_WHITE, C_NONE, DTEXT_CENTER, DTEXT_TOP, "Loading...", -1)
+                            dupdate()
                             self.canvas.draw_scaled()
                         
                         self.draw_toolbar()

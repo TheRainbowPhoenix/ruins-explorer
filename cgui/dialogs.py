@@ -413,11 +413,15 @@ class BrushDialog:
         self.shape = shape
         
         self.preview_h = 80
-        self.y_start = HEADER_H + self.preview_h + 10
+        self.y_start = HEADER_H + self.preview_h + 22
 
     def draw_preview(self):
         px, py = 20, HEADER_H + 10
         pw, ph = SCREEN_W - 40, self.preview_h
+        
+        # Clipping optimization
+        dwindow_set(px, py, px+pw-1, py+ph-1)
+        
         fill_rect(px, py, pw, ph, C_WHITE)
         drect_border(px, py, px+pw, py+ph, C_NONE, 1, THEME['text_dim'])
         
@@ -427,13 +431,13 @@ class BrushDialog:
         
         rng = random
         
-        # Optimization: Limit point count for fast preview
-        step = max(5, self.spacing)
+        # Optimization: Fewer points
+        step = max(10, self.spacing * 2)
         total_w = pw - 20
         
         x = 10
         while x < total_w:
-            # Simple sine wave, less complex than before
+            # Simple sine wave
             offset_y = int(math.sin(x / 30) * (ph/3.5))
             
             jx = rng.randint(-int(self.spread), int(self.spread)) if self.spread > 0 else 0
@@ -446,6 +450,8 @@ class BrushDialog:
             elif self.shape == 'oval': dellipse(int(dx-r), int(dy-max(1,r//2)), int(dx+r), int(dy+max(1,r//2)), col, col)
                 
             x += step
+            
+        dwindow_set(0, 0, SCREEN_W, SCREEN_H)
 
     def _update_slider(self, slider):
         slider.draw_clear()
@@ -455,6 +461,9 @@ class BrushDialog:
         """Full redraw of the brush dialog UI. Only called on init."""
         fill_rect(0, HEADER_H, SCREEN_W, SCREEN_H - HEADER_H, THEME['bg'])
         draw_header("Brush Settings")
+        
+        SLIDER_TEXT_Y_OFFSET = 12
+        # Ensure we clear area where sliders draw text if needed, but fill_rect covers it.
         
         self.draw_preview()
         
@@ -492,12 +501,12 @@ class BrushDialog:
 
     def run(self):
         sl_size = Slider(20, self.y_start, SCREEN_W-40, 30, 1, 50, self.size, "Size", None, "px")
-        sl_spac = Slider(20, self.y_start + 40, SCREEN_W-40, 30, 1, 50, self.spacing, "Spacing", None, "px")
-        sl_sprd = Slider(20, self.y_start + 80, SCREEN_W-40, 30, 0, 50, self.spread, "Spread", None, "px")
-        sl_flow = Slider(20, self.y_start + 120, SCREEN_W-40, 30, 0, 100, self.flow, "Flow", None, "%")
-        sl_opac = Slider(20, self.y_start + 160, SCREEN_W-40, 30, 0, 100, self.opacity, "Opacity", None, "%")
+        sl_spac = Slider(20, self.y_start + 48, SCREEN_W-40, 30, 1, 50, self.spacing, "Spacing", None, "px")
+        sl_sprd = Slider(20, self.y_start + 96, SCREEN_W-40, 30, 0, 50, self.spread, "Spread", None, "px")
+        sl_flow = Slider(20, self.y_start + 144, SCREEN_W-40, 30, 0, 100, self.flow, "Flow", None, "%")
+        sl_opac = Slider(20, self.y_start + 192, SCREEN_W-40, 30, 0, 100, self.opacity, "Opacity", None, "%")
         
-        shape_y = self.y_start + 200
+        shape_y = self.y_start + 240
         shapes = ['circle', 'square', 'rect_v', 'oval']
 
         qw = (SCREEN_W - 40) // 4  # Shape button width, used for hit-testing
